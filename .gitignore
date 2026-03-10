@@ -13,3 +13,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+/build
+/local.properties
+/.idea
+*.iml

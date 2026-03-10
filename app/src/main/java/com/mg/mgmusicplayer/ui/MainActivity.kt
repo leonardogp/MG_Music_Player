@@ -1,54 +1,77 @@
 package com.mg.mgmusicplayer.ui
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.mg.mgmusicplayer.R
-import com.mg.mgmusicplayer.player.MusicPlayerManager
-import com.mg.mgmusicplayer.util.MusicScanner
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.*
+import androidx.core.content.ContextCompat
+import com.mg.mgmusicplayer.ui.screens.LibraryScreen
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : ComponentActivity() {
 
-    private lateinit var recyclerView: RecyclerView
-    private lateinit var player: MusicPlayerManager
+    private val viewModel: MusicViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-
         super.onCreate(savedInstanceState)
 
-        setContentView(R.layout.activity_main)
-
-        recyclerView = findViewById(R.id.recyclerSongs)
-
-        player = MusicPlayerManager(this)
-
-        requestPermission()
-
-        val songs = MusicScanner.getSongs(this)
-
-        val adapter = SongAdapter(songs) {
-
-            player.play(it)
-
+        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(
+                Manifest.permission.READ_MEDIA_AUDIO,
+                Manifest.permission.POST_NOTIFICATIONS
+            )
+        } else {
+            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
 
-        recyclerView.adapter = adapter
-        recyclerView.layoutManager = LinearLayoutManager(this)
+        val permissionLauncher =
+            registerForActivityResult(
+                ActivityResultContracts.RequestMultiplePermissions()
+            ) { results ->
+                val allGranted = results.values.all { it }
+                if (allGranted) {
+                    setupUI()
+                } else {
+                    Toast.makeText(this, "Permisos necesarios para leer música", Toast.LENGTH_LONG).show()
+                }
+            }
+
+        val missingPermissions = permissions.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (missingPermissions.isEmpty()) {
+            setupUI()
+        } else {
+            permissionLauncher.launch(missingPermissions.toTypedArray())
+        }
     }
 
-    private fun requestPermission() {
+    private fun setupUI() {
+        setContent {
+            MaterialTheme {
+                val songs by viewModel.songs.collectAsState()
+                val searchQuery by viewModel.searchQuery.collectAsState()
+                val currentSong by viewModel.currentSong.collectAsState()
+                val isPlaying by viewModel.isPlaying.collectAsState()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-
-            requestPermissions(arrayOf(Manifest.permission.READ_MEDIA_AUDIO), 1)
-
-        } else {
-
-            requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), 1)
-
+                LibraryScreen(
+                    songs = songs,
+                    searchQuery = searchQuery,
+                    onSearchQueryChanged = viewModel::onSearchQueryChanged,
+                    currentSong = currentSong,
+                    isPlaying = isPlaying,
+                    onPlayPause = viewModel::togglePlayPause,
+                    onPlay = viewModel::playSong,
+                    onScanMusic = viewModel::scanMusic
+                )
+            }
         }
     }
 }

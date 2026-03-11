@@ -13,6 +13,7 @@ class MusicScanner(private val context: Context) {
 
         val projection = arrayOf(
             MediaStore.Audio.Media._ID,
+            MediaStore.Audio.Media.ALBUM_ID,
             MediaStore.Audio.Media.TITLE,
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.ALBUM,
@@ -32,6 +33,7 @@ class MusicScanner(private val context: Context) {
 
         cursor?.use {
             val idColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+            val albumIdColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
             val titleColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
             val artistColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
             val albumColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
@@ -39,6 +41,7 @@ class MusicScanner(private val context: Context) {
 
             while (it.moveToNext()) {
                 val id = it.getLong(idColumn)
+                val albumId = it.getLong(albumIdColumn)
                 val title = it.getString(titleColumn) ?: "Desconocido"
                 val artist = it.getString(artistColumn) ?: "Artista Desconocido"
                 val album = it.getString(albumColumn) ?: "Álbum Desconocido"
@@ -60,6 +63,7 @@ class MusicScanner(private val context: Context) {
                 songs.add(
                     Song(
                         id = id,
+                        albumId = albumId,
                         title = title,
                         artist = artist,
                         album = album,

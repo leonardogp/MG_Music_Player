@@ -46,7 +46,6 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation("androidx.compose.material:material-icons-extended")
     
-    // Window Size Class for adaptive layouts
     implementation("androidx.compose.material3:material3-window-size-class")
     
     // Media3
@@ -58,6 +57,12 @@ dependencies {
 
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    
+    // Coil para cargar carátulas
+    implementation("io.coil-kt:coil-compose:2.5.0")
+    
+    // Librería para edición física de etiquetas ID3
+    implementation("com.mpatric:mp3agic:0.9.1")
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

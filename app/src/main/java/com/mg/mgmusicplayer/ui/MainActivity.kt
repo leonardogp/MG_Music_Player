@@ -57,6 +57,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 val songs by viewModel.songs.collectAsState()
+                val genres by viewModel.genres.collectAsState()
+                val artists by viewModel.artists.collectAsState()
+                val albums by viewModel.albums.collectAsState()
+                val folders by viewModel.folders.collectAsState()
                 val searchQuery by viewModel.searchQuery.collectAsState()
                 val currentSong by viewModel.currentSong.collectAsState()
                 val isPlaying by viewModel.isPlaying.collectAsState()
@@ -64,6 +68,10 @@ class MainActivity : ComponentActivity() {
 
                 LibraryScreen(
                     songs = songs,
+                    genres = genres,
+                    artists = artists,
+                    albums = albums,
+                    folders = folders,
                     searchQuery = searchQuery,
                     onSearchQueryChanged = viewModel::onSearchQueryChanged,
                     currentSong = currentSong,

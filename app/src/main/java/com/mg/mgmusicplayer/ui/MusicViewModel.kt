@@ -22,16 +22,38 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery
 
-    val songs: StateFlow<List<Song>> = combine(_allSongs, _searchQuery) { songs, query ->
+    private val filteredSongs = combine(_allSongs, _searchQuery) { songs, query ->
         if (query.isBlank()) {
             songs
         } else {
             songs.filter {
                 it.title.contains(query, ignoreCase = true) ||
-                it.artist.contains(query, ignoreCase = true)
+                it.artist.contains(query, ignoreCase = true) ||
+                it.album.contains(query, ignoreCase = true) ||
+                it.genre.contains(query, ignoreCase = true) ||
+                it.folder.contains(query, ignoreCase = true)
             }
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }
+
+    val songs: StateFlow<List<Song>> = filteredSongs
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val genres: StateFlow<Map<String, List<Song>>> = filteredSongs.combine(MutableStateFlow(Unit)) { songs, _ ->
+        songs.groupBy { it.genre }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    val artists: StateFlow<Map<String, List<Song>>> = filteredSongs.combine(MutableStateFlow(Unit)) { songs, _ ->
+        songs.groupBy { it.artist }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    val albums: StateFlow<Map<String, List<Song>>> = filteredSongs.combine(MutableStateFlow(Unit)) { songs, _ ->
+        songs.groupBy { it.album }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    val folders: StateFlow<Map<String, List<Song>>> = filteredSongs.combine(MutableStateFlow(Unit)) { songs, _ ->
+        songs.groupBy { it.folder }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     val currentSong = playerManager.currentSong
     val isPlaying = playerManager.isPlaying
@@ -53,7 +75,8 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         _searchQuery.value = query
     }
 
-    fun playSong(song: Song) {
+    fun playSong(song: Song, playlist: List<Song>) {
+        playerManager.setPlaylist(playlist)
         playerManager.play(song)
     }
 

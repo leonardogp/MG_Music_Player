@@ -46,6 +46,9 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation("androidx.compose.material:material-icons-extended")
     
+    // Window Size Class for adaptive layouts
+    implementation("androidx.compose.material3:material3-window-size-class")
+    
     // Media3
     val media3Version = "1.3.1"
     implementation("androidx.media3:media3-exoplayer:$media3Version")

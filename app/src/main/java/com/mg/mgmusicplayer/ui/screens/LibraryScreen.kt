@@ -14,6 +14,9 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,9 +32,13 @@ fun LibraryScreen(
     onSearchQueryChanged: (String) -> Unit,
     currentSong: Song?,
     isPlaying: Boolean,
+    isShuffleMode: Boolean,
     onPlayPause: () -> Unit,
     onPlay: (Song) -> Unit,
-    onScanMusic: () -> Unit
+    onScanMusic: () -> Unit,
+    onSkipNext: () -> Unit,
+    onSkipPrevious: () -> Unit,
+    onToggleShuffle: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -86,11 +93,27 @@ fun LibraryScreen(
                             Text(text = currentSong.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
                             Text(text = currentSong.artist, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
                         }
-                        IconButton(onClick = onPlayPause) {
-                            Icon(
-                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = if (isPlaying) "Pause" else "Play"
-                            )
+                        
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = onToggleShuffle) {
+                                Icon(
+                                    imageVector = Icons.Default.Shuffle,
+                                    contentDescription = "Shuffle",
+                                    tint = if (isShuffleMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            IconButton(onClick = onSkipPrevious) {
+                                Icon(Icons.Default.SkipPrevious, contentDescription = "Atrás")
+                            }
+                            IconButton(onClick = onPlayPause) {
+                                Icon(
+                                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                    contentDescription = if (isPlaying) "Pause" else "Play"
+                                )
+                            }
+                            IconButton(onClick = onSkipNext) {
+                                Icon(Icons.Default.SkipNext, contentDescription = "Próxima")
+                            }
                         }
                     }
                 }
@@ -98,7 +121,10 @@ fun LibraryScreen(
         }
     ) { padding ->
         if (songs.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
                 Text("No se encontraron canciones. Usa el menú para escanear.")
             }
         } else {
@@ -122,12 +148,5 @@ fun LibraryScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun Box(modifier: Modifier, contentAlignment: androidx.compose.ui.Alignment, content: @Composable () -> Unit) {
-    androidx.compose.foundation.layout.Box(modifier = modifier, contentAlignment = contentAlignment) {
-        content()
     }
 }

@@ -35,6 +35,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     val currentSong = playerManager.currentSong
     val isPlaying = playerManager.isPlaying
+    val isShuffleMode = playerManager.isShuffleMode
 
     init {
         scanMusic()
@@ -66,6 +67,10 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     fun skipPrevious() {
         playerManager.skipPrevious()
+    }
+
+    fun toggleShuffle() {
+        playerManager.toggleShuffle()
     }
 
     override fun onCleared() {

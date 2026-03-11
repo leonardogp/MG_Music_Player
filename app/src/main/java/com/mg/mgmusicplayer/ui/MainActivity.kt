@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity() {
                 val searchQuery by viewModel.searchQuery.collectAsState()
                 val currentSong by viewModel.currentSong.collectAsState()
                 val isPlaying by viewModel.isPlaying.collectAsState()
+                val isShuffleMode by viewModel.isShuffleMode.collectAsState()
 
                 LibraryScreen(
                     songs = songs,
@@ -67,9 +68,13 @@ class MainActivity : ComponentActivity() {
                     onSearchQueryChanged = viewModel::onSearchQueryChanged,
                     currentSong = currentSong,
                     isPlaying = isPlaying,
+                    isShuffleMode = isShuffleMode,
                     onPlayPause = viewModel::togglePlayPause,
                     onPlay = viewModel::playSong,
-                    onScanMusic = viewModel::scanMusic
+                    onScanMusic = viewModel::scanMusic,
+                    onSkipNext = viewModel::skipNext,
+                    onSkipPrevious = viewModel::skipPrevious,
+                    onToggleShuffle = viewModel::toggleShuffle
                 )
             }
         }

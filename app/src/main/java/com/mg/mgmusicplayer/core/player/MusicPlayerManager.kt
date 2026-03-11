@@ -20,6 +20,9 @@ class MusicPlayerManager(context: Context) {
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying = _isPlaying.asStateFlow()
 
+    private val _isShuffleMode = MutableStateFlow(false)
+    val isShuffleMode = _isShuffleMode.asStateFlow()
+
     init {
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -31,6 +34,10 @@ class MusicPlayerManager(context: Context) {
                 if (index >= 0 && index < playlist.size) {
                     _currentSong.value = playlist[index]
                 }
+            }
+
+            override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+                _isShuffleMode.value = shuffleModeEnabled
             }
         })
     }
@@ -47,7 +54,6 @@ class MusicPlayerManager(context: Context) {
             player.seekTo(index, 0)
             player.play()
         } else {
-            // If song is not in current playlist (e.g. from search), we might want to update or handle it
             setPlaylist(listOf(song))
             player.play()
         }
@@ -71,6 +77,10 @@ class MusicPlayerManager(context: Context) {
         if (player.hasPreviousMediaItem()) {
             player.seekToPrevious()
         }
+    }
+
+    fun toggleShuffle() {
+        player.shuffleModeEnabled = !player.shuffleModeEnabled
     }
     
     fun release() {

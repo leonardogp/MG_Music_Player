@@ -1,19 +1,22 @@
-*.iml
+gitignore
+# Build and IDE files
 .gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
 /build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
-/build
-/local.properties
-/.idea
+/app/build
 *.iml
+.idea/
+
+# Android Studio / IntelliJ files
+/.idea/caches
+
+# ... (reglas detalladas para archivos XML de configuración)
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs & Keystores
+*.log
+*.jks
+*.keystore
+local.properties

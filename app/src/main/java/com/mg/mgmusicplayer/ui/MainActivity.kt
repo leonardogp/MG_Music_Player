@@ -13,10 +13,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.core.content.ContextCompat
 import com.mg.mgmusicplayer.ui.screens.LibraryScreen
+import com.mg.mgmusicplayer.ui.theme.MGMusicPlayerTheme
 
 class MainActivity : ComponentActivity() {
 
@@ -67,7 +67,6 @@ class MainActivity : ComponentActivity() {
                     val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
                     intent.data = Uri.parse("package:${packageName}")
                     startActivity(intent)
-                    Toast.makeText(this, "Por favor, autorice el acceso a archivos para editar etiquetas", Toast.LENGTH_LONG).show()
                 } catch (e: Exception) {
                     val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
                     startActivity(intent)
@@ -79,20 +78,21 @@ class MainActivity : ComponentActivity() {
 
     private fun setupUI() {
         setContent {
-            MaterialTheme {
+            MGMusicPlayerTheme {
                 val songs by viewModel.songs.collectAsState()
                 val genres by viewModel.genres.collectAsState()
                 val artists by viewModel.artists.collectAsState()
                 val albums by viewModel.albums.collectAsState()
                 val folders by viewModel.folders.collectAsState()
                 val playlists by viewModel.playlists.collectAsState()
-                val recentSongs by viewModel.recentSongs.collectAsState()
+                val currentPlaylistSongs by viewModel.currentPlaylistSongs.collectAsState()
                 val searchQuery by viewModel.searchQuery.collectAsState()
                 val sortOrder by viewModel.sortOrder.collectAsState()
                 val currentSong by viewModel.currentSong.collectAsState()
                 val isPlaying by viewModel.isPlaying.collectAsState()
                 val isShuffleMode by viewModel.isShuffleMode.collectAsState()
                 val repeatMode by viewModel.repeatMode.collectAsState()
+                val audioSessionId = viewModel.getAudioSessionId()
 
                 LibraryScreen(
                     songs = songs,
@@ -101,7 +101,7 @@ class MainActivity : ComponentActivity() {
                     albums = albums,
                     folders = folders,
                     playlists = playlists,
-                    recentSongs = recentSongs,
+                    currentPlaylistSongs = currentPlaylistSongs,
                     searchQuery = searchQuery,
                     sortOrder = sortOrder,
                     onSearchQueryChanged = viewModel::onSearchQueryChanged,
@@ -110,6 +110,7 @@ class MainActivity : ComponentActivity() {
                     isPlaying = isPlaying,
                     isShuffleMode = isShuffleMode,
                     repeatMode = repeatMode,
+                    audioSessionId = audioSessionId,
                     onPlayPause = viewModel::togglePlayPause,
                     onPlay = viewModel::playSong,
                     onScanMusic = viewModel::scanMusic,
@@ -122,6 +123,8 @@ class MainActivity : ComponentActivity() {
                     onToggleFavorite = viewModel::toggleFavorite,
                     onCreatePlaylist = viewModel::createPlaylist,
                     onAddSongToPlaylist = viewModel::addSongToPlaylist,
+                    onAddSongsToPlaylist = viewModel::addSongsToPlaylist,
+                    onLoadPlaylistSongs = viewModel::loadPlaylistSongs,
                     onUpdateSongTags = viewModel::updateSongTags
                 )
             }

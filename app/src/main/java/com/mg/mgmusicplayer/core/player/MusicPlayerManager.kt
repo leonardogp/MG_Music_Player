@@ -2,27 +2,25 @@ package com.mg.mgmusicplayer.core.player
 
 import android.content.ComponentName
 import android.content.Context
-import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.common.Timeline
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.mg.mgmusicplayer.data.model.Song
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 @UnstableApi
-class MusicPlayerManager(private val context: Context) {
+class MusicPlayerManager(context: Context) {
 
-    private var exoPlayer: ExoPlayer? = null
+    private val appContext = context.applicationContext
     private var controllerFuture: ListenableFuture<MediaController>? = null
-    private val controller: MediaController? get() = if (controllerFuture?.isDone == true) controllerFuture?.get() else null
+    private val controller: MediaController? get() = if (controllerFuture?.isDone == true) try { controllerFuture?.get() } catch (e: Exception) { null } else null
 
     private val _currentSong = MutableStateFlow<Song?>(null)
     val currentSong: StateFlow<Song?> = _currentSong
@@ -36,123 +34,183 @@ class MusicPlayerManager(private val context: Context) {
     private val _repeatMode = MutableStateFlow(Player.REPEAT_MODE_OFF)
     val repeatMode: StateFlow<Int> = _repeatMode
 
+    private val _currentPosition = MutableStateFlow(0L)
+    val currentPosition: StateFlow<Long> = _currentPosition
+
+    private val _duration = MutableStateFlow(0L)
+    val duration: StateFlow<Long> = _duration
+
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private var progressJob: Job? = null
+    
+    private var lastPlaylist = listOf<Song>()
+
     init {
-        setupPlayer()
         setupMediaController()
     }
 
-    private fun setupPlayer() {
-        val audioAttributes = AudioAttributes.Builder()
-            .setUsage(C.USAGE_MEDIA)
-            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-            .build()
-
-        exoPlayer = ExoPlayer.Builder(context)
-            .setAudioAttributes(audioAttributes, true)
-            .setHandleAudioBecomingNoisy(true)
-            .build()
-
-        exoPlayer?.addListener(object : Player.Listener {
-            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                val song = mediaItem?.localConfiguration?.tag as? Song
-                _currentSong.value = song
-            }
-
-            override fun onIsPlayingChanged(isPlaying: Boolean) {
-                _isPlaying.value = isPlaying
-            }
-
-            override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
-                _isShuffleMode.value = shuffleModeEnabled
-            }
-
-            override fun onRepeatModeChanged(repeatMode: Int) {
-                _repeatMode.value = repeatMode
-            }
-        })
-    }
-
     private fun setupMediaController() {
-        val sessionToken = SessionToken(context, ComponentName(context, MusicService::class.java))
-        controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
+        val sessionToken = SessionToken(appContext, ComponentName(appContext, MusicService::class.java))
+        controllerFuture = MediaController.Builder(appContext, sessionToken).buildAsync()
         controllerFuture?.addListener({
-            // Controller is ready
+            controller?.let { player ->
+                player.addListener(object : Player.Listener {
+                    override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                        updateCurrentSong(mediaItem)
+                        _duration.value = player.duration.coerceAtLeast(0L)
+                    }
+
+                    override fun onIsPlayingChanged(isPlaying: Boolean) {
+                        _isPlaying.value = isPlaying
+                        if (isPlaying) {
+                            startProgressUpdate()
+                        } else {
+                            stopProgressUpdate()
+                        }
+                    }
+
+                    override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+                        _isShuffleMode.value = shuffleModeEnabled
+                    }
+
+                    override fun onRepeatModeChanged(repeatMode: Int) {
+                        _repeatMode.value = repeatMode
+                    }
+
+                    override fun onPlaybackStateChanged(playbackState: Int) {
+                        if (playbackState == Player.STATE_READY) {
+                            _duration.value = player.duration.coerceAtLeast(0L)
+                        }
+                    }
+                })
+                // Initial state
+                _isPlaying.value = player.isPlaying
+                _isShuffleMode.value = player.shuffleModeEnabled
+                _repeatMode.value = player.repeatMode
+                updateCurrentSong(player.currentMediaItem)
+                _duration.value = player.duration.coerceAtLeast(0L)
+                if (player.isPlaying) startProgressUpdate()
+            }
         }, MoreExecutors.directExecutor())
     }
 
+    private fun updateCurrentSong(mediaItem: MediaItem?) {
+        val song = mediaItem?.localConfiguration?.tag as? Song 
+            ?: lastPlaylist.find { it.id.toString() == mediaItem?.mediaId }
+        _currentSong.value = song
+    }
+
+    private fun startProgressUpdate() {
+        stopProgressUpdate()
+        progressJob = scope.launch {
+            while (isActive) {
+                controller?.let {
+                    _currentPosition.value = it.currentPosition
+                }
+                delay(1000)
+            }
+        }
+    }
+
+    private fun stopProgressUpdate() {
+        progressJob?.cancel()
+        progressJob = null
+    }
+
     fun setPlaylist(songs: List<Song>) {
-        val mediaItems = songs.map { song ->
+        lastPlaylist = songs
+        val player = controller ?: return
+        val newMediaItems = songs.map { song ->
             MediaItem.Builder()
                 .setMediaId(song.id.toString())
                 .setUri(song.path)
                 .setTag(song)
                 .build()
         }
-        exoPlayer?.setMediaItems(mediaItems)
-        exoPlayer?.prepare()
+        
+        if (isPlaylistDifferent(player, newMediaItems)) {
+            player.setMediaItems(newMediaItems)
+            player.prepare()
+        }
+    }
+
+    private fun isPlaylistDifferent(player: Player, newItems: List<MediaItem>): Boolean {
+        if (player.mediaItemCount != newItems.size) return true
+        for (i in 0 until player.mediaItemCount) {
+            if (player.getMediaItemAt(i).mediaId != newItems[i].mediaId) return true
+        }
+        return false
     }
 
     fun play(song: Song) {
-        val timeline = exoPlayer?.currentTimeline ?: return
-        val window = Timeline.Window()
+        val player = controller ?: return
         var index = -1
-        for (i in 0 until timeline.windowCount) {
-            if (timeline.getWindow(i, window).mediaItem.mediaId == song.id.toString()) {
+        for (i in 0 until player.mediaItemCount) {
+            if (player.getMediaItemAt(i).mediaId == song.id.toString()) {
                 index = i
                 break
             }
         }
 
         if (index != -1) {
-            exoPlayer?.seekTo(index, 0)
-            exoPlayer?.play()
+            if (player.currentMediaItemIndex != index) {
+                player.seekTo(index, 0)
+            }
+            player.play()
         }
     }
 
     fun togglePlayPause() {
-        if (exoPlayer?.isPlaying == true) {
-            exoPlayer?.pause()
+        val player = controller ?: return
+        if (player.isPlaying) {
+            player.pause()
         } else {
-            exoPlayer?.play()
+            player.play()
         }
     }
 
     fun skipNext() {
-        exoPlayer?.seekToNext()
+        controller?.seekToNext()
     }
 
     fun skipPrevious() {
-        exoPlayer?.seekToPrevious()
+        controller?.seekToPrevious()
+    }
+
+    fun seekTo(position: Long) {
+        controller?.seekTo(position)
+        _currentPosition.value = position
     }
 
     fun seekForward() {
-        exoPlayer?.let { it.seekTo(it.currentPosition + 10000) }
+        controller?.let { it.seekTo(it.currentPosition + 10000) }
     }
 
     fun seekBack() {
-        exoPlayer?.let { it.seekTo(it.currentPosition - 10000) }
+        controller?.let { it.seekTo(it.currentPosition - 10000) }
     }
 
     fun toggleShuffle() {
-        exoPlayer?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled }
+        controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled }
     }
 
     fun cycleRepeatMode() {
-        val nextMode = when (exoPlayer?.repeatMode) {
+        val player = controller ?: return
+        val nextMode = when (player.repeatMode) {
             Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
             Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
             else -> Player.REPEAT_MODE_OFF
         }
-        exoPlayer?.repeatMode = nextMode
+        player.repeatMode = nextMode
     }
 
     fun release() {
-        exoPlayer?.release()
-        exoPlayer = null
+        stopProgressUpdate()
+        scope.cancel()
         controllerFuture?.let { MediaController.releaseFuture(it) }
     }
     
     fun getAudioSessionId(): Int {
-        return exoPlayer?.audioSessionId ?: C.AUDIO_SESSION_ID_UNSET
+        return C.AUDIO_SESSION_ID_UNSET
     }
 }

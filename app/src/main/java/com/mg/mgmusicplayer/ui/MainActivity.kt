@@ -15,12 +15,23 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.*
 import androidx.core.content.ContextCompat
+import coil.ImageLoader
+import coil.ImageLoaderFactory
+import com.mg.mgmusicplayer.core.utils.SongCoverFetcher
 import com.mg.mgmusicplayer.ui.screens.LibraryScreen
 import com.mg.mgmusicplayer.ui.theme.MGMusicPlayerTheme
 
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), ImageLoaderFactory {
 
     private val viewModel: MusicViewModel by viewModels()
+
+    override fun newImageLoader(): ImageLoader {
+        return ImageLoader.Builder(this)
+            .components {
+                add(SongCoverFetcher.Factory(this@MainActivity))
+            }
+            .build()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -92,6 +103,8 @@ class MainActivity : ComponentActivity() {
                 val isPlaying by viewModel.isPlaying.collectAsState()
                 val isShuffleMode by viewModel.isShuffleMode.collectAsState()
                 val repeatMode by viewModel.repeatMode.collectAsState()
+                val currentPosition by viewModel.currentPosition.collectAsState()
+                val duration by viewModel.duration.collectAsState()
                 val audioSessionId = viewModel.getAudioSessionId()
 
                 LibraryScreen(
@@ -110,12 +123,15 @@ class MainActivity : ComponentActivity() {
                     isPlaying = isPlaying,
                     isShuffleMode = isShuffleMode,
                     repeatMode = repeatMode,
+                    currentPosition = currentPosition,
+                    duration = duration,
                     audioSessionId = audioSessionId,
                     onPlayPause = viewModel::togglePlayPause,
                     onPlay = viewModel::playSong,
                     onScanMusic = viewModel::scanMusic,
                     onSkipNext = viewModel::skipNext,
                     onSkipPrevious = viewModel::skipPrevious,
+                    onSeekTo = viewModel::seekTo,
                     onSeekForward = viewModel::seekForward,
                     onSeekBack = viewModel::seekBack,
                     onToggleShuffle = viewModel::toggleShuffle,

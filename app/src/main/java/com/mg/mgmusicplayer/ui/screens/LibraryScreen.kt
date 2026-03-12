@@ -2,7 +2,6 @@ package com.mg.mgmusicplayer.ui.screens
 
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -23,20 +22,21 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.mg.mgmusicplayer.R
 import com.mg.mgmusicplayer.data.database.PlaylistEntity
 import com.mg.mgmusicplayer.data.model.Song
 import com.mg.mgmusicplayer.ui.SortOrder
 import androidx.media3.common.Player
-import com.mg.mgmusicplayer.core.utils.CoverUtils
 import com.mg.mgmusicplayer.ui.components.AudioVisualizer
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3WindowSizeClassApi::class)
 @Composable
@@ -56,12 +56,15 @@ fun LibraryScreen(
     isPlaying: Boolean,
     isShuffleMode: Boolean,
     repeatMode: Int,
+    currentPosition: Long,
+    duration: Long,
     audioSessionId: Int,
     onPlayPause: () -> Unit,
     onPlay: (Song, List<Song>) -> Unit,
     onScanMusic: () -> Unit,
     onSkipNext: () -> Unit,
     onSkipPrevious: () -> Unit,
+    onSeekTo: (Long) -> Unit,
     onSeekForward: () -> Unit,
     onSeekBack: () -> Unit,
     onToggleShuffle: () -> Unit,
@@ -128,11 +131,14 @@ fun LibraryScreen(
             isPlaying = isPlaying,
             isShuffleMode = isShuffleMode,
             repeatMode = repeatMode,
+            currentPosition = currentPosition,
+            duration = duration,
             audioSessionId = audioSessionId,
             onClose = { isPlayerFullOpen = false },
             onPlayPause = onPlayPause,
             onSkipNext = onSkipNext,
             onSkipPrevious = onSkipPrevious,
+            onSeekTo = onSeekTo,
             onSeekForward = onSeekForward,
             onSeekBack = onSeekBack,
             onToggleShuffle = onToggleShuffle,
@@ -144,7 +150,7 @@ fun LibraryScreen(
         MobileLayout(
             songs, genres, artists, albums, folders, playlists, currentPlaylistSongs, searchQuery, sortOrder,
             onSearchQueryChanged, onSortOrderChanged,
-            currentSong, isPlaying, isShuffleMode, onPlayPause, onPlay,
+            currentSong, isPlaying, isShuffleMode, currentPosition, duration, onPlayPause, onPlay,
             onScanMusic, onSkipNext, onSkipPrevious, onToggleShuffle,
             onLoadPlaylistSongs = onLoadPlaylistSongs,
             onPlayerClick = { isPlayerFullOpen = true },
@@ -158,24 +164,22 @@ fun LibraryScreen(
 
 @Composable
 fun SongItem(song: Song, contextPlaylist: List<Song>, onPlay: (Song, List<Song>) -> Unit, onAddSongToPlaylist: (Song) -> Unit, onEditSong: (Song) -> Unit) {
-    val context = LocalContext.current
-    val bitmap = remember(song.id) { CoverUtils.getEmbeddedCover(context, song.id, song.path) }
-
     ListItem(
         modifier = Modifier.clickable { onPlay(song, contextPlaylist) },
         headlineContent = { Text(song.title, style = MaterialTheme.typography.titleMedium, maxLines = 1) },
         supportingContent = { Text("${song.artist} • ${song.album}", style = MaterialTheme.typography.bodyMedium, maxLines = 1) },
         leadingContent = {
-            if (bitmap != null) {
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier.size(50.dp).clip(RoundedCornerShape(4.dp)),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Icon(Icons.Default.MusicNote, contentDescription = null, modifier = Modifier.size(50.dp))
-            }
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(song.albumArtUri)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                error = painterResource(R.drawable.ic_mg_logo),
+                placeholder = painterResource(R.drawable.ic_mg_logo),
+                modifier = Modifier.size(50.dp).clip(RoundedCornerShape(4.dp)),
+                contentScale = ContentScale.Crop
+            )
         },
         trailingContent = {
             Row {
@@ -196,11 +200,14 @@ fun FullPlayerScreen(
     isPlaying: Boolean,
     isShuffleMode: Boolean,
     repeatMode: Int,
+    currentPosition: Long,
+    duration: Long,
     audioSessionId: Int,
     onClose: () -> Unit,
     onPlayPause: () -> Unit,
     onSkipNext: () -> Unit,
     onSkipPrevious: () -> Unit,
+    onSeekTo: (Long) -> Unit,
     onSeekForward: () -> Unit,
     onSeekBack: () -> Unit,
     onToggleShuffle: () -> Unit,
@@ -209,22 +216,18 @@ fun FullPlayerScreen(
     onAddToPlaylist: () -> Unit
 ) {
     BackHandler { onClose() }
-    val context = LocalContext.current
-    val bitmap = remember(song.id) { CoverUtils.getEmbeddedCover(context, song.id, song.path) }
     
     Box(modifier = Modifier.fillMaxSize()) {
-        // Fondo con Blur Intenso
-        if (bitmap != null) {
-            Image(
-                bitmap = bitmap.asImageBitmap(),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize().blur(60.dp),
-                contentScale = ContentScale.Crop,
-                alpha = 0.5f
-            )
-        }
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(song.albumArtUri)
+                .build(),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize().blur(60.dp),
+            contentScale = ContentScale.Crop,
+            alpha = 0.5f
+        )
         
-        // Gradiente Oscuro Superpuesto
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -248,36 +251,25 @@ fun FullPlayerScreen(
                 Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Cerrar", tint = Color.White)
             }
             
-            // Carátula principal con diseño de tarjeta
             Card(
                 modifier = Modifier.size(300.dp).padding(8.dp),
                 shape = RoundedCornerShape(28.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 20.dp)
             ) {
-                if (bitmap != null) {
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_mg_logo),
-                            contentDescription = null,
-                            modifier = Modifier.size(150.dp),
-                            contentScale = ContentScale.Fit
-                        )
-                    }
-                }
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(song.albumArtUri)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    error = painterResource(R.drawable.ic_mg_logo),
+                    placeholder = painterResource(R.drawable.ic_mg_logo),
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
             }
 
-            // Visualizador estilizado
-            Box(modifier = Modifier.height(120.dp).fillMaxWidth()) {
+            Box(modifier = Modifier.height(80.dp).fillMaxWidth()) {
                 AudioVisualizer(audioSessionId)
             }
             
@@ -297,6 +289,26 @@ fun FullPlayerScreen(
                     color = Color.White.copy(alpha = 0.8f),
                     textAlign = TextAlign.Center
                 )
+            }
+
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                Slider(
+                    value = currentPosition.toFloat(),
+                    onValueChange = { onSeekTo(it.toLong()) },
+                    valueRange = 0f..duration.toFloat().coerceAtLeast(1f),
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color.White,
+                        activeTrackColor = Color.White,
+                        inactiveTrackColor = Color.White.copy(alpha = 0.3f)
+                    )
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(text = formatTime(currentPosition), color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.bodySmall)
+                    Text(text = formatTime(duration), color = Color.White.copy(alpha = 0.7f), style = MaterialTheme.typography.bodySmall)
+                }
             }
             
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -335,9 +347,8 @@ fun FullPlayerScreen(
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 
-                // Controles de reproducción con estilo flotante
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
@@ -401,6 +412,8 @@ fun MobileLayout(
     currentSong: Song?,
     isPlaying: Boolean,
     isShuffleMode: Boolean,
+    currentPosition: Long,
+    duration: Long,
     onPlayPause: () -> Unit,
     onPlay: (Song, List<Song>) -> Unit,
     onScanMusic: () -> Unit,
@@ -457,7 +470,6 @@ fun MobileLayout(
                     actions = {
                         if (selectedCategoryItem != null && selectedTab != 0) {
                             if (selectedTab == 5) {
-                                // Playlist Actions: Shuffle and Play All
                                 IconButton(onClick = { 
                                     if (currentPlaylistSongs.isNotEmpty()) {
                                         if (!isShuffleMode) onToggleShuffle()
@@ -474,7 +486,6 @@ fun MobileLayout(
                                     Icon(Icons.Default.PlayArrow, contentDescription = "Reproducir Todo")
                                 }
                             } else {
-                                // Category Actions: Add All
                                 IconButton(onClick = {
                                     val categorySongs = when (selectedTab) {
                                         1 -> genres[selectedCategoryItem]
@@ -534,7 +545,7 @@ fun MobileLayout(
             }
         },
         bottomBar = { 
-            PlayerBottomBar(currentSong, isPlaying, isShuffleMode, onPlayPause, onSkipNext, onSkipPrevious, onToggleShuffle, onPlayerClick)
+            PlayerBottomBar(currentSong, isPlaying, currentPosition, duration, onPlayPause, onSkipNext, onSkipPrevious, onToggleShuffle, onPlayerClick)
         }
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
@@ -563,7 +574,8 @@ fun MobileLayout(
 fun PlayerBottomBar(
     currentSong: Song?,
     isPlaying: Boolean,
-    isShuffleMode: Boolean,
+    currentPosition: Long,
+    duration: Long,
     onPlayPause: () -> Unit,
     onSkipNext: () -> Unit,
     onSkipPrevious: () -> Unit,
@@ -571,9 +583,6 @@ fun PlayerBottomBar(
     onPlayerClick: () -> Unit
 ) {
     if (currentSong != null) {
-        val context = LocalContext.current
-        val bitmap = remember(currentSong.id) { CoverUtils.getEmbeddedCover(context, currentSong.id, currentSong.path) }
-        
         Surface(
             tonalElevation = 8.dp,
             modifier = Modifier
@@ -581,59 +590,74 @@ fun PlayerBottomBar(
                 .clip(RoundedCornerShape(16.dp))
                 .clickable { onPlayerClick() }
         ) {
-            Box(modifier = Modifier.fillMaxWidth()) {
-                // Blur en la barra inferior (Efecto Glassmorphism)
-                if (bitmap != null) {
-                    Image(
-                        bitmap = bitmap.asImageBitmap(),
+            Column {
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(currentSong.albumArtUri)
+                            .build(),
                         contentDescription = null,
                         modifier = Modifier.fillMaxWidth().height(64.dp).blur(20.dp),
                         contentScale = ContentScale.Crop,
                         alpha = 0.2f
                     )
-                }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (bitmap != null) {
-                        Image(
-                            bitmap = bitmap.asImageBitmap(),
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(currentSong.albumArtUri)
+                                .crossfade(true)
+                                .build(),
                             contentDescription = null,
+                            error = painterResource(R.drawable.ic_mg_logo),
+                            placeholder = painterResource(R.drawable.ic_mg_logo),
                             modifier = Modifier.size(48.dp).clip(RoundedCornerShape(10.dp)),
                             contentScale = ContentScale.Crop
                         )
-                    } else {
-                        Icon(Icons.Default.MusicNote, contentDescription = null, modifier = Modifier.size(48.dp))
-                    }
-                    
-                    Spacer(modifier = Modifier.width(12.dp))
-                    
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = currentSong.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, fontWeight = FontWeight.Bold)
-                        Text(text = currentSong.artist, style = MaterialTheme.typography.bodySmall, maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onSkipPrevious) {
-                            Icon(Icons.Default.SkipPrevious, contentDescription = "Anterior")
+                        
+                        Spacer(modifier = Modifier.width(12.dp))
+                        
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = currentSong.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, fontWeight = FontWeight.Bold)
+                            Text(text = currentSong.artist, style = MaterialTheme.typography.bodySmall, maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        IconButton(onClick = onPlayPause) {
-                            Icon(
-                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, 
-                                contentDescription = "Play/Pause",
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
-                        IconButton(onClick = onSkipNext) { 
-                            Icon(Icons.Default.SkipNext, contentDescription = "Próxima") 
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = onSkipPrevious) {
+                                Icon(Icons.Default.SkipPrevious, contentDescription = "Anterior")
+                            }
+                            IconButton(onClick = onPlayPause) {
+                                Icon(
+                                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, 
+                                    contentDescription = "Play/Pause",
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                            IconButton(onClick = onSkipNext) { 
+                                Icon(Icons.Default.SkipNext, contentDescription = "Próxima") 
+                            }
                         }
                     }
                 }
+                LinearProgressIndicator(
+                    progress = { if (duration > 0) currentPosition.toFloat() / duration else 0f },
+                    modifier = Modifier.fillMaxWidth().height(2.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = Color.Transparent
+                )
             }
         }
     }
+}
+
+private fun formatTime(milliseconds: Long): String {
+    val totalSeconds = milliseconds / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
 }
 
 @Composable
@@ -654,7 +678,6 @@ fun CategoryNavigation(
     }
 }
 
-// Map specialized overloads to avoid ambiguous calls
 @Composable
 fun CategoryNavigation(
     data: Map<String, List<Song>>,
@@ -681,7 +704,6 @@ fun PlaylistNavigation(
     if (selectedItem == null) {
         PlaylistSummaryList(playlists, onItemClick)
     } else {
-        // Need a way to get songs for a playlist by ID from DB, simplified here
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Canciones de playlist") }
     }
 }

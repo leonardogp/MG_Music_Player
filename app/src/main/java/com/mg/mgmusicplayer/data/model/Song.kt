@@ -9,5 +9,6 @@ data class Song(
     val genre: String,
     val folder: String,
     val path: String,
+    val albumArtUri: String,
     val isFavorite: Boolean = false
 )

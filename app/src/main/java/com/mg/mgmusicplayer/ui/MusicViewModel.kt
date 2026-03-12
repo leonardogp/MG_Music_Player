@@ -7,6 +7,7 @@ import com.mg.mgmusicplayer.core.player.MusicPlayerManager
 import com.mg.mgmusicplayer.data.database.MusicDatabase
 import com.mg.mgmusicplayer.data.model.Song
 import com.mg.mgmusicplayer.data.repository.MusicRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -52,27 +53,33 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             SortOrder.ALBUM -> filtered.sortedBy { it.album }
             SortOrder.DATE_ADDED -> filtered.reversed()
         }
-    }
+    }.flowOn(Dispatchers.Default)
 
     val songs: StateFlow<List<Song>> = filteredSongs
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val genres: StateFlow<Map<String, List<Song>>> = filteredSongs.map { it.groupBy { s -> s.genre } }
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     val artists: StateFlow<Map<String, List<Song>>> = filteredSongs.map { it.groupBy { s -> s.artist } }
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     val albums: StateFlow<Map<String, List<Song>>> = filteredSongs.map { it.groupBy { s -> s.album } }
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     val folders: StateFlow<Map<String, List<Song>>> = filteredSongs.map { it.groupBy { s -> s.folder } }
+        .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     val currentSong = playerManager.currentSong
     val isPlaying = playerManager.isPlaying
     val isShuffleMode = playerManager.isShuffleMode
     val repeatMode = playerManager.repeatMode
+    val currentPosition = playerManager.currentPosition
+    val duration = playerManager.duration
 
     init {
         scanMusic()
@@ -127,6 +134,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun togglePlayPause() = playerManager.togglePlayPause()
     fun skipNext() = playerManager.skipNext()
     fun skipPrevious() = playerManager.skipPrevious()
+    fun seekTo(position: Long) = playerManager.seekTo(position)
     fun seekForward() = playerManager.seekForward()
     fun seekBack() = playerManager.seekBack()
     fun toggleShuffle() = playerManager.toggleShuffle()

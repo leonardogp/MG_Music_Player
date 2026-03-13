@@ -44,11 +44,20 @@ interface MusicDao {
     @Query("SELECT * FROM playlists")
     fun getPlaylists(): kotlinx.coroutines.flow.Flow<List<PlaylistEntity>>
 
+    @Delete
+    suspend fun deletePlaylist(playlist: PlaylistEntity)
+
+    @Query("DELETE FROM playlist_songs WHERE playlistId = :playlistId")
+    suspend fun deleteSongsFromPlaylist(playlistId: Long)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun addSongToPlaylist(crossRef: PlaylistSongCrossRef)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun addSongsToPlaylist(crossRefs: List<PlaylistSongCrossRef>)
+
+    @Delete
+    suspend fun removeSongFromPlaylist(crossRef: PlaylistSongCrossRef)
 
     @Query("SELECT songId FROM playlist_songs WHERE playlistId = :playlistId")
     suspend fun getSongsInPlaylist(playlistId: Long): List<Long>

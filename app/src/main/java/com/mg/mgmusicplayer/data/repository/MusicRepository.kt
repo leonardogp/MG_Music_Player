@@ -48,6 +48,11 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
         musicDao.createPlaylist(PlaylistEntity(name = name))
     }
 
+    suspend fun deletePlaylist(playlist: PlaylistEntity) = withContext(Dispatchers.IO) {
+        musicDao.deleteSongsFromPlaylist(playlist.id)
+        musicDao.deletePlaylist(playlist)
+    }
+
     suspend fun addSongToPlaylist(playlistId: Long, songId: Long) {
         musicDao.addSongToPlaylist(PlaylistSongCrossRef(playlistId, songId))
     }
@@ -55,6 +60,10 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
     suspend fun addSongsToPlaylist(playlistId: Long, songs: List<Song>) = withContext(Dispatchers.IO) {
         val crossRefs = songs.map { PlaylistSongCrossRef(playlistId, it.id) }
         musicDao.addSongsToPlaylist(crossRefs)
+    }
+
+    suspend fun removeSongFromPlaylist(playlistId: Long, songId: Long) {
+        musicDao.removeSongFromPlaylist(PlaylistSongCrossRef(playlistId, songId))
     }
 
     suspend fun getSongsInPlaylist(playlistId: Long): List<Song> = withContext(Dispatchers.IO) {

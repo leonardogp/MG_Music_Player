@@ -1,3 +1,4 @@
+
 package com.mg.mgmusicplayer.ui.screens
 
 import androidx.activity.ComponentActivity
@@ -6,7 +7,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
@@ -27,15 +31,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.mg.mgmusicplayer.R
 import com.mg.mgmusicplayer.data.database.PlaylistEntity
+import com.mg.mgmusicplayer.data.database.HistoryEntity
 import com.mg.mgmusicplayer.data.model.Song
 import com.mg.mgmusicplayer.ui.SortOrder
 import androidx.media3.common.Player
 import com.mg.mgmusicplayer.ui.components.AudioVisualizer
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3WindowSizeClassApi::class)
@@ -47,6 +55,8 @@ fun LibraryScreen(
     albums: Map<String, List<Song>>,
     folders: Map<String, List<Song>>,
     playlists: List<PlaylistEntity>,
+    history: List<HistoryEntity>,
+    currentQueue: List<Song>,
     currentPlaylistSongs: List<Song>,
     searchQuery: String,
     sortOrder: SortOrder,
@@ -61,6 +71,7 @@ fun LibraryScreen(
     audioSessionId: Int,
     onPlayPause: () -> Unit,
     onPlay: (Song, List<Song>) -> Unit,
+    onAddToQueue: (Song) -> Unit,
     onScanMusic: () -> Unit,
     onSkipNext: () -> Unit,
     onSkipPrevious: () -> Unit,
@@ -71,14 +82,15 @@ fun LibraryScreen(
     onCycleRepeatMode: () -> Unit,
     onToggleFavorite: (Song) -> Unit,
     onCreatePlaylist: (String) -> Unit,
+    onDeletePlaylist: (PlaylistEntity) -> Unit,
     onAddSongToPlaylist: (String, Song) -> Unit,
     onAddSongsToPlaylist: (String, List<Song>) -> Unit,
+    onRemoveSongFromPlaylist: (String, Long) -> Unit,
     onLoadPlaylistSongs: (String) -> Unit,
     onUpdateSongTags: (Song, String, String, String, String) -> Unit
 ) {
     val context = LocalContext.current
     val windowSizeClass = calculateWindowSizeClass(context as ComponentActivity)
-    val isTablet = windowSizeClass.widthSizeClass >= WindowWidthSizeClass.Medium
     
     var isPlayerFullOpen by remember { mutableStateOf(false) }
     var songsToAddToPlaylist by remember { mutableStateOf<List<Song>?>(null) }
@@ -128,6 +140,7 @@ fun LibraryScreen(
     if (isPlayerFullOpen && currentSong != null) {
         FullPlayerScreen(
             song = currentSong,
+            queue = currentQueue,
             isPlaying = isPlaying,
             isShuffleMode = isShuffleMode,
             repeatMode = repeatMode,
@@ -144,26 +157,41 @@ fun LibraryScreen(
             onToggleShuffle = onToggleShuffle,
             onCycleRepeatMode = onCycleRepeatMode,
             onToggleFavorite = { onToggleFavorite(currentSong) },
-            onAddToPlaylist = { songsToAddToPlaylist = listOf(currentSong) }
+            onAddToPlaylist = { songsToAddToPlaylist = listOf(currentSong) },
+            onPlayFromQueue = { onPlay(it, currentQueue) }
         )
     } else {
         MobileLayout(
-            songs, genres, artists, albums, folders, playlists, currentPlaylistSongs, searchQuery, sortOrder,
+            songs, genres, artists, albums, folders, playlists, history, currentPlaylistSongs, searchQuery, sortOrder,
             onSearchQueryChanged, onSortOrderChanged,
-            currentSong, isPlaying, isShuffleMode, currentPosition, duration, onPlayPause, onPlay,
+            currentSong, isPlaying, isShuffleMode, currentPosition, duration, onPlayPause, onPlay, onAddToQueue,
             onScanMusic, onSkipNext, onSkipPrevious, onToggleShuffle,
             onLoadPlaylistSongs = onLoadPlaylistSongs,
             onPlayerClick = { isPlayerFullOpen = true },
             onAddSongToPlaylist = { songsToAddToPlaylist = listOf(it) },
             onAddSongsToPlaylist = { songsToAddToPlaylist = it },
+            onRemoveSongFromPlaylist = onRemoveSongFromPlaylist,
             onCreatePlaylist = { showCreatePlaylistDialog = true },
-            onEditSong = { editingSong = it }
+            onDeletePlaylist = onDeletePlaylist,
+            onEditSong = { editingSong = it },
+            onToggleFavorite = onToggleFavorite
         )
     }
 }
 
 @Composable
-fun SongItem(song: Song, contextPlaylist: List<Song>, onPlay: (Song, List<Song>) -> Unit, onAddSongToPlaylist: (Song) -> Unit, onEditSong: (Song) -> Unit) {
+fun SongItem(
+    song: Song, 
+    contextPlaylist: List<Song>, 
+    onPlay: (Song, List<Song>) -> Unit, 
+    onAddToQueue: (Song) -> Unit,
+    onAddSongToPlaylist: (Song) -> Unit, 
+    onRemoveFromPlaylist: (() -> Unit)? = null,
+    onEditSong: (Song) -> Unit,
+    onToggleFavorite: (Song) -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
     ListItem(
         modifier = Modifier.clickable { onPlay(song, contextPlaylist) },
         headlineContent = { Text(song.title, style = MaterialTheme.typography.titleMedium, maxLines = 1) },
@@ -182,21 +210,52 @@ fun SongItem(song: Song, contextPlaylist: List<Song>, onPlay: (Song, List<Song>)
             )
         },
         trailingContent = {
-            Row {
-                IconButton(onClick = { onEditSong(song) }) {
-                    Icon(Icons.Default.Edit, contentDescription = "Editar etiquetas")
+            Box {
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "Opciones")
                 }
-                IconButton(onClick = { onAddSongToPlaylist(song) }) {
-                    Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Agregar a playlist")
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(if (song.isFavorite) "Quitar de favoritos" else "Agregar a favoritos") },
+                        leadingIcon = { Icon(if (song.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder, contentDescription = null, tint = if (song.isFavorite) Color.Red else LocalContentColor.current) },
+                        onClick = { onToggleFavorite(song); showMenu = false }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Agregar a la cola") },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null) },
+                        onClick = { onAddToQueue(song); showMenu = false }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Agregar a playlist") },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null) },
+                        onClick = { onAddSongToPlaylist(song); showMenu = false }
+                    )
+                    if (onRemoveFromPlaylist != null) {
+                        DropdownMenuItem(
+                            text = { Text("Eliminar de la playlist") },
+                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                            onClick = { onRemoveFromPlaylist(); showMenu = false }
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = { Text("Editar etiquetas") },
+                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                        onClick = { onEditSong(song); showMenu = false }
+                    )
                 }
             }
         }
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FullPlayerScreen(
     song: Song,
+    queue: List<Song>,
     isPlaying: Boolean,
     isShuffleMode: Boolean,
     repeatMode: Int,
@@ -213,9 +272,54 @@ fun FullPlayerScreen(
     onToggleShuffle: () -> Unit,
     onCycleRepeatMode: () -> Unit,
     onToggleFavorite: () -> Unit,
-    onAddToPlaylist: () -> Unit
+    onAddToPlaylist: () -> Unit,
+    onPlayFromQueue: (Song) -> Unit
 ) {
     BackHandler { onClose() }
+    var showQueue by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
+
+    if (showQueue) {
+        ModalBottomSheet(
+            onDismissRequest = { showQueue = false },
+            sheetState = sheetState
+        ) {
+            Text(
+                "Siguiente en la cola", 
+                modifier = Modifier.padding(16.dp), 
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            LazyColumn(modifier = Modifier.fillMaxHeight(0.6f)) {
+                items(queue) { queueSong ->
+                    ListItem(
+                        modifier = Modifier.clickable { onPlayFromQueue(queueSong) },
+                        headlineContent = { 
+                            Text(
+                                queueSong.title, 
+                                color = if (queueSong.id == song.id) MaterialTheme.colorScheme.primary else Color.Unspecified,
+                                fontWeight = if (queueSong.id == song.id) FontWeight.Bold else FontWeight.Normal
+                            ) 
+                        },
+                        supportingContent = { Text(queueSong.artist) },
+                        leadingContent = {
+                            AsyncImage(
+                                model = queueSong.albumArtUri,
+                                contentDescription = null,
+                                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(4.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        },
+                        trailingContent = {
+                            if (queueSong.id == song.id) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    }
     
     Box(modifier = Modifier.fillMaxSize()) {
         AsyncImage(
@@ -247,8 +351,17 @@ fun FullPlayerScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            IconButton(onClick = onClose, modifier = Modifier.align(Alignment.Start)) {
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Cerrar", tint = Color.White)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onClose) {
+                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Cerrar", tint = Color.White)
+                }
+                IconButton(onClick = { showQueue = true }) {
+                    Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Ver Cola", tint = Color.White)
+                }
             }
             
             Card(
@@ -404,6 +517,7 @@ fun MobileLayout(
     albums: Map<String, List<Song>>,
     folders: Map<String, List<Song>>,
     playlists: List<PlaylistEntity>,
+    history: List<HistoryEntity>,
     currentPlaylistSongs: List<Song>,
     searchQuery: String,
     sortOrder: SortOrder,
@@ -416,6 +530,7 @@ fun MobileLayout(
     duration: Long,
     onPlayPause: () -> Unit,
     onPlay: (Song, List<Song>) -> Unit,
+    onAddToQueue: (Song) -> Unit,
     onScanMusic: () -> Unit,
     onSkipNext: () -> Unit,
     onSkipPrevious: () -> Unit,
@@ -424,26 +539,31 @@ fun MobileLayout(
     onPlayerClick: () -> Unit,
     onAddSongToPlaylist: (Song) -> Unit,
     onAddSongsToPlaylist: (List<Song>) -> Unit,
+    onRemoveSongFromPlaylist: (String, Long) -> Unit,
     onCreatePlaylist: () -> Unit,
-    onEditSong: (Song) -> Unit
+    onDeletePlaylist: (PlaylistEntity) -> Unit,
+    onEditSong: (Song) -> Unit,
+    onToggleFavorite: (Song) -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
-    var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Temas", "Géneros", "Artistas", "Álbumes", "Carpetas", "Playlists")
+    val tabs = listOf("Principal", "Canciones", "Géneros", "Artistas", "Álbumes", "Carpetas", "Playlists", "Favoritos", "Historial")
     var selectedCategoryItem by remember { mutableStateOf<String?>(null) }
+    var selectedPlaylistId by remember { mutableStateOf<String?>(null) }
     var showSortMenu by remember { mutableStateOf(false) }
+    
+    val pagerState = rememberPagerState(pageCount = { tabs.size })
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
             Column {
                 TopAppBar(
                     title = {
-                        if (selectedCategoryItem != null && selectedTab != 0) {
-                            val title = if (selectedTab == 5) {
-                                playlists.find { it.id.toString() == selectedCategoryItem }?.name ?: selectedCategoryItem!!
-                            } else {
-                                selectedCategoryItem!!
-                            }
+                        val currentTab = pagerState.currentPage
+                        if (currentTab in 2..5 && selectedCategoryItem != null) {
+                            Text(text = selectedCategoryItem!!)
+                        } else if (currentTab == 6 && selectedPlaylistId != null) {
+                            val title = playlists.find { it.id.toString() == selectedPlaylistId }?.name ?: "Playlist"
                             Text(text = title)
                         } else {
                             TextField(
@@ -461,47 +581,18 @@ fun MobileLayout(
                         }
                     },
                     navigationIcon = {
-                        if (selectedCategoryItem != null && selectedTab != 0) {
-                            IconButton(onClick = { selectedCategoryItem = null }) {
+                        val currentTab = pagerState.currentPage
+                        if ((currentTab in 2..5 && selectedCategoryItem != null) || (currentTab == 6 && selectedPlaylistId != null)) {
+                            IconButton(onClick = { 
+                                selectedCategoryItem = null 
+                                selectedPlaylistId = null
+                            }) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                             }
                         }
                     },
                     actions = {
-                        if (selectedCategoryItem != null && selectedTab != 0) {
-                            if (selectedTab == 5) {
-                                IconButton(onClick = { 
-                                    if (currentPlaylistSongs.isNotEmpty()) {
-                                        if (!isShuffleMode) onToggleShuffle()
-                                        onPlay(currentPlaylistSongs.shuffled().first(), currentPlaylistSongs)
-                                    }
-                                }) {
-                                    Icon(Icons.Default.Shuffle, contentDescription = "Reproducción Aleatoria")
-                                }
-                                IconButton(onClick = {
-                                    if (currentPlaylistSongs.isNotEmpty()) {
-                                        onPlay(currentPlaylistSongs.first(), currentPlaylistSongs)
-                                    }
-                                }) {
-                                    Icon(Icons.Default.PlayArrow, contentDescription = "Reproducir Todo")
-                                }
-                            } else {
-                                IconButton(onClick = {
-                                    val categorySongs = when (selectedTab) {
-                                        1 -> genres[selectedCategoryItem]
-                                        2 -> artists[selectedCategoryItem]
-                                        3 -> albums[selectedCategoryItem]
-                                        4 -> folders[selectedCategoryItem]
-                                        else -> null
-                                    }
-                                    categorySongs?.let { onAddSongsToPlaylist(it) }
-                                }) {
-                                    Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Agregar todo a playlist")
-                                }
-                            }
-                        }
-
-                        if (selectedTab == 0 && selectedCategoryItem == null) {
+                        if (pagerState.currentPage == 1 && selectedCategoryItem == null) {
                             IconButton(onClick = { showSortMenu = true }) {
                                 Icon(Icons.Default.Sort, contentDescription = "Sort")
                             }
@@ -512,11 +603,6 @@ fun MobileLayout(
                                         onClick = { onSortOrderChanged(order); showSortMenu = false }
                                     )
                                 }
-                            }
-                        }
-                        if (selectedTab == 5 && selectedCategoryItem == null) {
-                            IconButton(onClick = onCreatePlaylist) {
-                                Icon(Icons.Default.Add, contentDescription = "Nueva Playlist")
                             }
                         }
                         IconButton(onClick = { showMenu = !showMenu }) {
@@ -531,40 +617,133 @@ fun MobileLayout(
                         }
                     }
                 )
-                if (selectedCategoryItem == null || selectedTab == 0) {
-                    ScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 16.dp, divider = {}) {
-                        tabs.forEachIndexed { index, title ->
-                            Tab(
-                                selected = selectedTab == index,
-                                onClick = { selectedTab = index; selectedCategoryItem = null },
-                                text = { Text(title) }
-                            )
-                        }
+                ScrollableTabRow(selectedTabIndex = pagerState.currentPage, edgePadding = 16.dp, divider = {}) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = pagerState.currentPage == index,
+                            onClick = { 
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(index)
+                                }
+                                selectedCategoryItem = null 
+                                selectedPlaylistId = null
+                            },
+                            text = { Text(title) }
+                        )
                     }
                 }
             }
         },
         bottomBar = { 
-            PlayerBottomBar(currentSong, isPlaying, currentPosition, duration, onPlayPause, onSkipNext, onSkipPrevious, onToggleShuffle, onPlayerClick)
+            PlayerBottomBar(currentSong, isPlaying, currentPosition, duration, onPlayPause, onSkipNext, onSkipPrevious, onPlayerClick)
         }
     ) { padding ->
-        Box(modifier = Modifier.padding(padding)) {
-            when (selectedTab) {
-                0 -> SongList(songs, songs, onPlay, onAddSongToPlaylist, onEditSong)
-                1 -> CategoryNavigation(genres, selectedCategoryItem, onPlay, { selectedCategoryItem = it }, Icons.Default.LibraryMusic, onAddSongToPlaylist, onEditSong)
-                2 -> CategoryNavigation(artists, selectedCategoryItem, onPlay, { selectedCategoryItem = it }, Icons.Default.Person, onAddSongToPlaylist, onEditSong)
-                3 -> CategoryNavigation(albums, selectedCategoryItem, onPlay, { selectedCategoryItem = it }, Icons.Default.Album, onAddSongToPlaylist, onEditSong)
-                4 -> CategoryNavigation(folders, selectedCategoryItem, onPlay, { selectedCategoryItem = it }, Icons.Default.Folder, onAddSongToPlaylist, onEditSong)
-                5 -> {
-                    if (selectedCategoryItem != null) {
-                        LaunchedEffect(selectedCategoryItem) {
-                            onLoadPlaylistSongs(selectedCategoryItem!!)
-                        }
-                        SongList(currentPlaylistSongs, currentPlaylistSongs, onPlay, onAddSongToPlaylist, onEditSong)
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.padding(padding),
+            beyondViewportPageCount = 1,
+            userScrollEnabled = (selectedCategoryItem == null && selectedPlaylistId == null)
+        ) { page ->
+            when (page) {
+                0 -> MainTab(songs, onPlay, onAddToQueue, onAddSongToPlaylist, onEditSong, onToggleFavorite)
+                1 -> SongList(songs, songs, onPlay, onAddToQueue, onAddSongToPlaylist, null, onEditSong, onToggleFavorite)
+                2 -> CategoryNavigation(genres, selectedCategoryItem, onPlay, onAddToQueue, { selectedCategoryItem = it }, Icons.Default.LibraryMusic, onAddSongToPlaylist, onEditSong, onToggleFavorite)
+                3 -> CategoryNavigation(artists, selectedCategoryItem, onPlay, onAddToQueue, { selectedCategoryItem = it }, Icons.Default.Person, onAddSongToPlaylist, onEditSong, onToggleFavorite)
+                4 -> CategoryNavigation(albums, selectedCategoryItem, onPlay, onAddToQueue, { selectedCategoryItem = it }, Icons.Default.Album, onAddSongToPlaylist, onEditSong, onToggleFavorite)
+                5 -> CategoryNavigation(folders, selectedCategoryItem, onPlay, onAddToQueue, { selectedCategoryItem = it }, Icons.Default.Folder, onAddSongToPlaylist, onEditSong, onToggleFavorite)
+                6 -> {
+                    if (selectedPlaylistId != null) {
+                        LaunchedEffect(selectedPlaylistId) { onLoadPlaylistSongs(selectedPlaylistId!!) }
+                        SongList(
+                            currentPlaylistSongs, 
+                            currentPlaylistSongs, 
+                            onPlay, 
+                            onAddToQueue, 
+                            onAddSongToPlaylist, 
+                            { songId -> onRemoveSongFromPlaylist(selectedPlaylistId!!, songId) }, 
+                            onEditSong, 
+                            onToggleFavorite
+                        )
                     } else {
-                        PlaylistSummaryList(playlists, onItemClick = { selectedCategoryItem = it })
+                        PlaylistSummaryList(playlists, onItemClick = { selectedPlaylistId = it }, onCreatePlaylist, onDeletePlaylist)
                     }
                 }
+                7 -> {
+                    val favSongs = songs.filter { it.isFavorite }
+                    SongList(favSongs, favSongs, onPlay, onAddToQueue, onAddSongToPlaylist, null, onEditSong, onToggleFavorite)
+                }
+                8 -> {
+                    val historySongs = history.mapNotNull { h -> songs.find { it.id == h.songId } }.distinctBy { it.id }
+                    SongList(historySongs, historySongs, onPlay, onAddToQueue, onAddSongToPlaylist, null, onEditSong, onToggleFavorite)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MainTab(
+    songs: List<Song>,
+    onPlay: (Song, List<Song>) -> Unit,
+    onAddToQueue: (Song) -> Unit,
+    onAddSongToPlaylist: (Song) -> Unit,
+    onEditSong: (Song) -> Unit,
+    onToggleFavorite: (Song) -> Unit
+) {
+    val favoriteSongs = songs.filter { it.isFavorite }
+    
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Text("Favoritos", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        if (favoriteSongs.isEmpty()) {
+            Box(modifier = Modifier.height(200.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+                Text("No tienes favoritos aún", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(favoriteSongs) { song ->
+                    FavoriteCarouselItem(song, onClick = { onPlay(song, favoriteSongs) })
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(32.dp))
+        Text("Recientes", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        LazyColumn(modifier = Modifier.weight(1f)) {
+            items(songs.take(10)) { song ->
+                SongItem(song, songs, onPlay, onAddToQueue, onAddSongToPlaylist, null, onEditSong, onToggleFavorite)
+            }
+        }
+    }
+}
+
+@Composable
+fun FavoriteCarouselItem(song: Song, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.size(160.dp, 220.dp).clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(song.albumArtUri)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.height(150.dp).fillMaxWidth(),
+                error = painterResource(R.drawable.ic_mg_logo)
+            )
+            Column(modifier = Modifier.padding(8.dp)) {
+                Text(song.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(song.artist, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -579,7 +758,6 @@ fun PlayerBottomBar(
     onPlayPause: () -> Unit,
     onSkipNext: () -> Unit,
     onSkipPrevious: () -> Unit,
-    onToggleShuffle: () -> Unit,
     onPlayerClick: () -> Unit
 ) {
     if (currentSong != null) {
@@ -665,64 +843,72 @@ fun CategoryNavigation(
     data: Map<String, List<Song>>,
     selectedItem: String?,
     onPlay: (Song, List<Song>) -> Unit,
+    onAddToQueue: (Song) -> Unit,
     onItemClick: (String) -> Unit,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     onAddSongToPlaylist: (Song) -> Unit,
-    onEditSong: (Song) -> Unit
+    onEditSong: (Song) -> Unit,
+    onToggleFavorite: (Song) -> Unit
 ) {
     if (selectedItem == null) {
         CategorySummaryList(data, onItemClick, icon)
     } else {
         val categorySongs = data[selectedItem] ?: emptyList()
-        SongList(categorySongs, categorySongs, onPlay, onAddSongToPlaylist, onEditSong)
+        SongList(categorySongs, categorySongs, onPlay, onAddToQueue, onAddSongToPlaylist, null, onEditSong, onToggleFavorite)
     }
 }
 
 @Composable
-fun CategoryNavigation(
-    data: Map<String, List<Song>>,
-    placeholder: Map<String, List<Song>>,
-    selectedItem: String?,
-    onPlay: (Song, List<Song>) -> Unit,
-    onItemClick: (String) -> Unit,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onAddSongToPlaylist: (Song) -> Unit,
-    onEditSong: (Song) -> Unit
+fun PlaylistSummaryList(
+    playlists: List<PlaylistEntity>, 
+    onItemClick: (String) -> Unit, 
+    onCreatePlaylist: () -> Unit,
+    onDeletePlaylist: (PlaylistEntity) -> Unit
 ) {
-    CategoryNavigation(data, selectedItem, onPlay, onItemClick, icon, onAddSongToPlaylist, onEditSong)
-}
-
-@Composable
-fun PlaylistNavigation(
-    playlists: List<PlaylistEntity>,
-    selectedItem: String?,
-    onPlay: (Song, List<Song>) -> Unit,
-    onItemClick: (String) -> Unit,
-    onAddSongToPlaylist: (Song) -> Unit,
-    onEditSong: (Song) -> Unit
-) {
-    if (selectedItem == null) {
-        PlaylistSummaryList(playlists, onItemClick)
-    } else {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Canciones de playlist") }
-    }
-}
-
-@Composable
-fun PlaylistSummaryList(playlists: List<PlaylistEntity>, onItemClick: (String) -> Unit) {
-    if (playlists.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No hay playlists creadas")
-        }
-    } else {
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(playlists) { playlist ->
-                ListItem(
-                    modifier = Modifier.clickable { onItemClick(playlist.id.toString()) },
-                    headlineContent = { Text(playlist.name) },
-                    leadingContent = { Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = null) }
-                )
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+    Column(modifier = Modifier.fillMaxSize()) {
+        ListItem(
+            modifier = Modifier.clickable { onCreatePlaylist() },
+            headlineContent = { Text("Crear nueva playlist", fontWeight = FontWeight.Bold) },
+            leadingContent = { Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+        )
+        HorizontalDivider()
+        
+        if (playlists.isEmpty()) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Text("No hay playlists creadas")
+            }
+        } else {
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                items(playlists) { playlist ->
+                    var showMenu by remember { mutableStateOf(false) }
+                    
+                    ListItem(
+                        modifier = Modifier.clickable { onItemClick(playlist.id.toString()) },
+                        headlineContent = { Text(playlist.name) },
+                        leadingContent = { Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = null) },
+                        trailingContent = {
+                            Box {
+                                IconButton(onClick = { showMenu = true }) {
+                                    Icon(Icons.Default.MoreVert, contentDescription = "Opciones de playlist")
+                                }
+                                DropdownMenu(
+                                    expanded = showMenu,
+                                    onDismissRequest = { showMenu = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Eliminar Playlist") },
+                                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                                        onClick = { 
+                                            onDeletePlaylist(playlist)
+                                            showMenu = false 
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                }
             }
         }
     }
@@ -736,11 +922,29 @@ fun CategorySummaryList(data: Map<String, List<Song>>, onItemClick: (String) -> 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(data.keys.toList().sorted()) { key ->
                 val songCount = data[key]?.size ?: 0
+                val firstSong = data[key]?.firstOrNull()
+                
                 ListItem(
                     modifier = Modifier.clickable { onItemClick(key) },
                     headlineContent = { Text(key) },
                     supportingContent = { Text("$songCount canciones") },
-                    leadingContent = { Icon(icon, contentDescription = null) }
+                    leadingContent = { 
+                        if (firstSong != null && icon == Icons.Default.Album) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(firstSong.albumArtUri)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = null,
+                                error = painterResource(R.drawable.ic_mg_logo),
+                                placeholder = painterResource(R.drawable.ic_mg_logo),
+                                modifier = Modifier.size(50.dp).clip(RoundedCornerShape(4.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(icon, contentDescription = null, modifier = Modifier.size(40.dp)) 
+                        }
+                    }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
@@ -749,12 +953,32 @@ fun CategorySummaryList(data: Map<String, List<Song>>, onItemClick: (String) -> 
 }
 
 @Composable
-fun SongList(songs: List<Song>, contextPlaylist: List<Song>, onPlay: (Song, List<Song>) -> Unit, onAddSongToPlaylist: (Song) -> Unit, onEditSong: (Song) -> Unit) {
+fun SongList(
+    songs: List<Song>, 
+    contextPlaylist: List<Song>, 
+    onPlay: (Song, List<Song>) -> Unit, 
+    onAddToQueue: (Song) -> Unit,
+    onAddSongToPlaylist: (Song) -> Unit, 
+    onRemoveFromPlaylist: ((Long) -> Unit)? = null,
+    onEditSong: (Song) -> Unit,
+    onToggleFavorite: (Song) -> Unit
+) {
     if (songs.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("No hay canciones") }
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(songs) { song -> SongItem(song, contextPlaylist, onPlay, onAddSongToPlaylist, onEditSong) }
+            items(songs) { song -> 
+                SongItem(
+                    song = song, 
+                    contextPlaylist = contextPlaylist, 
+                    onPlay = onPlay, 
+                    onAddToQueue = onAddToQueue, 
+                    onAddSongToPlaylist = onAddSongToPlaylist, 
+                    onRemoveFromPlaylist = onRemoveFromPlaylist?.let { { it(song.id) } },
+                    onEditSong = onEditSong, 
+                    onToggleFavorite = onToggleFavorite
+                )
+            }
         }
     }
 }

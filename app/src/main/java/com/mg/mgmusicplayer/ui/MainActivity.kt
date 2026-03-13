@@ -96,6 +96,8 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
                 val albums by viewModel.albums.collectAsState()
                 val folders by viewModel.folders.collectAsState()
                 val playlists by viewModel.playlists.collectAsState()
+                val history by viewModel.history.collectAsState()
+                val currentQueue by viewModel.currentQueue.collectAsState()
                 val currentPlaylistSongs by viewModel.currentPlaylistSongs.collectAsState()
                 val searchQuery by viewModel.searchQuery.collectAsState()
                 val sortOrder by viewModel.sortOrder.collectAsState()
@@ -114,6 +116,8 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
                     albums = albums,
                     folders = folders,
                     playlists = playlists,
+                    history = history,
+                    currentQueue = currentQueue,
                     currentPlaylistSongs = currentPlaylistSongs,
                     searchQuery = searchQuery,
                     sortOrder = sortOrder,
@@ -128,6 +132,7 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
                     audioSessionId = audioSessionId,
                     onPlayPause = viewModel::togglePlayPause,
                     onPlay = viewModel::playSong,
+                    onAddToQueue = viewModel::addToQueue,
                     onScanMusic = viewModel::scanMusic,
                     onSkipNext = viewModel::skipNext,
                     onSkipPrevious = viewModel::skipPrevious,
@@ -138,8 +143,10 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
                     onCycleRepeatMode = viewModel::cycleRepeatMode,
                     onToggleFavorite = viewModel::toggleFavorite,
                     onCreatePlaylist = viewModel::createPlaylist,
+                    onDeletePlaylist = viewModel::deletePlaylist,
                     onAddSongToPlaylist = viewModel::addSongToPlaylist,
                     onAddSongsToPlaylist = viewModel::addSongsToPlaylist,
+                    onRemoveSongFromPlaylist = viewModel::removeSongFromPlaylist,
                     onLoadPlaylistSongs = viewModel::loadPlaylistSongs,
                     onUpdateSongTags = viewModel::updateSongTags
                 )

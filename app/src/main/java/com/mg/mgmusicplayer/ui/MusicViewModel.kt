@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mg.mgmusicplayer.core.player.MusicPlayerManager
 import com.mg.mgmusicplayer.data.database.MusicDatabase
+import com.mg.mgmusicplayer.data.database.PlaylistEntity
 import com.mg.mgmusicplayer.data.model.Song
 import com.mg.mgmusicplayer.data.repository.MusicRepository
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +30,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     val sortOrder = _sortOrder
 
     val favorites = repository.favorites.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val history = repository.history.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val playlists = repository.playlists.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _currentPlaylistSongs = MutableStateFlow<List<Song>>(emptyList())
@@ -80,6 +82,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     val repeatMode = playerManager.repeatMode
     val currentPosition = playerManager.currentPosition
     val duration = playerManager.duration
+    val currentQueue = playerManager.currentQueue
 
     init {
         scanMusic()
@@ -110,17 +113,28 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     fun createPlaylist(name: String) = viewModelScope.launch { repository.createPlaylist(name) }
     
+    fun deletePlaylist(playlist: PlaylistEntity) = viewModelScope.launch {
+        repository.deletePlaylist(playlist)
+    }
+
     fun addSongToPlaylist(playlistId: String, song: Song) = viewModelScope.launch { 
-        repository.addSongToPlaylist(playlistId.toLong(), song.id) 
+        playlistId.toLongOrNull()?.let { repository.addSongToPlaylist(it, song.id) }
     }
 
     fun addSongsToPlaylist(playlistId: String, songs: List<Song>) = viewModelScope.launch {
-        repository.addSongsToPlaylist(playlistId.toLong(), songs)
+        playlistId.toLongOrNull()?.let { repository.addSongsToPlaylist(it, songs) }
+    }
+
+    fun removeSongFromPlaylist(playlistId: String, songId: Long) = viewModelScope.launch {
+        val id = playlistId.toLongOrNull() ?: return@launch
+        repository.removeSongFromPlaylist(id, songId)
+        loadPlaylistSongs(playlistId)
     }
 
     fun loadPlaylistSongs(playlistId: String) {
         viewModelScope.launch {
-            _currentPlaylistSongs.value = repository.getSongsInPlaylist(playlistId.toLong())
+            val id = playlistId.toLongOrNull() ?: return@launch
+            _currentPlaylistSongs.value = repository.getSongsInPlaylist(id)
         }
     }
 
@@ -130,6 +144,8 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         playerManager.setPlaylist(playlist)
         playerManager.play(song)
     }
+    
+    fun addToQueue(song: Song) = playerManager.addToQueue(song)
 
     fun togglePlayPause() = playerManager.togglePlayPause()
     fun skipNext() = playerManager.skipNext()

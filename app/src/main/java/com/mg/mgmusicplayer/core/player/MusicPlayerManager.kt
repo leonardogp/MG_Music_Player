@@ -39,6 +39,9 @@ class MusicPlayerManager(context: Context) {
 
     private val _duration = MutableStateFlow(0L)
     val duration: StateFlow<Long> = _duration
+    
+    private val _currentQueue = MutableStateFlow<List<Song>>(emptyList())
+    val currentQueue: StateFlow<List<Song>> = _currentQueue
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var progressJob: Job? = null
@@ -82,6 +85,10 @@ class MusicPlayerManager(context: Context) {
                             _duration.value = player.duration.coerceAtLeast(0L)
                         }
                     }
+                    
+                    override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+                        updateQueue()
+                    }
                 })
                 // Initial state
                 _isPlaying.value = player.isPlaying
@@ -89,6 +96,7 @@ class MusicPlayerManager(context: Context) {
                 _repeatMode.value = player.repeatMode
                 updateCurrentSong(player.currentMediaItem)
                 _duration.value = player.duration.coerceAtLeast(0L)
+                updateQueue()
                 if (player.isPlaying) startProgressUpdate()
             }
         }, MoreExecutors.directExecutor())
@@ -98,6 +106,17 @@ class MusicPlayerManager(context: Context) {
         val song = mediaItem?.localConfiguration?.tag as? Song 
             ?: lastPlaylist.find { it.id.toString() == mediaItem?.mediaId }
         _currentSong.value = song
+    }
+    
+    private fun updateQueue() {
+        val player = controller ?: return
+        val queue = mutableListOf<Song>()
+        for (i in 0 until player.mediaItemCount) {
+            val song = player.getMediaItemAt(i).localConfiguration?.tag as? Song
+                ?: lastPlaylist.find { it.id.toString() == player.getMediaItemAt(i).mediaId }
+            song?.let { queue.add(it) }
+        }
+        _currentQueue.value = queue
     }
 
     private fun startProgressUpdate() {
@@ -134,6 +153,19 @@ class MusicPlayerManager(context: Context) {
         }
     }
 
+    fun addToQueue(song: Song) {
+        val player = controller ?: return
+        val mediaItem = MediaItem.Builder()
+            .setMediaId(song.id.toString())
+            .setUri(song.path)
+            .setTag(song)
+            .build()
+        player.addMediaItem(mediaItem)
+        if (!player.isPlaying && player.playbackState == Player.STATE_IDLE) {
+            player.prepare()
+        }
+    }
+
     private fun isPlaylistDifferent(player: Player, newItems: List<MediaItem>): Boolean {
         if (player.mediaItemCount != newItems.size) return true
         for (i in 0 until player.mediaItemCount) {
@@ -156,6 +188,17 @@ class MusicPlayerManager(context: Context) {
             if (player.currentMediaItemIndex != index) {
                 player.seekTo(index, 0)
             }
+            player.play()
+        } else {
+            // If song is not in current items, add it and play
+            val mediaItem = MediaItem.Builder()
+                .setMediaId(song.id.toString())
+                .setUri(song.path)
+                .setTag(song)
+                .build()
+            player.addMediaItem(mediaItem)
+            player.seekTo(player.mediaItemCount - 1, 0)
+            player.prepare()
             player.play()
         }
     }

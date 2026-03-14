@@ -1,4 +1,3 @@
-
 package com.mg.mgmusicplayer.ui.screens
 
 import androidx.activity.ComponentActivity
@@ -34,6 +33,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.mg.mgmusicplayer.R
@@ -41,6 +44,7 @@ import com.mg.mgmusicplayer.data.database.PlaylistEntity
 import com.mg.mgmusicplayer.data.database.HistoryEntity
 import com.mg.mgmusicplayer.data.model.Song
 import com.mg.mgmusicplayer.ui.SortOrder
+import com.mg.mgmusicplayer.ui.PlayerState
 import androidx.media3.common.Player
 import com.mg.mgmusicplayer.ui.components.AudioVisualizer
 import kotlinx.coroutines.launch
@@ -56,19 +60,12 @@ fun LibraryScreen(
     folders: Map<String, List<Song>>,
     playlists: List<PlaylistEntity>,
     history: List<HistoryEntity>,
-    currentQueue: List<Song>,
     currentPlaylistSongs: List<Song>,
     searchQuery: String,
     sortOrder: SortOrder,
     onSearchQueryChanged: (String) -> Unit,
     onSortOrderChanged: (SortOrder) -> Unit,
-    currentSong: Song?,
-    isPlaying: Boolean,
-    isShuffleMode: Boolean,
-    repeatMode: Int,
-    currentPosition: Long,
-    duration: Long,
-    audioSessionId: Int,
+    playerState: PlayerState,
     onPlayPause: () -> Unit,
     onPlay: (Song, List<Song>) -> Unit,
     onAddToQueue: (Song) -> Unit,
@@ -89,13 +86,89 @@ fun LibraryScreen(
     onLoadPlaylistSongs: (String) -> Unit,
     onUpdateSongTags: (Song, String, String, String, String) -> Unit
 ) {
-    val context = LocalContext.current
-    val windowSizeClass = calculateWindowSizeClass(context as ComponentActivity)
+    val navController = rememberNavController()
     
-    var isPlayerFullOpen by remember { mutableStateOf(false) }
-    var songsToAddToPlaylist by remember { mutableStateOf<List<Song>?>(null) }
+    NavHost(navController = navController, startDestination = "library") {
+        composable("library") {
+            LibraryMainContent(
+                songs, genres, artists, albums, folders, playlists, history, currentPlaylistSongs,
+                searchQuery, sortOrder, onSearchQueryChanged, onSortOrderChanged,
+                playerState, onPlayPause, onPlay, onAddToQueue, onScanMusic, onSkipNext, onSkipPrevious,
+                onToggleShuffle, onLoadPlaylistSongs,
+                onPlayerClick = { navController.navigate("player") },
+                onToggleFavorite = onToggleFavorite,
+                onCreatePlaylist = onCreatePlaylist,
+                onDeletePlaylist = onDeletePlaylist,
+                onAddSongToPlaylist = onAddSongToPlaylist,
+                onAddSongsToPlaylist = onAddSongsToPlaylist,
+                onRemoveSongFromPlaylist = onRemoveSongFromPlaylist,
+                onUpdateSongTags = onUpdateSongTags
+            )
+        }
+        composable("player") {
+            if (playerState.currentSong != null) {
+                FullPlayerScreen(
+                    song = playerState.currentSong,
+                    queue = playerState.currentQueue,
+                    isPlaying = playerState.isPlaying,
+                    isShuffleMode = playerState.isShuffleMode,
+                    repeatMode = playerState.repeatMode,
+                    currentPosition = playerState.currentPosition,
+                    duration = playerState.duration,
+                    audioSessionId = playerState.audioSessionId,
+                    onClose = { navController.popBackStack() },
+                    onPlayPause = onPlayPause,
+                    onSkipNext = onSkipNext,
+                    onSkipPrevious = onSkipPrevious,
+                    onSeekTo = onSeekTo,
+                    onSeekForward = onSeekForward,
+                    onSeekBack = onSeekBack,
+                    onToggleShuffle = onToggleShuffle,
+                    onCycleRepeatMode = onCycleRepeatMode,
+                    onToggleFavorite = { onToggleFavorite(playerState.currentSong) },
+                    onAddToPlaylist = { /* handle */ },
+                    onPlayFromQueue = { onPlay(it, playerState.currentQueue) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun LibraryMainContent(
+    songs: List<Song>,
+    genres: Map<String, List<Song>>,
+    artists: Map<String, List<Song>>,
+    albums: Map<String, List<Song>>,
+    folders: Map<String, List<Song>>,
+    playlists: List<PlaylistEntity>,
+    history: List<HistoryEntity>,
+    currentPlaylistSongs: List<Song>,
+    searchQuery: String,
+    sortOrder: SortOrder,
+    onSearchQueryChanged: (String) -> Unit,
+    onSortOrderChanged: (SortOrder) -> Unit,
+    playerState: PlayerState,
+    onPlayPause: () -> Unit,
+    onPlay: (Song, List<Song>) -> Unit,
+    onAddToQueue: (Song) -> Unit,
+    onScanMusic: () -> Unit,
+    onSkipNext: () -> Unit,
+    onSkipPrevious: () -> Unit,
+    onToggleShuffle: () -> Unit,
+    onLoadPlaylistSongs: (String) -> Unit,
+    onPlayerClick: () -> Unit,
+    onToggleFavorite: (Song) -> Unit,
+    onCreatePlaylist: (String) -> Unit,
+    onDeletePlaylist: (PlaylistEntity) -> Unit,
+    onAddSongToPlaylist: (String, Song) -> Unit,
+    onAddSongsToPlaylist: (String, List<Song>) -> Unit,
+    onRemoveSongFromPlaylist: (String, Long) -> Unit,
+    onUpdateSongTags: (Song, String, String, String, String) -> Unit
+) {
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     var editingSong by remember { mutableStateOf<Song?>(null) }
+    var songsToAddToPlaylist by remember { mutableStateOf<List<Song>?>(null) }
 
     if (editingSong != null) {
         EditTagsDialog(
@@ -121,9 +194,7 @@ fun LibraryScreen(
                 }
                 songsToAddToPlaylist = null
             },
-            onCreateNew = {
-                showCreatePlaylistDialog = true
-            }
+            onCreateNew = { showCreatePlaylistDialog = true }
         )
     }
 
@@ -137,46 +208,21 @@ fun LibraryScreen(
         )
     }
 
-    if (isPlayerFullOpen && currentSong != null) {
-        FullPlayerScreen(
-            song = currentSong,
-            queue = currentQueue,
-            isPlaying = isPlaying,
-            isShuffleMode = isShuffleMode,
-            repeatMode = repeatMode,
-            currentPosition = currentPosition,
-            duration = duration,
-            audioSessionId = audioSessionId,
-            onClose = { isPlayerFullOpen = false },
-            onPlayPause = onPlayPause,
-            onSkipNext = onSkipNext,
-            onSkipPrevious = onSkipPrevious,
-            onSeekTo = onSeekTo,
-            onSeekForward = onSeekForward,
-            onSeekBack = onSeekBack,
-            onToggleShuffle = onToggleShuffle,
-            onCycleRepeatMode = onCycleRepeatMode,
-            onToggleFavorite = { onToggleFavorite(currentSong) },
-            onAddToPlaylist = { songsToAddToPlaylist = listOf(currentSong) },
-            onPlayFromQueue = { onPlay(it, currentQueue) }
-        )
-    } else {
-        MobileLayout(
-            songs, genres, artists, albums, folders, playlists, history, currentPlaylistSongs, searchQuery, sortOrder,
-            onSearchQueryChanged, onSortOrderChanged,
-            currentSong, isPlaying, isShuffleMode, currentPosition, duration, onPlayPause, onPlay, onAddToQueue,
-            onScanMusic, onSkipNext, onSkipPrevious, onToggleShuffle,
-            onLoadPlaylistSongs = onLoadPlaylistSongs,
-            onPlayerClick = { isPlayerFullOpen = true },
-            onAddSongToPlaylist = { songsToAddToPlaylist = listOf(it) },
-            onAddSongsToPlaylist = { songsToAddToPlaylist = it },
-            onRemoveSongFromPlaylist = onRemoveSongFromPlaylist,
-            onCreatePlaylist = { showCreatePlaylistDialog = true },
-            onDeletePlaylist = onDeletePlaylist,
-            onEditSong = { editingSong = it },
-            onToggleFavorite = onToggleFavorite
-        )
-    }
+    MobileLayout(
+        songs, genres, artists, albums, folders, playlists, history, currentPlaylistSongs, searchQuery, sortOrder,
+        onSearchQueryChanged, onSortOrderChanged,
+        playerState.currentSong, playerState.isPlaying, playerState.isShuffleMode, playerState.currentPosition, playerState.duration, onPlayPause, onPlay, onAddToQueue,
+        onScanMusic, onSkipNext, onSkipPrevious, onToggleShuffle,
+        onLoadPlaylistSongs = onLoadPlaylistSongs,
+        onPlayerClick = onPlayerClick,
+        onAddSongToPlaylist = { songsToAddToPlaylist = listOf(it) },
+        onAddSongsToPlaylist = { songsToAddToPlaylist = it },
+        onRemoveSongFromPlaylist = onRemoveSongFromPlaylist,
+        onCreatePlaylist = { showCreatePlaylistDialog = true },
+        onDeletePlaylist = onDeletePlaylist,
+        onEditSong = { editingSong = it },
+        onToggleFavorite = onToggleFavorite
+    )
 }
 
 @Composable

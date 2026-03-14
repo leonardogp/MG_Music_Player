@@ -3,6 +3,19 @@ package com.mg.mgmusicplayer.data.database
 import androidx.room.*
 import com.mg.mgmusicplayer.data.model.Song
 
+@Entity(tableName = "songs")
+data class SongEntity(
+    @PrimaryKey val id: Long,
+    val albumId: Long,
+    val title: String,
+    val artist: String,
+    val album: String,
+    val genre: String,
+    val folder: String,
+    val path: String,
+    val albumArtUri: String
+)
+
 @Entity(tableName = "favorites")
 data class FavoriteEntity(
     @PrimaryKey val songId: Long
@@ -29,6 +42,15 @@ data class HistoryEntity(
 
 @Dao
 interface MusicDao {
+    @Query("SELECT * FROM songs")
+    fun getAllSongsFlow(): kotlinx.coroutines.flow.Flow<List<SongEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSongs(songs: List<SongEntity>)
+
+    @Query("DELETE FROM songs WHERE id NOT IN (:currentIds)")
+    suspend fun removeDeletedSongs(currentIds: List<Long>)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFavorite(favorite: FavoriteEntity)
 
@@ -70,8 +92,9 @@ interface MusicDao {
 }
 
 @Database(
-    entities = [FavoriteEntity::class, PlaylistEntity::class, PlaylistSongCrossRef::class, HistoryEntity::class],
-    version = 1
+    entities = [SongEntity::class, FavoriteEntity::class, PlaylistEntity::class, PlaylistSongCrossRef::class, HistoryEntity::class],
+    version = 2,
+    exportSchema = false
 )
 abstract class MusicDatabase : RoomDatabase() {
     abstract fun musicDao(): MusicDao
@@ -86,7 +109,9 @@ abstract class MusicDatabase : RoomDatabase() {
                     context.applicationContext,
                     MusicDatabase::class.java,
                     "music_database"
-                ).build()
+                )
+                .fallbackToDestructiveMigration() // Importante para la actualización de versión 1 a 2
+                .build()
                 INSTANCE = instance
                 instance
             }

@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.material3:material3-window-size-class")
+    implementation(libs.androidx.navigation.compose)
     
     // Media3
     implementation(libs.androidx.media3.exoplayer)

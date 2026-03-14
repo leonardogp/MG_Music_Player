@@ -10,6 +10,7 @@ import com.mg.mgmusicplayer.data.database.HistoryEntity
 import com.mg.mgmusicplayer.data.database.MusicDao
 import com.mg.mgmusicplayer.data.database.PlaylistEntity
 import com.mg.mgmusicplayer.data.database.PlaylistSongCrossRef
+import com.mg.mgmusicplayer.data.database.SongEntity
 import com.mg.mgmusicplayer.data.model.Song
 import com.mpatric.mp3agic.ID3v24Tag
 import com.mpatric.mp3agic.Mp3File
@@ -24,13 +25,25 @@ import kotlin.coroutines.suspendCoroutine
 class MusicRepository(private val context: Context, private val musicDao: MusicDao) {
     private val scanner = MusicScanner(context)
 
-    suspend fun getSongs(): List<Song> = withContext(Dispatchers.IO) {
-        scanner.scan()
+    // Flow reactivo desde Room para las canciones
+    val allSongsFlow: Flow<List<Song>> = musicDao.getAllSongsFlow().map { entities ->
+        entities.map { it.toDomainModel() }
     }
 
     val favorites: Flow<List<Long>> = musicDao.getFavorites()
     val history: Flow<List<HistoryEntity>> = musicDao.getHistory()
     val playlists: Flow<List<PlaylistEntity>> = musicDao.getPlaylists()
+
+    suspend fun getSongs(): List<Song> = withContext(Dispatchers.IO) {
+        scanner.scan()
+    }
+
+    suspend fun refreshMusicDatabase() = withContext(Dispatchers.IO) {
+        val scannedSongs = scanner.scan()
+        val entities = scannedSongs.map { it.toEntity() }
+        musicDao.insertSongs(entities)
+        musicDao.removeDeletedSongs(scannedSongs.map { it.id })
+    }
 
     suspend fun toggleFavorite(songId: Long, isFavorite: Boolean) {
         if (isFavorite) {
@@ -68,8 +81,8 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
 
     suspend fun getSongsInPlaylist(playlistId: Long): List<Song> = withContext(Dispatchers.IO) {
         val songIds = musicDao.getSongsInPlaylist(playlistId)
-        val allSongs = getSongs()
-        allSongs.filter { songIds.contains(it.id) }
+        val scannedSongs = getSongs() // O usar caché si fuera necesario
+        scannedSongs.filter { songIds.contains(it.id) }
     }
 
     suspend fun updateSongTags(song: Song, newTitle: String, newArtist: String, newAlbum: String, newGenre: String): Boolean = withContext(Dispatchers.IO) {
@@ -98,14 +111,12 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
                         }
                     }
                     
-                    // Force MediaStore update by scanning the file
                     suspendCoroutine { continuation ->
                         MediaScannerConnection.scanFile(context, arrayOf(file.absolutePath), null) { _, _ ->
                             continuation.resume(Unit)
                         }
                     }
                     
-                    // Also try direct MediaStore update as fallback/complement
                     val values = ContentValues().apply {
                         put(MediaStore.Audio.Media.TITLE, newTitle)
                         put(MediaStore.Audio.Media.ARTIST, newArtist)
@@ -117,6 +128,9 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
                         "${MediaStore.Audio.Media._ID} = ?",
                         arrayOf(song.id.toString())
                     )
+                    
+                    // Refrescar localmente en la DB después de actualizar tags
+                    refreshMusicDatabase()
                     
                     return@withContext true
                 }
@@ -141,4 +155,28 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
             if (it.moveToFirst()) it.getString(it.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)) else null
         }
     }
+
+    private fun SongEntity.toDomainModel() = Song(
+        id = id,
+        albumId = albumId,
+        title = title,
+        artist = artist,
+        album = album,
+        genre = genre,
+        folder = folder,
+        path = path,
+        albumArtUri = albumArtUri
+    )
+
+    private fun Song.toEntity() = SongEntity(
+        id = id,
+        albumId = albumId,
+        title = title,
+        artist = artist,
+        album = album,
+        genre = genre,
+        folder = folder,
+        path = path,
+        albumArtUri = albumArtUri
+    )
 }

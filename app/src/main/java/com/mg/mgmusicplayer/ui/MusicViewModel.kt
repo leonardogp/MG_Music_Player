@@ -1,8 +1,10 @@
 package com.mg.mgmusicplayer.ui
 
 import android.app.Application
+import androidx.annotation.OptIn
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.util.UnstableApi
 import com.mg.mgmusicplayer.core.player.MusicPlayerManager
 import com.mg.mgmusicplayer.data.database.MusicDatabase
 import com.mg.mgmusicplayer.data.database.PlaylistEntity
@@ -16,27 +18,27 @@ enum class SortOrder {
     NAME, ARTIST, ALBUM, DATE_ADDED
 }
 
+@UnstableApi
 class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     private val database = MusicDatabase.getDatabase(application)
     private val repository = MusicRepository(application, database.musicDao())
     private val playerManager = MusicPlayerManager(application)
 
-    private val _allSongs = MutableStateFlow<List<Song>>(emptyList())
     private val _searchQuery = MutableStateFlow("")
-    val searchQuery = _searchQuery
-
     private val _sortOrder = MutableStateFlow(SortOrder.NAME)
-    val sortOrder = _sortOrder
+    private val _currentPlaylistSongs = MutableStateFlow<List<Song>>(emptyList())
 
     val favorites = repository.favorites.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val history = repository.history.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val playlists = repository.playlists.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _currentPlaylistSongs = MutableStateFlow<List<Song>>(emptyList())
-    val currentPlaylistSongs = _currentPlaylistSongs.asStateFlow()
-
-    private val filteredSongs = combine(_allSongs, _searchQuery, _sortOrder, favorites) { songs, query, order, favs ->
+    private val filteredSongs = combine(
+        repository.allSongsFlow, 
+        _searchQuery, 
+        _sortOrder, 
+        favorites
+    ) { songs, query, order, favs ->
         val enrichedSongs = songs.map { it.copy(isFavorite = favs.contains(it.id)) }
         
         val filtered = if (query.isBlank()) {
@@ -57,37 +59,58 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         }
     }.flowOn(Dispatchers.Default)
 
-    val songs: StateFlow<List<Song>> = filteredSongs
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val playerState: StateFlow<PlayerState> = combine(
+        playerManager.currentSong,
+        playerManager.isPlaying,
+        playerManager.isShuffleMode,
+        playerManager.repeatMode,
+        playerManager.currentPosition,
+        playerManager.duration,
+        playerManager.currentQueue
+    ) { params ->
+        @Suppress("UNCHECKED_CAST")
+        PlayerState(
+            currentSong = params[0] as? Song,
+            isPlaying = params[1] as Boolean,
+            isShuffleMode = params[2] as Boolean,
+            repeatMode = params[3] as Int,
+            currentPosition = params[4] as Long,
+            duration = params[5] as Long,
+            currentQueue = params[6] as List<Song>,
+            audioSessionId = playerManager.getAudioSessionId()
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PlayerState())
 
-    val genres: StateFlow<Map<String, List<Song>>> = filteredSongs.map { it.groupBy { s -> s.genre } }
-        .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
-
-    val artists: StateFlow<Map<String, List<Song>>> = filteredSongs.map { it.groupBy { s -> s.artist } }
-        .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
-
-    val albums: StateFlow<Map<String, List<Song>>> = filteredSongs.map { it.groupBy { s -> s.album } }
-        .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
-
-    val folders: StateFlow<Map<String, List<Song>>> = filteredSongs.map { it.groupBy { s -> s.folder } }
-        .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
-
-    val currentSong = playerManager.currentSong
-    val isPlaying = playerManager.isPlaying
-    val isShuffleMode = playerManager.isShuffleMode
-    val repeatMode = playerManager.repeatMode
-    val currentPosition = playerManager.currentPosition
-    val duration = playerManager.duration
-    val currentQueue = playerManager.currentQueue
+    val uiState: StateFlow<LibraryUiState> = combine(
+        filteredSongs,
+        playlists,
+        history,
+        _currentPlaylistSongs,
+        _searchQuery,
+        _sortOrder,
+        playerState
+    ) { params ->
+        @Suppress("UNCHECKED_CAST")
+        val songs = params[0] as List<Song>
+        LibraryUiState(
+            songs = songs,
+            genres = songs.groupBy { it.genre },
+            artists = songs.groupBy { it.artist },
+            albums = songs.groupBy { it.album },
+            folders = songs.groupBy { it.folder },
+            playlists = params[1] as List<PlaylistEntity>,
+            history = params[2] as List<com.mg.mgmusicplayer.data.database.HistoryEntity>,
+            currentPlaylistSongs = params[3] as List<Song>,
+            searchQuery = params[4] as String,
+            sortOrder = params[5] as SortOrder,
+            playerState = params[6] as PlayerState
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), LibraryUiState())
 
     init {
         scanMusic()
         viewModelScope.launch {
-            currentSong.collect { song ->
+            playerManager.currentSong.collect { song ->
                 song?.let { repository.addToHistory(it.id) }
             }
         }
@@ -98,51 +121,54 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun scanMusic() {
-        viewModelScope.launch {
-            val scannedSongs = repository.getSongs()
-            _allSongs.value = scannedSongs
-            playerManager.setPlaylist(scannedSongs)
+        viewModelScope.launch(Dispatchers.Default) {
+            repository.refreshMusicDatabase()
         }
     }
 
     fun toggleFavorite(song: Song) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.toggleFavorite(song.id, !favorites.value.contains(song.id))
         }
     }
 
-    fun createPlaylist(name: String) = viewModelScope.launch { repository.createPlaylist(name) }
+    fun createPlaylist(name: String) = viewModelScope.launch(Dispatchers.IO) { 
+        repository.createPlaylist(name) 
+    }
     
-    fun deletePlaylist(playlist: PlaylistEntity) = viewModelScope.launch {
+    fun deletePlaylist(playlist: PlaylistEntity) = viewModelScope.launch(Dispatchers.IO) {
         repository.deletePlaylist(playlist)
     }
 
-    fun addSongToPlaylist(playlistId: String, song: Song) = viewModelScope.launch { 
+    fun addSongToPlaylist(playlistId: String, song: Song) = viewModelScope.launch(Dispatchers.IO) { 
         playlistId.toLongOrNull()?.let { repository.addSongToPlaylist(it, song.id) }
     }
 
-    fun addSongsToPlaylist(playlistId: String, songs: List<Song>) = viewModelScope.launch {
+    fun addSongsToPlaylist(playlistId: String, songs: List<Song>) = viewModelScope.launch(Dispatchers.IO) {
         playlistId.toLongOrNull()?.let { repository.addSongsToPlaylist(it, songs) }
     }
 
-    fun removeSongFromPlaylist(playlistId: String, songId: Long) = viewModelScope.launch {
+    fun removeSongFromPlaylist(playlistId: String, songId: Long) = viewModelScope.launch(Dispatchers.IO) {
         val id = playlistId.toLongOrNull() ?: return@launch
         repository.removeSongFromPlaylist(id, songId)
         loadPlaylistSongs(playlistId)
     }
 
     fun loadPlaylistSongs(playlistId: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.Default) {
             val id = playlistId.toLongOrNull() ?: return@launch
-            _currentPlaylistSongs.value = repository.getSongsInPlaylist(id)
+            val songs = repository.getSongsInPlaylist(id)
+            _currentPlaylistSongs.value = songs
         }
     }
 
     fun onSearchQueryChanged(query: String) { _searchQuery.value = query }
 
     fun playSong(song: Song, playlist: List<Song>) {
-        playerManager.setPlaylist(playlist)
-        playerManager.play(song)
+        viewModelScope.launch(Dispatchers.Default) {
+            playerManager.setPlaylist(playlist)
+            playerManager.play(song)
+        }
     }
     
     fun addToQueue(song: Song) = playerManager.addToQueue(song)
@@ -157,10 +183,8 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun cycleRepeatMode() = playerManager.cycleRepeatMode()
 
     fun updateSongTags(song: Song, title: String, artist: String, album: String, genre: String) {
-        viewModelScope.launch {
-            if (repository.updateSongTags(song, title, artist, album, genre)) {
-                scanMusic()
-            }
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateSongTags(song, title, artist, album, genre)
         }
     }
 

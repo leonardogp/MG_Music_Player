@@ -55,8 +55,10 @@ class MusicPlayerManager(context: Context) {
     private fun setupMediaController() {
         val sessionToken = SessionToken(appContext, ComponentName(appContext, MusicService::class.java))
         controllerFuture = MediaController.Builder(appContext, sessionToken).buildAsync()
+        
         controllerFuture?.addListener({
-            controller?.let { player ->
+            try {
+                val player = controllerFuture?.get() ?: return@addListener
                 player.addListener(object : Player.Listener {
                     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                         updateCurrentSong(mediaItem)
@@ -65,11 +67,7 @@ class MusicPlayerManager(context: Context) {
 
                     override fun onIsPlayingChanged(isPlaying: Boolean) {
                         _isPlaying.value = isPlaying
-                        if (isPlaying) {
-                            startProgressUpdate()
-                        } else {
-                            stopProgressUpdate()
-                        }
+                        if (isPlaying) startProgressUpdate() else stopProgressUpdate()
                     }
 
                     override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
@@ -90,7 +88,8 @@ class MusicPlayerManager(context: Context) {
                         updateQueue()
                     }
                 })
-                // Initial state
+                
+                // Sincronización inicial de estado
                 _isPlaying.value = player.isPlaying
                 _isShuffleMode.value = player.shuffleModeEnabled
                 _repeatMode.value = player.repeatMode
@@ -98,6 +97,9 @@ class MusicPlayerManager(context: Context) {
                 _duration.value = player.duration.coerceAtLeast(0L)
                 updateQueue()
                 if (player.isPlaying) startProgressUpdate()
+                
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }, MoreExecutors.directExecutor())
     }
@@ -190,7 +192,6 @@ class MusicPlayerManager(context: Context) {
             }
             player.play()
         } else {
-            // If song is not in current items, add it and play
             val mediaItem = MediaItem.Builder()
                 .setMediaId(song.id.toString())
                 .setUri(song.path)
@@ -205,46 +206,29 @@ class MusicPlayerManager(context: Context) {
 
     fun togglePlayPause() {
         val player = controller ?: return
-        if (player.isPlaying) {
-            player.pause()
-        } else {
-            player.play()
-        }
+        if (player.isPlaying) player.pause() else player.play()
     }
 
-    fun skipNext() {
-        controller?.seekToNext()
-    }
-
-    fun skipPrevious() {
-        controller?.seekToPrevious()
-    }
+    fun skipNext() { controller?.seekToNext() }
+    fun skipPrevious() { controller?.seekToPrevious() }
 
     fun seekTo(position: Long) {
         controller?.seekTo(position)
         _currentPosition.value = position
     }
 
-    fun seekForward() {
-        controller?.let { it.seekTo(it.currentPosition + 10000) }
-    }
+    fun seekForward() { controller?.let { it.seekTo(it.currentPosition + 10000) } }
+    fun seekBack() { controller?.let { it.seekTo(it.currentPosition - 10000) } }
 
-    fun seekBack() {
-        controller?.let { it.seekTo(it.currentPosition - 10000) }
-    }
-
-    fun toggleShuffle() {
-        controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled }
-    }
+    fun toggleShuffle() { controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled } }
 
     fun cycleRepeatMode() {
         val player = controller ?: return
-        val nextMode = when (player.repeatMode) {
+        player.repeatMode = when (player.repeatMode) {
             Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
             Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
             else -> Player.REPEAT_MODE_OFF
         }
-        player.repeatMode = nextMode
     }
 
     fun release() {
@@ -253,7 +237,5 @@ class MusicPlayerManager(context: Context) {
         controllerFuture?.let { MediaController.releaseFuture(it) }
     }
     
-    fun getAudioSessionId(): Int {
-        return C.AUDIO_SESSION_ID_UNSET
-    }
+    fun getAudioSessionId(): Int = C.AUDIO_SESSION_ID_UNSET
 }

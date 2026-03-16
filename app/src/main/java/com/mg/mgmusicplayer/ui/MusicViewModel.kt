@@ -1,65 +1,54 @@
 package com.mg.mgmusicplayer.ui
 
-import android.app.Application
 import androidx.annotation.OptIn
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.util.UnstableApi
 import com.mg.mgmusicplayer.core.player.MusicPlayerManager
-import com.mg.mgmusicplayer.data.database.MusicDatabase
+import com.mg.mgmusicplayer.data.database.HistoryEntity
 import com.mg.mgmusicplayer.data.database.PlaylistEntity
 import com.mg.mgmusicplayer.data.model.Song
 import com.mg.mgmusicplayer.data.repository.MusicRepository
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-enum class SortOrder {
-    NAME, ARTIST, ALBUM, DATE_ADDED
-}
-
-@UnstableApi
-class MusicViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val database = MusicDatabase.getDatabase(application)
-    private val repository = MusicRepository(application, database.musicDao())
-    private val playerManager = MusicPlayerManager(application)
+@OptIn(UnstableApi::class)
+class MusicViewModel(
+    private val repository: MusicRepository,
+    private val playerManager: MusicPlayerManager
+) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
+    val searchQuery = _searchQuery.asStateFlow()
+
     private val _sortOrder = MutableStateFlow(SortOrder.NAME)
+    val sortOrder = _sortOrder.asStateFlow()
+
     private val _currentPlaylistSongs = MutableStateFlow<List<Song>>(emptyList())
+    val currentPlaylistSongs = _currentPlaylistSongs.asStateFlow()
 
-    val favorites = repository.favorites.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val history = repository.history.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val playlists = repository.playlists.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val songs: StateFlow<List<Song>> = repository.allSongsFlow
+        .combine(searchQuery) { songs, query ->
+            if (query.isBlank()) songs
+            else songs.filter { it.title.contains(query, ignoreCase = true) || it.artist.contains(query, ignoreCase = true) }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val filteredSongs = combine(
-        repository.allSongsFlow, 
-        _searchQuery, 
-        _sortOrder, 
-        favorites
-    ) { songs, query, order, favs ->
-        val enrichedSongs = songs.map { it.copy(isFavorite = favs.contains(it.id)) }
-        
-        val filtered = if (query.isBlank()) {
-            enrichedSongs
-        } else {
-            enrichedSongs.filter {
-                it.title.contains(query, ignoreCase = true) ||
-                it.artist.contains(query, ignoreCase = true) ||
-                it.album.contains(query, ignoreCase = true)
-            }
-        }
-        
-        when (order) {
-            SortOrder.NAME -> filtered.sortedBy { it.title }
-            SortOrder.ARTIST -> filtered.sortedBy { it.artist }
-            SortOrder.ALBUM -> filtered.sortedBy { it.album }
-            SortOrder.DATE_ADDED -> filtered.reversed()
-        }
-    }.flowOn(Dispatchers.Default)
+    val playlists = repository.playlists
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val playerState: StateFlow<PlayerState> = combine(
+    val uiState: StateFlow<LibraryUiState> = combine(
+        songs,
+        playlists,
+        repository.history,
+        currentPlaylistSongs,
+        searchQuery,
+        sortOrder,
         playerManager.currentSong,
         playerManager.isPlaying,
         playerManager.isShuffleMode,
@@ -67,80 +56,55 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         playerManager.currentPosition,
         playerManager.duration,
         playerManager.currentQueue
-    ) { params ->
-        @Suppress("UNCHECKED_CAST")
-        PlayerState(
-            currentSong = params[0] as? Song,
-            isPlaying = params[1] as Boolean,
-            isShuffleMode = params[2] as Boolean,
-            repeatMode = params[3] as Int,
-            currentPosition = params[4] as Long,
-            duration = params[5] as Long,
-            currentQueue = params[6] as List<Song>,
-            audioSessionId = playerManager.getAudioSessionId()
+    ) { args: Array<Any?> ->
+        val songsList = args[0] as List<Song>
+        val playlistsList = args[1] as List<PlaylistEntity>
+        val historyList = args[2] as List<HistoryEntity>
+        val currentPlaylistSongsList = args[3] as List<Song>
+        val query = args[4] as String
+        val order = args[5] as SortOrder
+        val currentSong = args[6] as Song?
+        val isPlaying = args[7] as Boolean
+        val isShuffleMode = args[8] as Boolean
+        val repeatMode = args[9] as Int
+        val currentPosition = args[10] as Long
+        val duration = args[11] as Long
+        val currentQueue = args[12] as List<Song>
+        
+        val playerState = PlayerState(
+            currentSong = currentSong,
+            isPlaying = isPlaying,
+            isShuffleMode = isShuffleMode,
+            repeatMode = repeatMode,
+            currentPosition = currentPosition,
+            duration = duration,
+            currentQueue = currentQueue
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PlayerState())
 
-    val uiState: StateFlow<LibraryUiState> = combine(
-        filteredSongs,
-        playlists,
-        history,
-        _currentPlaylistSongs,
-        _searchQuery,
-        _sortOrder,
-        playerState
-    ) { params ->
-        @Suppress("UNCHECKED_CAST")
-        val songs = params[0] as List<Song>
         LibraryUiState(
-            songs = songs,
-            genres = songs.groupBy { it.genre },
-            artists = songs.groupBy { it.artist },
-            albums = songs.groupBy { it.album },
-            folders = songs.groupBy { it.folder },
-            playlists = params[1] as List<PlaylistEntity>,
-            history = params[2] as List<com.mg.mgmusicplayer.data.database.HistoryEntity>,
-            currentPlaylistSongs = params[3] as List<Song>,
-            searchQuery = params[4] as String,
-            sortOrder = params[5] as SortOrder,
-            playerState = params[6] as PlayerState
+            songs = songsList,
+            genres = songsList.groupBy { it.genre },
+            artists = songsList.groupBy { it.artist },
+            albums = songsList.groupBy { it.album },
+            folders = songsList.groupBy { it.folder },
+            playlists = playlistsList,
+            history = historyList,
+            currentPlaylistSongs = currentPlaylistSongsList,
+            searchQuery = query,
+            sortOrder = order,
+            playerState = playerState
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), LibraryUiState())
 
-    init {
-        scanMusic()
-        viewModelScope.launch {
-            playerManager.currentSong.collect { song ->
-                song?.let { repository.addToHistory(it.id) }
-            }
-        }
+    fun createPlaylist(name: String) = viewModelScope.launch(Dispatchers.IO) {
+        repository.createPlaylist(name)
     }
 
-    fun setSortOrder(order: SortOrder) {
-        _sortOrder.value = order
-    }
-
-    fun scanMusic() {
-        viewModelScope.launch(Dispatchers.Default) {
-            repository.refreshMusicDatabase()
-        }
-    }
-
-    fun toggleFavorite(song: Song) {
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.toggleFavorite(song.id, !favorites.value.contains(song.id))
-        }
-    }
-
-    fun createPlaylist(name: String) = viewModelScope.launch(Dispatchers.IO) { 
-        repository.createPlaylist(name) 
-    }
-    
     fun deletePlaylist(playlist: PlaylistEntity) = viewModelScope.launch(Dispatchers.IO) {
         repository.deletePlaylist(playlist)
     }
 
-    fun addSongToPlaylist(playlistId: String, song: Song) = viewModelScope.launch(Dispatchers.IO) { 
+    fun addSongToPlaylist(playlistId: String, song: Song) = viewModelScope.launch(Dispatchers.IO) {
         playlistId.toLongOrNull()?.let { repository.addSongToPlaylist(it, song.id) }
     }
 
@@ -163,9 +127,23 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onSearchQueryChanged(query: String) { _searchQuery.value = query }
+    
+    fun setSortOrder(order: SortOrder) { _sortOrder.value = order }
+
+    fun scanMusic() = viewModelScope.launch {
+        repository.refreshMusicDatabase()
+    }
+
+    fun toggleFavorite(song: Song) = viewModelScope.launch {
+        repository.toggleFavorite(song.id, !song.isFavorite)
+    }
+
+    fun updateSongTags(song: Song, title: String, artist: String, album: String, genre: String) = viewModelScope.launch {
+        repository.updateSongTags(song, title, artist, album, genre)
+    }
 
     fun playSong(song: Song, playlist: List<Song>) {
-        viewModelScope.launch(Dispatchers.Default) {
+        viewModelScope.launch {
             playerManager.setPlaylist(playlist)
             playerManager.play(song)
         }
@@ -181,17 +159,4 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun seekBack() = playerManager.seekBack()
     fun toggleShuffle() = playerManager.toggleShuffle()
     fun cycleRepeatMode() = playerManager.cycleRepeatMode()
-
-    fun updateSongTags(song: Song, title: String, artist: String, album: String, genre: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.updateSongTags(song, title, artist, album, genre)
-        }
-    }
-
-    fun getAudioSessionId() = playerManager.getAudioSessionId()
-
-    override fun onCleared() {
-        super.onCleared()
-        playerManager.release()
-    }
 }

@@ -28,6 +28,9 @@ class MusicPlayerManager(context: Context) {
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying
 
+    private val _playbackState = MutableStateFlow(Player.STATE_IDLE)
+    val playbackState: StateFlow<Int> = _playbackState
+
     private val _isShuffleMode = MutableStateFlow(false)
     val isShuffleMode: StateFlow<Boolean> = _isShuffleMode
 
@@ -79,6 +82,7 @@ class MusicPlayerManager(context: Context) {
                     }
 
                     override fun onPlaybackStateChanged(playbackState: Int) {
+                        _playbackState.value = playbackState
                         if (playbackState == Player.STATE_READY) {
                             _duration.value = player.duration.coerceAtLeast(0L)
                         }
@@ -89,8 +93,9 @@ class MusicPlayerManager(context: Context) {
                     }
                 })
                 
-                // Sincronización inicial de estado
+                // Initial state sync
                 _isPlaying.value = player.isPlaying
+                _playbackState.value = player.playbackState
                 _isShuffleMode.value = player.shuffleModeEnabled
                 _repeatMode.value = player.repeatMode
                 updateCurrentSong(player.currentMediaItem)
@@ -139,8 +144,8 @@ class MusicPlayerManager(context: Context) {
     }
 
     fun setPlaylist(songs: List<Song>) {
-        lastPlaylist = songs
         val player = controller ?: return
+        lastPlaylist = songs
         val newMediaItems = songs.map { song ->
             MediaItem.Builder()
                 .setMediaId(song.id.toString())

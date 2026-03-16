@@ -54,6 +54,15 @@ dependencies {
     implementation("androidx.compose.material3:material3-window-size-class")
     implementation(libs.androidx.navigation.compose)
     
+    // Material Design 3 for XML (needed for some themes)
+    implementation(libs.material)
+
+    // Splash Screen API
+    implementation("androidx.core:core-splashscreen:1.0.1")
+    
+    // Palette API for dynamic colors
+    implementation("androidx.palette:palette-ktx:1.0.0")
+    
     // Media3
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.session)

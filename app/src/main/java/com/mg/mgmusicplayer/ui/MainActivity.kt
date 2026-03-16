@@ -6,15 +6,34 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.annotation.OptIn
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.media3.common.util.UnstableApi
 import coil.ImageLoader
 import coil.ImageLoaderFactory
+import com.mg.mgmusicplayer.core.player.MusicPlayerManager
 import com.mg.mgmusicplayer.core.utils.SongCoverFetcher
+import com.mg.mgmusicplayer.data.database.MusicDatabase
+import com.mg.mgmusicplayer.data.repository.MusicRepository
 import com.mg.mgmusicplayer.ui.components.PermissionHandler
 import com.mg.mgmusicplayer.ui.theme.MGMusicPlayerTheme
 
 class MainActivity : ComponentActivity(), ImageLoaderFactory {
 
-    private val viewModel: MusicViewModel by viewModels()
+    @OptIn(UnstableApi::class)
+    private val viewModel: MusicViewModel by viewModels {
+        object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val database = MusicDatabase.getDatabase(applicationContext)
+                val repository = MusicRepository(applicationContext, database.musicDao())
+                val playerManager = MusicPlayerManager(applicationContext)
+                return MusicViewModel(repository, playerManager) as T
+            }
+        }
+    }
 
     override fun newImageLoader(): ImageLoader {
         return ImageLoader.Builder(this)
@@ -25,9 +44,9 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
 
-        // Definir los permisos según la versión del sistema
         val permissions = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissions.add(Manifest.permission.READ_MEDIA_AUDIO)
@@ -40,6 +59,7 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
             MGMusicPlayerTheme {
                 PermissionHandler(
                     requiredPermissions = permissions,
+                    onExit = { finish() },
                     onPermissionsGranted = {
                         AppRoot(viewModel)
                     }

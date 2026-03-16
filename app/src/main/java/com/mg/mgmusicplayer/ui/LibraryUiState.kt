@@ -4,6 +4,10 @@ import com.mg.mgmusicplayer.data.database.HistoryEntity
 import com.mg.mgmusicplayer.data.database.PlaylistEntity
 import com.mg.mgmusicplayer.data.model.Song
 
+enum class LayoutMode {
+    LIST, GRID
+}
+
 data class LibraryUiState(
     val songs: List<Song> = emptyList(),
     val genres: Map<String, List<Song>> = emptyMap(),
@@ -15,5 +19,6 @@ data class LibraryUiState(
     val currentPlaylistSongs: List<Song> = emptyList(),
     val searchQuery: String = "",
     val sortOrder: SortOrder = SortOrder.NAME,
-    val playerState: PlayerState = PlayerState()
+    val playerState: PlayerState = PlayerState(),
+    val layoutMode: LayoutMode = LayoutMode.LIST
 )

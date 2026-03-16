@@ -16,9 +16,9 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = PrimaryMusic,
-    secondary = SecondaryMusic,
-    tertiary = AccentMusic,
+    primary = PrimaryOrange,
+    secondary = SecondaryGold,
+    tertiary = PrimaryOrange,
     background = DarkBackground,
     surface = DarkSurface,
     onBackground = OnSurfaceLight,
@@ -27,15 +27,17 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = PrimaryMusic,
-    secondary = SecondaryMusic,
-    tertiary = AccentMusic
+    primary = PrimaryOrange,
+    secondary = SecondaryGold,
+    tertiary = PrimaryOrange,
+    background = DarkBackground,
+    surface = DarkSurface
 )
 
 @Composable
 fun MGMusicPlayerTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false, // Turned off for brand consistency
+    darkTheme: Boolean = true, // Default to dark for Premium look
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

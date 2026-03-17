@@ -1,4 +1,4 @@
-# MGMusicPlayer
+# monkeymusicplayer
 
 Android music player written in Kotlin.
 

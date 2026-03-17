@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.mg.mgmusicplayer"
+    namespace = "com.lg.monkeymusicplayer"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.mg.mgmusicplayer"
+        applicationId = "com.lg.monkeymusicplayer"
         minSdk = 24
         targetSdk = 34
         versionCode = 1

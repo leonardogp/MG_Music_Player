@@ -9,7 +9,7 @@ import java.io.File
 
 class MusicScanner(private val context: Context) {
 
-    fun scan(): List<Song> {
+    fun scan(onProgress: (Int, Int) -> Unit = { _, _ -> }): List<Song> {
         val songs = mutableListOf<Song>()
         val uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
 
@@ -34,6 +34,7 @@ class MusicScanner(private val context: Context) {
         )
 
         cursor?.use {
+            val total = it.count
             val idColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
             val albumIdColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
             val titleColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
@@ -41,7 +42,13 @@ class MusicScanner(private val context: Context) {
             val albumColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
             val dataColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
 
+            var current = 0
             while (it.moveToNext()) {
+                current++
+                if (current % 10 == 0 || current == total) {
+                    onProgress(current, total)
+                }
+
                 val id = it.getLong(idColumn)
                 val albumId = it.getLong(albumIdColumn)
                 val title = it.getString(titleColumn) ?: "Desconocido"

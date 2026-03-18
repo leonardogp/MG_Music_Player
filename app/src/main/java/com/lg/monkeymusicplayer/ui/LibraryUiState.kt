@@ -9,6 +9,10 @@ enum class LayoutMode {
 }
 
 data class LibraryUiState(
+    val isLoading: Boolean = true,
+    val isScanning: Boolean = false,
+    val scanProgress: Int = 0,
+    val scanTotal: Int = 0,
     val songs: List<Song> = emptyList(),
     val genres: Map<String, List<Song>> = emptyMap(),
     val artists: Map<String, List<Song>> = emptyMap(),

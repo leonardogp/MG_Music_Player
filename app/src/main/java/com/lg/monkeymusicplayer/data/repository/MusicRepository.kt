@@ -38,8 +38,8 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
         scanner.scan()
     }
 
-    suspend fun refreshMusicDatabase() = withContext(Dispatchers.IO) {
-        val scannedSongs = scanner.scan()
+    suspend fun refreshMusicDatabase(onProgress: (Int, Int) -> Unit = { _, _ -> }) = withContext(Dispatchers.IO) {
+        val scannedSongs = scanner.scan(onProgress)
         val entities = scannedSongs.map { it.toEntity() }
         musicDao.insertSongs(entities)
         musicDao.removeDeletedSongs(scannedSongs.map { it.id })

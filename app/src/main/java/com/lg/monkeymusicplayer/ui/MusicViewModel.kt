@@ -1,5 +1,8 @@
 package com.lg.monkeymusicplayer.ui
 
+import android.content.Context
+import android.content.Intent
+import android.media.audiofx.AudioEffect
 import androidx.annotation.OptIn
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,6 +13,8 @@ import com.lg.monkeymusicplayer.data.database.PlaylistEntity
 import com.lg.monkeymusicplayer.data.model.Song
 import com.lg.monkeymusicplayer.data.repository.MusicRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +29,13 @@ class MusicViewModel(
     private val playerManager: MusicPlayerManager
 ) : ViewModel() {
 
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading = _isLoading.asStateFlow()
+
+    private val _isScanning = MutableStateFlow(false)
+    private val _scanProgress = MutableStateFlow(0)
+    private val _scanTotal = MutableStateFlow(0)
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery = _searchQuery.asStateFlow()
 
@@ -32,6 +44,11 @@ class MusicViewModel(
 
     private val _currentPlaylistSongs = MutableStateFlow<List<Song>>(emptyList())
     val currentPlaylistSongs = _currentPlaylistSongs.asStateFlow()
+
+    // Sleep Timer
+    private val _sleepTimerMinutes = MutableStateFlow(0)
+    private val _sleepTimerRemaining = MutableStateFlow(0L)
+    private var sleepTimerJob: Job? = null
 
     val songs: StateFlow<List<Song>> = repository.allSongsFlow
         .combine(searchQuery) { songs, query ->
@@ -55,7 +72,13 @@ class MusicViewModel(
         playerManager.repeatMode,
         playerManager.currentPosition,
         playerManager.duration,
-        playerManager.currentQueue
+        playerManager.currentQueue,
+        isLoading,
+        _sleepTimerMinutes,
+        _sleepTimerRemaining,
+        _isScanning,
+        _scanProgress,
+        _scanTotal
     ) { args: Array<Any?> ->
         val songsList = args[0] as List<Song>
         val playlistsList = args[1] as List<PlaylistEntity>
@@ -70,6 +93,12 @@ class MusicViewModel(
         val currentPosition = args[10] as Long
         val duration = args[11] as Long
         val currentQueue = args[12] as List<Song>
+        val loading = args[13] as Boolean
+        val timerMinutes = args[14] as Int
+        val timerRemaining = args[15] as Long
+        val scanning = args[16] as Boolean
+        val progress = args[17] as Int
+        val total = args[18] as Int
         
         val playerState = PlayerState(
             currentSong = currentSong,
@@ -78,10 +107,16 @@ class MusicViewModel(
             repeatMode = repeatMode,
             currentPosition = currentPosition,
             duration = duration,
-            currentQueue = currentQueue
+            currentQueue = currentQueue,
+            sleepTimerMinutes = timerMinutes,
+            sleepTimerRemainingMillis = timerRemaining
         )
 
         LibraryUiState(
+            isLoading = loading,
+            isScanning = scanning,
+            scanProgress = progress,
+            scanTotal = total,
             songs = songsList,
             genres = songsList.groupBy { it.genre },
             artists = songsList.groupBy { it.artist },
@@ -95,6 +130,48 @@ class MusicViewModel(
             playerState = playerState
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), LibraryUiState())
+
+    init {
+        viewModelScope.launch {
+            delay(1500)
+            _isLoading.value = false
+        }
+    }
+
+    // Sleep Timer logic
+    fun setSleepTimer(minutes: Int) {
+        _sleepTimerMinutes.value = minutes
+        sleepTimerJob?.cancel()
+        
+        if (minutes > 0) {
+            _sleepTimerRemaining.value = minutes * 60 * 1000L
+            sleepTimerJob = viewModelScope.launch {
+                while (_sleepTimerRemaining.value > 0) {
+                    delay(1000)
+                    _sleepTimerRemaining.value -= 1000
+                }
+                playerManager.pause()
+                _sleepTimerMinutes.value = 0
+            }
+        } else {
+            _sleepTimerRemaining.value = 0L
+        }
+    }
+
+    fun openEqualizer(context: Context) {
+        val intent = Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL)
+        intent.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, playerManager.getAudioSessionId())
+        intent.putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
+        intent.putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
+        if (intent.resolveActivity(context.packageManager) != null) {
+            context.startActivity(intent)
+        }
+    }
+
+    fun changeLanguage(context: Context, languageCode: String) {
+        // This usually requires a restart or dynamic locale change
+        // For now we'll just show the concept, actual implementation depends on how strings are handled
+    }
 
     fun createPlaylist(name: String) = viewModelScope.launch(Dispatchers.IO) {
         repository.createPlaylist(name)
@@ -131,7 +208,14 @@ class MusicViewModel(
     fun setSortOrder(order: SortOrder) { _sortOrder.value = order }
 
     fun scanMusic() = viewModelScope.launch {
-        repository.refreshMusicDatabase()
+        _isScanning.value = true
+        _scanProgress.value = 0
+        _scanTotal.value = 0
+        repository.refreshMusicDatabase { current, total ->
+            _scanProgress.value = current
+            _scanTotal.value = total
+        }
+        _isScanning.value = false
     }
 
     fun toggleFavorite(song: Song) = viewModelScope.launch {

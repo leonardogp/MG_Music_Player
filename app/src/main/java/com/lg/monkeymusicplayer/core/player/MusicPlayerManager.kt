@@ -2,11 +2,14 @@ package com.lg.monkeymusicplayer.core.player
 
 import android.content.ComponentName
 import android.content.Context
+import android.os.Bundle
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
 import androidx.media3.session.SessionToken
 import com.lg.monkeymusicplayer.data.model.Song
 import com.google.common.util.concurrent.ListenableFuture
@@ -46,6 +49,9 @@ class MusicPlayerManager(context: Context) {
     private val _currentQueue = MutableStateFlow<List<Song>>(emptyList())
     val currentQueue: StateFlow<List<Song>> = _currentQueue
 
+    private val _audioSessionId = MutableStateFlow(C.AUDIO_SESSION_ID_UNSET)
+    val audioSessionId: StateFlow<Int> = _audioSessionId
+
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var progressJob: Job? = null
     
@@ -66,11 +72,17 @@ class MusicPlayerManager(context: Context) {
                     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                         updateCurrentSong(mediaItem)
                         _duration.value = player.duration.coerceAtLeast(0L)
+                        fetchAudioSessionId()
                     }
 
                     override fun onIsPlayingChanged(isPlaying: Boolean) {
                         _isPlaying.value = isPlaying
-                        if (isPlaying) startProgressUpdate() else stopProgressUpdate()
+                        if (isPlaying) {
+                            startProgressUpdate()
+                            fetchAudioSessionId()
+                        } else {
+                            stopProgressUpdate()
+                        }
                     }
 
                     override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
@@ -85,6 +97,7 @@ class MusicPlayerManager(context: Context) {
                         _playbackState.value = playbackState
                         if (playbackState == Player.STATE_READY) {
                             _duration.value = player.duration.coerceAtLeast(0L)
+                            fetchAudioSessionId()
                         }
                     }
                     
@@ -103,8 +116,29 @@ class MusicPlayerManager(context: Context) {
                 updateQueue()
                 if (player.isPlaying) startProgressUpdate()
                 
+                fetchAudioSessionId()
+                
             } catch (e: Exception) {
                 e.printStackTrace()
+            }
+        }, MoreExecutors.directExecutor())
+    }
+
+    private fun fetchAudioSessionId() {
+        val player = controller ?: return
+        val command = SessionCommand(MusicService.COMMAND_GET_AUDIO_SESSION_ID, Bundle.EMPTY)
+        val future = player.sendCustomCommand(command, Bundle.EMPTY)
+        future.addListener({
+            try {
+                val result = future.get()
+                if (result.resultCode == SessionResult.RESULT_SUCCESS) {
+                    val sessionId = result.extras.getInt("audio_session_id", C.AUDIO_SESSION_ID_UNSET)
+                    if (sessionId != C.AUDIO_SESSION_ID_UNSET) {
+                        _audioSessionId.value = sessionId
+                    }
+                }
+            } catch (e: Exception) {
+                // Ignore errors
             }
         }, MoreExecutors.directExecutor())
     }
@@ -214,6 +248,10 @@ class MusicPlayerManager(context: Context) {
         if (player.isPlaying) player.pause() else player.play()
     }
 
+    fun pause() {
+        controller?.pause()
+    }
+
     fun skipNext() { controller?.seekToNext() }
     fun skipPrevious() { controller?.seekToPrevious() }
 
@@ -242,5 +280,5 @@ class MusicPlayerManager(context: Context) {
         controllerFuture?.let { MediaController.releaseFuture(it) }
     }
     
-    fun getAudioSessionId(): Int = C.AUDIO_SESSION_ID_UNSET
+    fun getAudioSessionId(): Int = _audioSessionId.value
 }

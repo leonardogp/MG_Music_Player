@@ -52,6 +52,9 @@ class MusicPlayerManager(context: Context) {
     private val _audioSessionId = MutableStateFlow(C.AUDIO_SESSION_ID_UNSET)
     val audioSessionId: StateFlow<Int> = _audioSessionId
 
+    private val _equalizerData = MutableStateFlow<Bundle?>(null)
+    val equalizerData: StateFlow<Bundle?> = _equalizerData
+
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var progressJob: Job? = null
     
@@ -73,6 +76,7 @@ class MusicPlayerManager(context: Context) {
                         updateCurrentSong(mediaItem)
                         _duration.value = player.duration.coerceAtLeast(0L)
                         fetchAudioSessionId()
+                        fetchEqualizerData()
                     }
 
                     override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -98,6 +102,7 @@ class MusicPlayerManager(context: Context) {
                         if (playbackState == Player.STATE_READY) {
                             _duration.value = player.duration.coerceAtLeast(0L)
                             fetchAudioSessionId()
+                            fetchEqualizerData()
                         }
                     }
                     
@@ -117,6 +122,7 @@ class MusicPlayerManager(context: Context) {
                 if (player.isPlaying) startProgressUpdate()
                 
                 fetchAudioSessionId()
+                fetchEqualizerData()
                 
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -141,6 +147,32 @@ class MusicPlayerManager(context: Context) {
                 // Ignore errors
             }
         }, MoreExecutors.directExecutor())
+    }
+
+    fun fetchEqualizerData() {
+        val player = controller ?: return
+        val command = SessionCommand(MusicService.COMMAND_GET_EQUALIZER_DATA, Bundle.EMPTY)
+        val future = player.sendCustomCommand(command, Bundle.EMPTY)
+        future.addListener({
+            try {
+                val result = future.get()
+                if (result.resultCode == SessionResult.RESULT_SUCCESS) {
+                    _equalizerData.value = result.extras
+                }
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }, MoreExecutors.directExecutor())
+    }
+
+    fun setEqualizerBand(band: Short, level: Short) {
+        val player = controller ?: return
+        val args = Bundle().apply {
+            putShort("band", band)
+            putShort("level", level)
+        }
+        player.sendCustomCommand(SessionCommand(MusicService.COMMAND_SET_EQUALIZER_BAND, Bundle.EMPTY), args)
+        fetchEqualizerData() // Refresh
     }
 
     private fun updateCurrentSong(mediaItem: MediaItem?) {

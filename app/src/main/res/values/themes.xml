@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.monkeymusicplayer" parent="Theme.Material3.Dark.NoActionBar">
-        <item name="android:statusBarColor">@color/black</item>
-        <item name="android:navigationBarColor">@color/black</item>
+    <!-- Cleaned up: Rely on Compose Theme.kt for Material 3, keep only Splash -->
+    <style name="Theme.monkeymusicplayer" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
     <style name="Theme.MonkeyPlayer.Splash" parent="Theme.SplashScreen">
@@ -11,3 +12,4 @@
         <item name="postSplashScreenTheme">@style/Theme.monkeymusicplayer</item>
     </style>
 </resources>
+

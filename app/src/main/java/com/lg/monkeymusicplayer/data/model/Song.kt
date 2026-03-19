@@ -10,5 +10,11 @@ data class Song(
     val folder: String,
     val path: String,
     val albumArtUri: String,
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    val lyricsPath: String? = null
+)
+
+data class LyricLine(
+    val timeMs: Long,
+    val text: String
 )

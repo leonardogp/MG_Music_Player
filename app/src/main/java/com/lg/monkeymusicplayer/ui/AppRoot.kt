@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,39 +21,15 @@ import com.lg.monkeymusicplayer.R
 import com.lg.monkeymusicplayer.ui.screens.LibraryScreen
 
 @Composable
-fun AppRoot(viewModel: MusicViewModel) {
+fun AppRoot(viewModel: MusicViewModel, windowSizeClass: WindowSizeClass) {
     val uiState by viewModel.uiState.collectAsState()
-    val context = LocalContext.current
 
     if (uiState.isLoading) {
         LoadingScreen()
     } else {
         LibraryScreen(
-            uiState = uiState,
-            onSearchQueryChanged = viewModel::onSearchQueryChanged,
-            onSortOrderChanged = viewModel::setSortOrder,
-            onPlayPause = viewModel::togglePlayPause,
-            onPlay = viewModel::playSong,
-            onAddToQueue = viewModel::addToQueue,
-            onScanMusic = viewModel::scanMusic,
-            onSkipNext = viewModel::skipNext,
-            onSkipPrevious = viewModel::skipPrevious,
-            onSeekTo = viewModel::seekTo,
-            onSeekForward = viewModel::seekForward,
-            onSeekBack = viewModel::seekBack,
-            onToggleShuffle = viewModel::toggleShuffle,
-            onCycleRepeatMode = viewModel::cycleRepeatMode,
-            onToggleFavorite = viewModel::toggleFavorite,
-            onCreatePlaylist = viewModel::createPlaylist,
-            onDeletePlaylist = viewModel::deletePlaylist,
-            onAddSongToPlaylist = viewModel::addSongToPlaylist,
-            onAddSongsToPlaylist = viewModel::addSongsToPlaylist,
-            onRemoveSongFromPlaylist = viewModel::removeSongFromPlaylist,
-            onLoadPlaylistSongs = viewModel::loadPlaylistSongs,
-            onUpdateSongTags = viewModel::updateSongTags,
-            onOpenEqualizer = { viewModel.openEqualizer(context) },
-            onSetSleepTimer = viewModel::setSleepTimer,
-            onChangeLanguage = { viewModel.changeLanguage(context, it) }
+            viewModel = viewModel,
+            windowSizeClass = windowSizeClass
         )
     }
 }

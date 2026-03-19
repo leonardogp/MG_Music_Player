@@ -45,8 +45,17 @@ interface MusicDao {
     @Query("SELECT * FROM songs")
     fun getAllSongsFlow(): kotlinx.coroutines.flow.Flow<List<SongEntity>>
 
+    @Query("SELECT * FROM songs")
+    suspend fun getAllSongs(): List<SongEntity>
+
+    @Query("SELECT id FROM songs")
+    suspend fun getAllIds(): List<Long>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSongs(songs: List<SongEntity>)
+
+    @Query("DELETE FROM songs WHERE id IN (:ids)")
+    suspend fun deleteSongsByIds(ids: List<Long>)
 
     @Query("DELETE FROM songs WHERE id NOT IN (:currentIds)")
     suspend fun removeDeletedSongs(currentIds: List<Long>)
@@ -110,7 +119,7 @@ abstract class MusicDatabase : RoomDatabase() {
                     MusicDatabase::class.java,
                     "music_database"
                 )
-                .fallbackToDestructiveMigration() // Importante para la actualización de versión 1 a 2
+                .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
                 instance

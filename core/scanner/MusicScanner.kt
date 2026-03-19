@@ -68,16 +68,13 @@ class MusicScanner(private val context: Context) {
                     "Desconocida"
                 }
 
-                // Obtener género de MediaStore
-                val genre = getGenreForSong(id) ?: "Sin género"
-
                 val song = Song(
                     id = id,
                     albumId = albumId,
                     title = title,
                     artist = artist,
                     album = album,
-                    genre = genre,
+                    genre = "Sin género",
                     folder = folder,
                     path = contentUri.toString(),
                     albumArtUri = albumArtUri
@@ -90,23 +87,15 @@ class MusicScanner(private val context: Context) {
                     onSongsFound(batch.toList())
                     batch.clear()
                     onProgress(current, total)
+                } else if (current == total) {
+                    if (batch.isNotEmpty()) {
+                        onSongsFound(batch.toList())
+                        batch.clear()
+                    }
+                    onProgress(current, total)
                 }
-            }
-            if (batch.isNotEmpty()) {
-                onSongsFound(batch.toList())
-                batch.clear()
-                onProgress(current, total)
             }
         }
         return songs
-    }
-
-    private fun getGenreForSong(songId: Long): String? {
-        val uri = MediaStore.Audio.Genres.getContentUriForAudioId("external", songId.toInt())
-        val projection = arrayOf(MediaStore.Audio.Genres.NAME)
-        val cursor = context.contentResolver.query(uri, projection, null, null, null)
-        return cursor?.use {
-            if (it.moveToFirst()) it.getString(it.getColumnIndexOrThrow(MediaStore.Audio.Genres.NAME)) else null
-        }
     }
 }

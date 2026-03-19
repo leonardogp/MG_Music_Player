@@ -7,6 +7,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.annotation.OptIn
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
+import androidx.compose.runtime.LaunchedEffect
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -18,11 +21,11 @@ import com.lg.monkeymusicplayer.core.utils.SongCoverFetcher
 import com.lg.monkeymusicplayer.data.database.MusicDatabase
 import com.lg.monkeymusicplayer.data.repository.MusicRepository
 import com.lg.monkeymusicplayer.ui.components.PermissionHandler
+import com.lg.monkeymusicplayer.ui.components.ScaffoldWithInsets
 import com.lg.monkeymusicplayer.ui.theme.monkeymusicplayerTheme
 
 class MainActivity : ComponentActivity(), ImageLoaderFactory {
 
-    @OptIn(UnstableApi::class)
     private val viewModel: MusicViewModel by viewModels {
         object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -30,7 +33,7 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
                 val database = MusicDatabase.getDatabase(applicationContext)
                 val repository = MusicRepository(applicationContext, database.musicDao())
                 val playerManager = MusicPlayerManager(applicationContext)
-                return MusicViewModel(repository, playerManager) as T
+                return MusicViewModel(repository, playerManager, applicationContext) as T
             }
         }
     }
@@ -43,6 +46,7 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
             .build()
     }
 
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class, UnstableApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -56,12 +60,20 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
         }
 
         setContent {
+            val windowSizeClass = calculateWindowSizeClass(this)
+            
             monkeymusicplayerTheme {
                 PermissionHandler(
                     requiredPermissions = permissions,
                     onExit = { finish() },
                     onPermissionsGranted = {
-                        AppRoot(viewModel)
+                        LaunchedEffect(Unit) {
+                            viewModel.scanMusic()
+                        }
+
+                        ScaffoldWithInsets {
+                            AppRoot(viewModel, windowSizeClass)
+                        }
                     }
                 )
             }

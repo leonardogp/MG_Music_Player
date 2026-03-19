@@ -2,6 +2,7 @@ package com.lg.monkeymusicplayer.ui
 
 import androidx.compose.ui.graphics.Color
 import com.lg.monkeymusicplayer.data.model.Song
+import com.lg.monkeymusicplayer.data.model.LyricLine
 
 data class PlayerState(
     val currentSong: Song? = null,
@@ -12,7 +13,16 @@ data class PlayerState(
     val duration: Long = 0L,
     val currentQueue: List<Song> = emptyList(),
     val audioSessionId: Int = -1,
-    val accentColor: Color = Color(0xFF6200EE), // Default accent
+    val accentColor: Color = Color(0xFF6200EE),
+    val lyrics: List<LyricLine> = emptyList(),
     val sleepTimerMinutes: Int = 0,
-    val sleepTimerRemainingMillis: Long = 0L
-)
+    val sleepTimerRemainingMillis: Long = 0L,
+    val shuffleEnabled: Boolean = false,
+    val isFavorite: Boolean = false
+) {
+    object RepeatMode {
+        const val NONE = 0
+        const val ALL = 1
+        const val ONE = 2
+    }
+}

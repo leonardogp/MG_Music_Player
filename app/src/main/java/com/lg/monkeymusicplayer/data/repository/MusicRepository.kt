@@ -35,14 +35,27 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
     val playlists: Flow<List<PlaylistEntity>> = musicDao.getPlaylists()
 
     suspend fun getSongs(): List<Song> = withContext(Dispatchers.IO) {
-        scanner.scan()
+        musicDao.getAllSongs().map { it.toDomainModel() }
     }
 
     suspend fun refreshMusicDatabase(onProgress: (Int, Int) -> Unit = { _, _ -> }) = withContext(Dispatchers.IO) {
-        val scannedSongs = scanner.scan(onProgress)
-        val entities = scannedSongs.map { it.toEntity() }
-        musicDao.insertSongs(entities)
-        musicDao.removeDeletedSongs(scannedSongs.map { it.id })
+        val allScannedIds = mutableListOf<Long>()
+        
+        scanner.scan(
+            onProgress = onProgress,
+            onSongsFound = { songsBatch ->
+                val entities = songsBatch.map { it.toEntity() }
+                // Insertar en la base de datos de forma incremental
+                // Esto disparará el Flow allSongsFlow y actualizará la UI poco a poco
+                musicDao.insertSongs(entities)
+                allScannedIds.addAll(songsBatch.map { it.id })
+            }
+        )
+        
+        // Limpiar canciones que ya no existen en el dispositivo
+        if (allScannedIds.isNotEmpty()) {
+            musicDao.removeDeletedSongs(allScannedIds)
+        }
     }
 
     suspend fun toggleFavorite(songId: Long, isFavorite: Boolean) {
@@ -81,8 +94,8 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
 
     suspend fun getSongsInPlaylist(playlistId: Long): List<Song> = withContext(Dispatchers.IO) {
         val songIds = musicDao.getSongsInPlaylist(playlistId)
-        val scannedSongs = getSongs() // O usar caché si fuera necesario
-        scannedSongs.filter { songIds.contains(it.id) }
+        val allSongs = musicDao.getAllSongs()
+        allSongs.filter { songIds.contains(it.id) }.map { it.toDomainModel() }
     }
 
     suspend fun updateSongTags(song: Song, newTitle: String, newArtist: String, newAlbum: String, newGenre: String): Boolean = withContext(Dispatchers.IO) {

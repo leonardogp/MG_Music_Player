@@ -104,26 +104,32 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
             if (filePath != null) {
                 val file = File(filePath)
                 if (file.exists()) {
-                    val mp3file = Mp3File(file.absolutePath)
-                    val id3v2Tag = if (mp3file.hasId3v2Tag()) mp3file.id3v2Tag else ID3v24Tag()
-                    id3v2Tag.title = newTitle
-                    id3v2Tag.artist = newArtist
-                    id3v2Tag.album = newAlbum
-                    id3v2Tag.genreDescription = newGenre
-                    mp3file.id3v2Tag = id3v2Tag
-                    
-                    val tempPath = file.absolutePath + ".tmp"
-                    mp3file.save(tempPath)
-                    val tempFile = File(tempPath)
-                    if (tempFile.exists()) {
-                        if (file.delete()) {
-                            tempFile.renameTo(file)
-                        } else {
-                            tempFile.delete()
-                            return@withContext false
+                    // 1. Actualizar el archivo físico (si es MP3)
+                    try {
+                        val mp3file = Mp3File(file.absolutePath)
+                        val id3v2Tag = if (mp3file.hasId3v2Tag()) mp3file.id3v2Tag else ID3v24Tag()
+                        id3v2Tag.title = newTitle
+                        id3v2Tag.artist = newArtist
+                        id3v2Tag.album = newAlbum
+                        id3v2Tag.genreDescription = newGenre
+                        mp3file.id3v2Tag = id3v2Tag
+                        
+                        val tempPath = file.absolutePath + ".tmp"
+                        mp3file.save(tempPath)
+                        val tempFile = File(tempPath)
+                        if (tempFile.exists()) {
+                            if (file.delete()) {
+                                tempFile.renameTo(file)
+                            } else {
+                                tempFile.delete()
+                            }
                         }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        // Continuamos aunque falle el ID3 para al menos actualizar la DB y MediaStore
                     }
                     
+                    // 2. Notificar al sistema (MediaStore)
                     suspendCoroutine { continuation ->
                         MediaScannerConnection.scanFile(context, arrayOf(file.absolutePath), null) { _, _ ->
                             continuation.resume(Unit)
@@ -142,8 +148,8 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
                         arrayOf(song.id.toString())
                     )
                     
-                    // Refrescar localmente en la DB después de actualizar tags
-                    refreshMusicDatabase()
+                    // 3. Actualizar la base de datos local de Room inmediatamente
+                    musicDao.updateSongTags(song.id, newTitle, newArtist, newAlbum, newGenre)
                     
                     return@withContext true
                 }

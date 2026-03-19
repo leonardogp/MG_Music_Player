@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Cleaned up: Rely on Compose Theme.kt for Material 3, keep only Splash -->
+    <style name="Theme.monkeymusicplayer" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
 
-    <style name="Theme.MGMusicPlayer" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.MonkeyPlayer.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#121212</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.monkeymusicplayer</item>
+    </style>
 </resources>
+

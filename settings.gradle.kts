@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "MG Music Player"
+rootProject.name = "Monkey Music Player"
 include(":app")

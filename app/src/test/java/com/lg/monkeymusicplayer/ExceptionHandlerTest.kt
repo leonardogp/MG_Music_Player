@@ -1,35 +1,29 @@
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnitRunner;
+package com.lg.monkeymusicplayer
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import android.content.Context
+import com.lg.monkeymusicplayer.core.exception.GlobalExceptionHandler
+import org.junit.Assert.assertNotNull
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.mockito.Mock
+import org.mockito.Mockito.mock
+import org.mockito.junit.MockitoJUnitRunner
 
-@RunWith(MockitoJUnitRunner.class)
-public class GlobalExceptionHandlerTest {
+@RunWith(MockitoJUnitRunner::class)
+class ExceptionHandlerTest {
 
     @Test
-    public void testUncaughtExceptionLogged() {
-        GlobalExceptionHandler handler = new GlobalExceptionHandler();
-        Exception exception = new RuntimeException("Test Exception");
-
-        handler.uncaughtException(Thread.currentThread(), exception);
-
-        // Verify that the exception is properly logged
-        // Assume we have a method isLogged that checks if the exception was logged
-        assertTrue(handler.isLogged(exception));
+    fun testHandlerInstantiation() {
+        val mockContext = mock(Context::class.java)
+        val handler = GlobalExceptionHandler(mockContext)
+        assertNotNull(handler)
     }
 
     @Test
-    public void testCustomExceptionThrown() {
-        GlobalExceptionHandler handler = new GlobalExceptionHandler();
-
-        Exception exception = assertThrows(CustomException.class, () -> {
-            handler.throwCustomException();
-        });
-
-        assertEquals("This is a custom exception", exception.getMessage());
+    fun testSetup() {
+        val mockContext = mock(Context::class.java)
+        GlobalExceptionHandler.setup(mockContext)
+        // Verify that the default uncaught exception handler is set
+        assertNotNull(Thread.getDefaultUncaughtExceptionHandler())
     }
 }

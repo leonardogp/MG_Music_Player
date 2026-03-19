@@ -1,5 +1,8 @@
-import org.junit.Test
+package com.lg.monkeymusicplayer
+
+import com.lg.monkeymusicplayer.core.result.Result
 import org.junit.Assert.*
+import org.junit.Test
 
 class ResultTest {
 
@@ -12,14 +15,14 @@ class ResultTest {
 
     @Test
     fun testError() {
-        val errorResult = Result.Error(Exception("An error occurred"))
+        val errorResult = Result.Error<String>("An error occurred")
         assertTrue(errorResult.isError())
         assertNull(errorResult.getOrNull())
     }
 
     @Test
     fun testLoading() {
-        val loadingResult = Result.Loading
+        val loadingResult = Result.Loading<String>()
         assertTrue(loadingResult.isLoading())
         assertNull(loadingResult.getOrNull())
     }
@@ -33,13 +36,13 @@ class ResultTest {
 
     @Test
     fun testIsError() {
-        val result = Result.Error(Exception("Error!"))
+        val result = Result.Error<String>("Error!")
         assertTrue(result.isError())
     }
 
     @Test
     fun testIsLoading() {
-        val result = Result.Loading
+        val result = Result.Loading<String>()
         assertTrue(result.isLoading())
     }
 }
@@ -48,7 +51,7 @@ fun <T> Result<T>.getOrNull(): T? {
     return when (this) {
         is Result.Success -> this.data
         is Result.Error -> null
-        Result.Loading -> null
+        is Result.Loading -> null
     }
 }
 
@@ -61,5 +64,5 @@ fun <T> Result<T>.isError(): Boolean {
 }
 
 fun <T> Result<T>.isLoading(): Boolean {
-    return this == Result.Loading
+    return this is Result.Loading
 }

@@ -1,8 +1,15 @@
 package com.lg.monkeymusicplayer.core.logger
 
 import timber.log.Timber
+import com.lg.monkeymusicplayer.BuildConfig
 
 object AppLogger {
+    fun initialize() {
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        }
+    }
+
     fun d(tag: String, message: String) {
         Timber.tag(tag).d(message)
     }

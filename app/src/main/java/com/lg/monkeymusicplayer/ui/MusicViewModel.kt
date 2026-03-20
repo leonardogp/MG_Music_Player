@@ -54,6 +54,14 @@ class MusicViewModel(
     val searchQuery = _searchQuery.asStateFlow()
     val equalizerData = playerManager.equalizerData
 
+    // Optimizamos la cola mapeada para que no se recalcule cada segundo con el progreso
+    private val mappedQueueFlow = combine(
+        playerManager.currentQueue,
+        repository.favorites
+    ) { queue, favorites ->
+        queue.map { it.copy(isFavorite = favorites.contains(it.id)) }
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
     private val playerStateFlow = combine(
         playerManager.currentSong,
         playerManager.isPlaying,
@@ -61,7 +69,7 @@ class MusicViewModel(
         playerManager.repeatMode,
         playerManager.currentPosition,
         playerManager.duration,
-        playerManager.currentQueue,
+        mappedQueueFlow,
         playerManager.audioSessionId,
         _accentColor,
         _lyrics,
@@ -70,7 +78,7 @@ class MusicViewModel(
         repository.favorites
     ) { args: Array<Any?> ->
         val currentSong = args[0] as Song?
-        val currentQueue = (args[6] as? List<*>)?.filterIsInstance<Song>() ?: emptyList()
+        val currentQueue = args[6] as List<Song>
         @Suppress("UNCHECKED_CAST")
         val favorites = args[12] as List<Long>
         
@@ -83,7 +91,7 @@ class MusicViewModel(
             repeatMode = args[3] as Int,
             currentPosition = args[4] as Long,
             duration = args[5] as Long,
-            currentQueue = currentQueue.map { it.copy(isFavorite = favorites.contains(it.id)) },
+            currentQueue = currentQueue,
             audioSessionId = args[7] as Int,
             accentColor = args[8] as Color,
             lyrics = (args[9] as? List<*>)?.filterIsInstance<LyricLine>() ?: emptyList(),
@@ -124,7 +132,7 @@ class MusicViewModel(
         
         LibraryData(
             songs = filtered,
-            playlists = playlists,
+            playlists = playlists.filter { it.name.contains(query, ignoreCase = true) },
             history = history,
             currentPlaylistSongs = mappedPlaylistSongs,
             genres = filtered.groupBy { it.genre },
@@ -283,7 +291,6 @@ class MusicViewModel(
         playerManager.fetchEqualizerData()
     }
 
-    fun changeLanguage(context: Context, languageCode: String) { /* Implementar */ }
     fun createPlaylist(name: String) = viewModelScope.launch(Dispatchers.IO) { repository.createPlaylist(name) }
     fun deletePlaylist(playlist: PlaylistEntity) = viewModelScope.launch(Dispatchers.IO) { repository.deletePlaylist(playlist) }
     fun addSongToPlaylist(playlistId: String, song: Song) = viewModelScope.launch(Dispatchers.IO) {

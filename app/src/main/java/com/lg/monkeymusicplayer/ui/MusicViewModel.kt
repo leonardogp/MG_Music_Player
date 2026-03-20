@@ -66,23 +66,31 @@ class MusicViewModel(
         _accentColor,
         _lyrics,
         _sleepTimerMinutes,
-        _sleepTimerRemaining
+        _sleepTimerRemaining,
+        repository.favorites
     ) { args: Array<Any?> ->
+        val currentSong = args[0] as Song?
+        val currentQueue = (args[6] as? List<*>)?.filterIsInstance<Song>() ?: emptyList()
+        @Suppress("UNCHECKED_CAST")
+        val favorites = args[12] as List<Long>
+        
+        val isFavorite = currentSong?.let { favorites.contains(it.id) } ?: false
+        
         PlayerState(
-            currentSong = args[0] as Song?,
+            currentSong = currentSong?.copy(isFavorite = isFavorite),
             isPlaying = args[1] as Boolean,
             isShuffleMode = args[2] as Boolean,
             repeatMode = args[3] as Int,
             currentPosition = args[4] as Long,
             duration = args[5] as Long,
-            currentQueue = (args[6] as? List<*>)?.filterIsInstance<Song>() ?: emptyList(),
+            currentQueue = currentQueue.map { it.copy(isFavorite = favorites.contains(it.id)) },
             audioSessionId = args[7] as Int,
             accentColor = args[8] as Color,
             lyrics = (args[9] as? List<*>)?.filterIsInstance<LyricLine>() ?: emptyList(),
             sleepTimerMinutes = args[10] as Int,
             sleepTimerRemainingMillis = args[11] as Long,
             shuffleEnabled = args[2] as Boolean,
-            isFavorite = (args[0] as? Song)?.isFavorite ?: false
+            isFavorite = isFavorite
         )
     }
 
@@ -92,23 +100,33 @@ class MusicViewModel(
         _sortOrder,
         repository.playlists,
         repository.history,
-        _currentPlaylistSongs
+        _currentPlaylistSongs,
+        repository.favorites
     ) { args: Array<Any?> ->
+        @Suppress("UNCHECKED_CAST")
         val songs = args[0] as List<Song>
         val query = args[1] as String
         val order = args[2] as SortOrder
+        @Suppress("UNCHECKED_CAST")
         val playlists = args[3] as List<PlaylistEntity>
+        @Suppress("UNCHECKED_CAST")
         val history = args[4] as List<HistoryEntity>
+        @Suppress("UNCHECKED_CAST")
         val playlistSongs = args[5] as List<Song>
+        @Suppress("UNCHECKED_CAST")
+        val favorites = args[6] as List<Long>
 
-        val filtered = if (query.isBlank()) songs
-                      else songs.filter { it.title.contains(query, ignoreCase = true) || it.artist.contains(query, ignoreCase = true) }
+        val mappedSongs = songs.map { it.copy(isFavorite = favorites.contains(it.id)) }
+        val mappedPlaylistSongs = playlistSongs.map { it.copy(isFavorite = favorites.contains(it.id)) }
+
+        val filtered = if (query.isBlank()) mappedSongs
+                      else mappedSongs.filter { it.title.contains(query, ignoreCase = true) || it.artist.contains(query, ignoreCase = true) }
         
         LibraryData(
             songs = filtered,
             playlists = playlists,
             history = history,
-            currentPlaylistSongs = playlistSongs,
+            currentPlaylistSongs = mappedPlaylistSongs,
             genres = filtered.groupBy { it.genre },
             artists = filtered.groupBy { it.artist },
             albums = filtered.groupBy { it.album },
@@ -303,7 +321,9 @@ class MusicViewModel(
     }
 
     fun toggleFavorite(song: Song) = viewModelScope.launch {
-        repository.toggleFavorite(song.id, !song.isFavorite)
+        val currentFavorites = repository.favorites.first()
+        val isCurrentlyFavorite = currentFavorites.contains(song.id)
+        repository.toggleFavorite(song.id, !isCurrentlyFavorite)
     }
 
     fun updateSongTags(song: Song, title: String, artist: String, album: String, genre: String) = viewModelScope.launch {

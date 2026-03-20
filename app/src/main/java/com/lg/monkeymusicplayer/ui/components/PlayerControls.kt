@@ -7,8 +7,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.lg.monkeymusicplayer.R
 import com.lg.monkeymusicplayer.ui.PlayerState
+import com.lg.monkeymusicplayer.ui.theme.PrimaryOrange
 
 @Composable
 fun PlayerControls(
@@ -35,12 +39,12 @@ fun PlayerControls(
         ) {
             // Skip previous
             IconButton(onClick = onSkipPrevious) {
-                Icon(Icons.Default.SkipPrevious, contentDescription = "Previous")
+                Icon(Icons.Default.SkipPrevious, contentDescription = stringResource(R.string.previous))
             }
 
             // Seek back 10s
             IconButton(onClick = onSeekBack) {
-                Icon(Icons.Default.Replay10, contentDescription = "Seek back 10s")
+                Icon(Icons.Default.Replay10, contentDescription = stringResource(R.string.seek_back_10))
             }
 
             // Play/Pause main button
@@ -50,19 +54,19 @@ fun PlayerControls(
             ) {
                 Icon(
                     imageVector = if (playerState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.play_pause),
                     modifier = Modifier.size(24.dp)
                 )
             }
 
             // Seek forward 10s
             IconButton(onClick = onSeekForward) {
-                Icon(Icons.Default.Replay30, contentDescription = "Seek forward 10s")
+                Icon(Icons.Default.Replay30, contentDescription = stringResource(R.string.seek_forward_10))
             }
 
             // Skip next
             IconButton(onClick = onSkipNext) {
-                Icon(Icons.Default.SkipNext, contentDescription = "Next")
+                Icon(Icons.Default.SkipNext, contentDescription = stringResource(R.string.skip_next))
             }
         }
 
@@ -75,8 +79,8 @@ fun PlayerControls(
             IconButton(onClick = onToggleShuffle) {
                 Icon(
                     Icons.Default.Shuffle,
-                    contentDescription = "Shuffle",
-                    tint = if (playerState.shuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    contentDescription = stringResource(R.string.shuffle),
+                    tint = if (playerState.shuffleEnabled) PrimaryOrange else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -89,8 +93,8 @@ fun PlayerControls(
                 }
                 Icon(
                     imageVector = icon,
-                    contentDescription = "Repeat",
-                    tint = if (playerState.repeatMode != PlayerState.RepeatMode.NONE) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    contentDescription = stringResource(R.string.repeat),
+                    tint = if (playerState.repeatMode != PlayerState.RepeatMode.NONE) PrimaryOrange else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -100,8 +104,8 @@ fun PlayerControls(
             IconButton(onClick = onToggleFavorite) {
                 Icon(
                     imageVector = if (playerState.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    contentDescription = "Favorite",
-                    tint = if (playerState.isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                    contentDescription = stringResource(R.string.favorites),
+                    tint = if (playerState.isFavorite) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

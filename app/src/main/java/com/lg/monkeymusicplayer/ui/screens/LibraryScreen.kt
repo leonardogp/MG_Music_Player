@@ -2,6 +2,7 @@ package com.lg.monkeymusicplayer.ui.screens
 
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,10 +29,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.os.LocaleListCompat
 import androidx.navigation.compose.*
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -45,6 +48,7 @@ import com.lg.monkeymusicplayer.ui.LibraryUiState
 import com.lg.monkeymusicplayer.ui.MusicViewModel
 import com.lg.monkeymusicplayer.ui.components.MediaProgressSlider
 import com.lg.monkeymusicplayer.ui.components.PlayerControls
+import com.lg.monkeymusicplayer.ui.theme.PrimaryOrange
 import androidx.media3.common.Player
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -83,9 +87,12 @@ fun LibraryScreen(
                 onRemoveSongFromPlaylist = viewModel::removeSongFromPlaylist,
                 onLoadPlaylistSongs = viewModel::loadPlaylistSongs,
                 onUpdateSongTags = { song, t, a, al, g -> viewModel.updateSongTags(song, t, a, al, g) },
-                onOpenEqualizer = { viewModel.openEqualizer(viewModel.context) }, // ViewModel needs to provide context or we use LocalContext
+                onOpenEqualizer = { viewModel.openEqualizer(viewModel.context) },
                 onSetSleepTimer = viewModel::setSleepTimer,
-                onChangeLanguage = { /* viewModel.changeLanguage(it) */ },
+                onChangeLanguage = { lang ->
+                    val appLocale: LocaleListCompat = LocaleListCompat.forLanguageTags(lang)
+                    AppCompatDelegate.setApplicationLocales(appLocale)
+                },
                 onPlayerClick = { navController.navigate("player") },
                 onMenuClick = { navController.navigate("settings") }
             )
@@ -124,7 +131,10 @@ fun LibraryScreen(
                 onScanMusic = { viewModel.scanMusic() },
                 onOpenEqualizer = { viewModel.openEqualizer(viewModel.context) },
                 onSetSleepTimer = viewModel::setSleepTimer,
-                onChangeLanguage = { /* viewModel.changeLanguage(it) */ }
+                onChangeLanguage = { lang ->
+                    val appLocale: LocaleListCompat = LocaleListCompat.forLanguageTags(lang)
+                    AppCompatDelegate.setApplicationLocales(appLocale)
+                }
             )
         }
         composable("equalizer") {
@@ -175,10 +185,10 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Ajustes") },
+                title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 }
             )
@@ -187,7 +197,7 @@ fun SettingsScreen(
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             ListItem(
                 modifier = Modifier.clickable { onScanMusic() },
-                headlineContent = { Text("Escanear música") },
+                headlineContent = { Text(stringResource(R.string.scan_music)) },
                 leadingContent = { 
                     if (uiState.isScanning) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
@@ -203,7 +213,10 @@ fun SettingsScreen(
                                 progress = { progress },
                                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                             )
-                            Text("Escaneando: ${uiState.scanProgress} / ${uiState.scanTotal}", style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                stringResource(R.string.scanning_progress, uiState.scanProgress, uiState.scanTotal),
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         }
                     }
                 }
@@ -212,9 +225,9 @@ fun SettingsScreen(
                 modifier = Modifier.clickable { showSleepTimerDialog = true },
                 headlineContent = { 
                     val timerText = if (uiState.playerState.sleepTimerMinutes > 0) {
-                        "Temporizador (${formatTime(uiState.playerState.sleepTimerRemainingMillis)})"
+                        stringResource(R.string.timer_active, formatTime(uiState.playerState.sleepTimerRemainingMillis))
                     } else {
-                        "Temporizador de apagado"
+                        stringResource(R.string.sleep_timer)
                     }
                     Text(timerText) 
                 },
@@ -222,12 +235,12 @@ fun SettingsScreen(
             )
             ListItem(
                 modifier = Modifier.clickable { navController.navigate("equalizer") },
-                headlineContent = { Text("Ecualizador") },
+                headlineContent = { Text(stringResource(R.string.equalizer)) },
                 leadingContent = { Icon(Icons.Default.GraphicEq, contentDescription = null) }
             )
             ListItem(
                 modifier = Modifier.clickable { showLanguageDialog = true },
-                headlineContent = { Text("Idioma") },
+                headlineContent = { Text(stringResource(R.string.language)) },
                 leadingContent = { Icon(Icons.Default.Language, contentDescription = null) }
             )
         }
@@ -356,7 +369,17 @@ fun MobileLayout(
     onToggleFavorite: (Song) -> Unit,
     onOpenEqualizer: () -> Unit
 ) {
-    val tabs = listOf("Principal", "Canciones", "Géneros", "Artistas", "Álbumes", "Carpetas", "Playlists", "Favoritos", "Historial")
+    val tabs = listOf(
+        R.string.tab_main,
+        R.string.tab_songs,
+        R.string.tab_genres,
+        R.string.tab_artists,
+        R.string.tab_albums,
+        R.string.tab_folders,
+        R.string.tab_playlists,
+        R.string.tab_favorites,
+        R.string.tab_history
+    )
     var selectedCategoryItem by remember { mutableStateOf<String?>(null) }
     var selectedPlaylistId by remember { mutableStateOf<String?>(null) }
     var showSortMenu by remember { mutableStateOf(false) }
@@ -378,15 +401,15 @@ fun MobileLayout(
                                     onValueChange = onSearchQueryChanged,
                                     modifier = Modifier.fillMaxWidth(),
                                     placeholder = { 
-                                        val hint = when(currentTab) {
-                                            2 -> "Buscar géneros..."
-                                            3 -> "Buscar artistas..."
-                                            4 -> "Buscar álbumes..."
-                                            5 -> "Buscar carpetas..."
-                                            6 -> "Buscar playlists..."
-                                            else -> "Buscar canciones..."
+                                        val hintId = when(currentTab) {
+                                            2 -> R.string.search_genres
+                                            3 -> R.string.search_artists
+                                            4 -> R.string.search_albums
+                                            5 -> R.string.search_folders
+                                            6 -> R.string.search_playlists
+                                            else -> R.string.search_songs
                                         }
-                                        Text(hint) 
+                                        Text(stringResource(hintId)) 
                                     },
                                     singleLine = true,
                                     colors = TextFieldDefaults.colors(
@@ -398,7 +421,7 @@ fun MobileLayout(
                                             isSearchActive = false
                                             onSearchQueryChanged("")
                                         }) {
-                                            Icon(Icons.Default.Close, contentDescription = "Cerrar búsqueda")
+                                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close_search))
                                         }
                                     }
                                 )
@@ -406,10 +429,10 @@ fun MobileLayout(
                                 if (currentTab in 2..5 && selectedCategoryItem != null) {
                                     Text(text = selectedCategoryItem!!)
                                 } else if (currentTab == 6 && selectedPlaylistId != null) {
-                                    val title = uiState.playlists.find { it.id.toString() == selectedPlaylistId }?.name ?: "Playlist"
+                                    val title = uiState.playlists.find { it.id.toString() == selectedPlaylistId }?.name ?: stringResource(R.string.playlist)
                                     Text(text = title)
                                 } else {
-                                    Text(text = tabs[currentTab])
+                                    Text(text = stringResource(tabs[currentTab]))
                                 }
                             }
                         }
@@ -421,13 +444,13 @@ fun MobileLayout(
                                 selectedCategoryItem = null 
                                 selectedPlaylistId = null
                             }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                             }
                         } else if (!isSearchActive) {
                             IconButton(onClick = onMenuClick) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_monkey_head),
-                                    contentDescription = "Ajustes",
+                                    contentDescription = stringResource(R.string.settings_title),
                                     modifier = Modifier.size(32.dp),
                                     tint = Color.Unspecified
                                 )
@@ -437,11 +460,11 @@ fun MobileLayout(
                     actions = {
                         if (!isSearchActive) {
                             IconButton(onClick = { isSearchActive = true }) {
-                                Icon(Icons.Default.Search, contentDescription = "Buscar")
+                                Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
                             }
                             if (pagerState.currentPage == 1 && selectedCategoryItem == null) {
                                 IconButton(onClick = { showSortMenu = true }) {
-                                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
+                                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.sort))
                                 }
                                 DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
                                     SortOrder.entries.forEach { order ->
@@ -456,7 +479,7 @@ fun MobileLayout(
                     }
                 )
                 ScrollableTabRow(selectedTabIndex = pagerState.currentPage, edgePadding = 16.dp, divider = {}) {
-                    tabs.forEachIndexed { index, title ->
+                    tabs.forEachIndexed { index, titleId ->
                         Tab(
                             selected = pagerState.currentPage == index,
                             onClick = { 
@@ -468,7 +491,7 @@ fun MobileLayout(
                                 isSearchActive = false
                                 onSearchQueryChanged("")
                             },
-                            text = { Text(title) }
+                            text = { Text(stringResource(titleId)) }
                         )
                     }
                 }
@@ -484,7 +507,6 @@ fun MobileLayout(
             beyondViewportPageCount = 1,
             userScrollEnabled = (selectedCategoryItem == null && selectedPlaylistId == null)
         ) { page ->
-            // Filtrar datos según la búsqueda
             val filteredSongs = uiState.songs.filter { it.title.contains(uiState.searchQuery, ignoreCase = true) || it.artist.contains(uiState.searchQuery, ignoreCase = true) }
             val filteredGenres = uiState.genres.filterKeys { it.contains(uiState.searchQuery, ignoreCase = true) }
             val filteredArtists = uiState.artists.filterKeys { it.contains(uiState.searchQuery, ignoreCase = true) }
@@ -542,12 +564,12 @@ fun MainTab(
     val favoriteSongs = songs.filter { it.isFavorite }
     
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Favoritos", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.favorites), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(16.dp))
         
         if (favoriteSongs.isEmpty()) {
             Box(modifier = Modifier.height(200.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-                Text("No tienes favoritos aún", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.no_favorites_yet), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyRow(
@@ -561,7 +583,7 @@ fun MainTab(
         }
         
         Spacer(modifier = Modifier.height(32.dp))
-        Text("Recientes", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.recent), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
         
         LazyColumn(modifier = Modifier.weight(1f)) {
@@ -588,7 +610,7 @@ fun FavoriteCarouselItem(song: Song, onClick: () -> Unit) {
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.height(150.dp).fillMaxWidth(),
-                error = painterResource(R.drawable.ic_monkey_head) // Fixed: Use available icon
+                error = painterResource(R.drawable.ic_monkey_head)
             )
             Column(modifier = Modifier.padding(8.dp)) {
                 Text(song.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -654,17 +676,17 @@ fun PlayerBottomBar(
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = onSkipPrevious) {
-                                Icon(Icons.Default.SkipPrevious, contentDescription = "Anterior")
+                                Icon(Icons.Default.SkipPrevious, contentDescription = stringResource(R.string.previous))
                             }
-                            IconButton(onClick = onPlayPause) {
+                            IconButton(onClick = { onPlayPause() }) {
                                 Icon(
                                     imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, 
-                                    contentDescription = "Play/Pause",
+                                    contentDescription = stringResource(R.string.play_pause),
                                     modifier = Modifier.size(32.dp)
                                 )
                             }
                             IconButton(onClick = onSkipNext) { 
-                                Icon(Icons.Default.SkipNext, contentDescription = "Próxima") 
+                                Icon(Icons.Default.SkipNext, contentDescription = stringResource(R.string.next)) 
                             }
                         }
                     }
@@ -714,7 +736,7 @@ fun FullPlayerScreen(
             sheetState = sheetState
         ) {
             Text(
-                "Siguiente en la cola", 
+                stringResource(R.string.next_in_queue), 
                 modifier = Modifier.padding(16.dp), 
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
@@ -786,10 +808,10 @@ fun FullPlayerScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onClose) {
-                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Cerrar", tint = Color.White)
+                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.close), tint = Color.White)
                 }
                 IconButton(onClick = { showQueue = true }) {
-                    Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = "Ver Cola", tint = Color.White)
+                    Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = stringResource(R.string.view_queue), tint = Color.White)
                 }
             }
             
@@ -812,7 +834,7 @@ fun FullPlayerScreen(
             }
 
             Box(modifier = Modifier.height(80.dp).fillMaxWidth()) {
-                // AudioVisualizer(audioSessionId) // Commented out to avoid unresolved reference if not present
+                // AudioVisualizer(audioSessionId)
             }
             
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -862,8 +884,8 @@ fun FullPlayerScreen(
                     IconButton(onClick = onToggleShuffle) {
                         Icon(
                             Icons.Default.Shuffle, 
-                            contentDescription = "Shuffle",
-                            tint = if (isShuffleMode) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.7f)
+                            contentDescription = stringResource(R.string.shuffle),
+                            tint = if (isShuffleMode) PrimaryOrange else Color.White.copy(alpha = 0.7f)
                         )
                     }
                     IconButton(onClick = onCycleRepeatMode) {
@@ -873,19 +895,19 @@ fun FullPlayerScreen(
                                 Player.REPEAT_MODE_ALL -> Icons.Default.Repeat
                                 else -> Icons.Default.Repeat
                             },
-                            contentDescription = "Repeat",
-                            tint = if (repeatMode != Player.REPEAT_MODE_OFF) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.7f)
+                            contentDescription = stringResource(R.string.repeat),
+                            tint = if (repeatMode != Player.REPEAT_MODE_OFF) PrimaryOrange else Color.White.copy(alpha = 0.7f)
                         )
                     }
                     IconButton(onClick = onToggleFavorite) {
                         Icon(
                             imageVector = if (song.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "Favorite",
+                            contentDescription = stringResource(R.string.favorites),
                             tint = if (song.isFavorite) Color.Red else Color.White.copy(alpha = 0.7f)
                         )
                     }
                     IconButton(onClick = onAddToPlaylist) {
-                        Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = "Add Playlist", tint = Color.White.copy(alpha = 0.7f))
+                        Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = stringResource(R.string.add_to_playlist), tint = Color.White.copy(alpha = 0.7f))
                     }
                 }
                 
@@ -897,11 +919,11 @@ fun FullPlayerScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = onSkipPrevious) {
-                        Icon(Icons.Default.SkipPrevious, contentDescription = "Anterior", modifier = Modifier.size(36.dp), tint = Color.White)
+                        Icon(Icons.Default.SkipPrevious, contentDescription = stringResource(R.string.previous), modifier = Modifier.size(36.dp), tint = Color.White)
                     }
                     
                     IconButton(onClick = onSeekBack) {
-                        Icon(Icons.Default.Replay10, contentDescription = "Atrasar 10s", modifier = Modifier.size(30.dp), tint = Color.White)
+                        Icon(Icons.Default.Replay10, contentDescription = stringResource(R.string.seek_back_10), modifier = Modifier.size(30.dp), tint = Color.White)
                     }
                     
                     Spacer(modifier = Modifier.width(8.dp))
@@ -915,7 +937,7 @@ fun FullPlayerScreen(
                     ) {
                         Icon(
                             imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = "Play/Pause",
+                            contentDescription = stringResource(R.string.play_pause),
                             modifier = Modifier.size(40.dp)
                         )
                     }
@@ -923,11 +945,11 @@ fun FullPlayerScreen(
                     Spacer(modifier = Modifier.width(8.dp))
 
                     IconButton(onClick = onSeekForward) {
-                        Icon(Icons.Default.Forward10, contentDescription = "Adelantar 10s", modifier = Modifier.size(30.dp), tint = Color.White)
+                        Icon(Icons.Default.Forward10, contentDescription = stringResource(R.string.seek_forward_10), modifier = Modifier.size(30.dp), tint = Color.White)
                     }
 
                     IconButton(onClick = onSkipNext) {
-                        Icon(Icons.Default.SkipNext, contentDescription = "Siguiente", modifier = Modifier.size(36.dp), tint = Color.White)
+                        Icon(Icons.Default.SkipNext, contentDescription = stringResource(R.string.skip_next), modifier = Modifier.size(36.dp), tint = Color.White)
                     }
                 }
             }
@@ -970,36 +992,36 @@ fun SongItem(
         trailingContent = {
             Box {
                 IconButton(onClick = { showMenu = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "Opciones")
+                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.options))
                 }
                 DropdownMenu(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text(if (song.isFavorite) "Quitar de favoritos" else "Agregar a favoritos") },
+                        text = { Text(stringResource(if (song.isFavorite) R.string.remove_from_favorites else R.string.add_to_favorites)) },
                         leadingIcon = { Icon(if (song.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder, contentDescription = null, tint = if (song.isFavorite) Color.Red else LocalContentColor.current) },
                         onClick = { onToggleFavorite(song); showMenu = false }
                     )
                     DropdownMenuItem(
-                        text = { Text("Agregar a la cola") },
+                        text = { Text(stringResource(R.string.add_to_queue)) },
                         leadingIcon = { Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null) },
                         onClick = { onAddToQueue(song); showMenu = false }
                     )
                     DropdownMenuItem(
-                        text = { Text("Agregar a playlist") },
+                        text = { Text(stringResource(R.string.add_to_playlist)) },
                         leadingIcon = { Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null) },
                         onClick = { onAddSongToPlaylist(song); showMenu = false }
                     )
                     if (onRemoveFromPlaylist != null) {
                         DropdownMenuItem(
-                            text = { Text("Eliminar de la playlist") },
+                            text = { Text(stringResource(R.string.remove_from_playlist)) },
                             leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
                             onClick = { onRemoveFromPlaylist(); showMenu = false }
                         )
                     }
                     DropdownMenuItem(
-                        text = { Text("Editar etiquetas") },
+                        text = { Text(stringResource(R.string.edit_tags)) },
                         leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                         onClick = { onEditSong(song); showMenu = false }
                     )
@@ -1021,7 +1043,7 @@ fun SongList(
     onToggleFavorite: (Song) -> Unit
 ) {
     if (songs.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("No hay canciones") }
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(stringResource(R.string.no_songs)) }
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(songs) { song -> 
@@ -1063,7 +1085,7 @@ fun CategoryNavigation(
 @Composable
 fun CategorySummaryList(data: Map<String, List<Song>>, onItemClick: (String) -> Unit, icon: androidx.compose.ui.graphics.vector.ImageVector) {
     if (data.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("No hay elementos") }
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(stringResource(R.string.no_items)) }
     } else {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(data.keys.toList().sorted()) { key ->
@@ -1073,7 +1095,7 @@ fun CategorySummaryList(data: Map<String, List<Song>>, onItemClick: (String) -> 
                 ListItem(
                     modifier = Modifier.clickable { onItemClick(key) },
                     headlineContent = { Text(key) },
-                    supportingContent = { Text("$songCount canciones") },
+                    supportingContent = { Text(stringResource(R.string.songs_count, songCount)) },
                     leadingContent = { 
                         if (firstSong != null && icon == Icons.Default.Album) {
                             AsyncImage(
@@ -1108,14 +1130,14 @@ fun PlaylistSummaryList(
     Column(modifier = Modifier.fillMaxSize()) {
         ListItem(
             modifier = Modifier.clickable { onCreatePlaylist() },
-            headlineContent = { Text("Crear nueva playlist", fontWeight = FontWeight.Bold) },
+            headlineContent = { Text(stringResource(R.string.create_new_playlist), fontWeight = FontWeight.Bold) },
             leadingContent = { Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
         )
         HorizontalDivider()
         
         if (playlists.isEmpty()) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Text("No hay playlists creadas")
+                Text(stringResource(R.string.no_playlists))
             }
         } else {
             LazyColumn(modifier = Modifier.weight(1f)) {
@@ -1129,14 +1151,14 @@ fun PlaylistSummaryList(
                         trailingContent = {
                             Box {
                                 IconButton(onClick = { showMenu = true }) {
-                                    Icon(Icons.Default.MoreVert, contentDescription = "Opciones de playlist")
+                                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.playlist_options))
                                 }
                                 DropdownMenu(
                                     expanded = showMenu,
                                     onDismissRequest = { showMenu = false }
                                 ) {
                                     DropdownMenuItem(
-                                        text = { Text("Eliminar Playlist") },
+                                        text = { Text(stringResource(R.string.delete_playlist)) },
                                         leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
                                         onClick = { 
                                             onDeletePlaylist(playlist)
@@ -1163,11 +1185,11 @@ fun AddToPlaylistDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Agregar a playlist") },
+        title = { Text(stringResource(R.string.add_to_playlist)) },
         text = {
             Column {
                 if (playlists.isEmpty()) {
-                    Text("No tienes playlists creadas.")
+                    Text(stringResource(R.string.no_playlists))
                 } else {
                     LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
                         items(playlists) { playlist ->
@@ -1185,12 +1207,12 @@ fun AddToPlaylistDialog(
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Crear nueva playlist")
+                    Text(stringResource(R.string.create_new_playlist))
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }
@@ -1203,12 +1225,12 @@ fun CreatePlaylistDialog(
     var name by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nueva playlist") },
+        title = { Text(stringResource(R.string.new_playlist)) },
         text = {
             TextField(
                 value = name,
                 onValueChange = { name = it },
-                placeholder = { Text("Nombre de la playlist") },
+                placeholder = { Text(stringResource(R.string.playlist_name)) },
                 singleLine = true
             )
         },
@@ -1216,10 +1238,10 @@ fun CreatePlaylistDialog(
             TextButton(
                 onClick = { if (name.isNotBlank()) onConfirm(name) },
                 enabled = name.isNotBlank()
-            ) { Text("Crear") }
+            ) { Text(stringResource(R.string.create)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }
@@ -1237,22 +1259,22 @@ fun EditTagsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Editar etiquetas") },
+        title = { Text(stringResource(R.string.edit_tags)) },
         text = {
             Column {
-                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Título") })
-                OutlinedTextField(value = artist, onValueChange = { artist = it }, label = { Text("Artista") })
-                OutlinedTextField(value = album, onValueChange = { album = it }, label = { Text("Álbum") })
-                OutlinedTextField(value = genre, onValueChange = { genre = it }, label = { Text("Género") })
+                OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text(stringResource(R.string.title)) })
+                OutlinedTextField(value = artist, onValueChange = { artist = it }, label = { Text(stringResource(R.string.artist)) })
+                OutlinedTextField(value = album, onValueChange = { album = it }, label = { Text(stringResource(R.string.album)) })
+                OutlinedTextField(value = genre, onValueChange = { genre = it }, label = { Text(stringResource(R.string.genre)) })
             }
         },
         confirmButton = {
             Button(onClick = { onSave(title, artist, album, genre) }) {
-                Text("Guardar")
+                Text(stringResource(R.string.save))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }
@@ -1266,10 +1288,10 @@ fun SleepTimerDialog(
     val options = listOf(0, 5, 15, 30, 45, 60, 90, 120)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Temporizador de apagado") },
+        title = { Text(stringResource(R.string.sleep_timer)) },
         text = {
             Column {
-                Text("Selecciona en cuántos minutos se detendrá la música:")
+                Text(stringResource(R.string.select_sleep_timer))
                 Spacer(modifier = Modifier.height(8.dp))
                 options.forEach { minutes ->
                     Row(
@@ -1281,13 +1303,13 @@ fun SleepTimerDialog(
                     ) {
                         RadioButton(selected = currentMinutes == minutes, onClick = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(if (minutes == 0) "Desactivado" else "$minutes minutos")
+                        Text(if (minutes == 0) stringResource(R.string.disabled) else stringResource(R.string.minutes, minutes))
                     }
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }
@@ -1297,13 +1319,32 @@ fun LanguageDialog(
     onDismiss: () -> Unit,
     onLanguageSelected: (String) -> Unit
 ) {
-    val languages = listOf("es" to "Español", "en" to "English", "pt" to "Português")
+    val languages = listOf(
+        "en" to "English",
+        "es" to "Español",
+        "pt" to "Português",
+        "fr" to "Français",
+        "de" to "Deutsch",
+        "it" to "Italiano",
+        "ru" to "Русский",
+        "tr" to "Türkçe",
+        "ar" to "العربية",
+        "hi" to "हिन्दी",
+        "zh-rCN" to "简体中文",
+        "zh-rTW" to "繁體中文",
+        "ja" to "日本語",
+        "ko" to "한국어",
+        "in" to "Bahasa Indonesia",
+        "fa" to "فارسی",
+        "uk" to "Українська",
+        "sv" to "Svenska"
+    )
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Idioma") },
+        title = { Text(stringResource(R.string.language)) },
         text = {
-            Column {
-                languages.forEach { (code, name) ->
+            LazyColumn {
+                items(languages) { (code, name) ->
                     ListItem(
                         modifier = Modifier.clickable { onLanguageSelected(code) },
                         headlineContent = { Text(name) }
@@ -1312,7 +1353,7 @@ fun LanguageDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Cerrar") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
         }
     )
 }

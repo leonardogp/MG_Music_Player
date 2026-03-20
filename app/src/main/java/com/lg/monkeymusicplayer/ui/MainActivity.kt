@@ -3,10 +3,10 @@ package com.lg.monkeymusicplayer.ui
 import android.Manifest
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.annotation.OptIn
+import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.compose.setContent
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.LaunchedEffect
@@ -24,7 +24,7 @@ import com.lg.monkeymusicplayer.ui.components.PermissionHandler
 import com.lg.monkeymusicplayer.ui.components.ScaffoldWithInsets
 import com.lg.monkeymusicplayer.ui.theme.monkeymusicplayerTheme
 
-class MainActivity : ComponentActivity(), ImageLoaderFactory {
+class MainActivity : AppCompatActivity(), ImageLoaderFactory {
 
     private val viewModel: MusicViewModel by viewModels {
         object : ViewModelProvider.Factory {

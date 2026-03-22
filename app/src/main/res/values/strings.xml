@@ -72,4 +72,23 @@
     <string name="unknown_album">Unknown Album</string>
     <string name="no_genre">No genre</string>
     <string name="root">Root</string>
+    <string name="system_default">System default</string>
+
+    <!-- Greetings -->
+    <string name="greeting_morning">Good morning</string>
+    <string name="greeting_afternoon">Good afternoon</string>
+    <string name="greeting_evening">Good evening</string>
+
+    <!-- Tag editor feedback -->
+    <string name="tags_saved_ok">Tags saved successfully!</string>
+    <string name="tags_save_error">Error saving tags: %s</string>
+    <string name="tags_permission_needed">Storage permission required to edit tags.</string>
+    <string name="tags_permission_grant">Grant</string>
+    <string name="tags_saving">Saving\u2026</string>
+    <string name="tags_edit_current_song">Edit tags</string>
+
+    <!-- Storage permission -->
+    <string name="manage_storage_permission_title">Storage access required</string>
+    <string name="manage_storage_permission_body">To edit song tags, allow this app to manage all files in Settings.</string>
+    <string name="manage_storage_open_settings">Open settings</string>
 </resources>

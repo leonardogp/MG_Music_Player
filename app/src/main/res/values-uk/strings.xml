@@ -72,4 +72,23 @@
     <string name="unknown_album">Невідомий альбом</string>
     <string name="no_genre">Без жанру</string>
     <string name="root">Корінь</string>
+    <string name="system_default">За замовчуванням</string>
+
+    <!-- Greetings -->
+    <string name="greeting_morning">Доброго ранку</string>
+    <string name="greeting_afternoon">Добрий день</string>
+    <string name="greeting_evening">Доброго вечора</string>
+
+    <!-- Tag editor feedback -->
+    <string name="tags_saved_ok">Теги успішно збережено!</string>
+    <string name="tags_save_error">Помилка при збереженні тегів: %s</string>
+    <string name="tags_permission_needed">Для редагування тегів потрібен дозвіл на доступ до сховища.</string>
+    <string name="tags_permission_grant">Надати</string>
+    <string name="tags_saving">Збереження\u2026</string>
+    <string name="tags_edit_current_song">Редагувати теги</string>
+
+    <!-- Storage permission -->
+    <string name="manage_storage_permission_title">Потрібен доступ до сховища</string>
+    <string name="manage_storage_permission_body">Щоб редагувати теги пісень, дозвольте цьому додатку керувати всіма файлами в Налаштуваннях.</string>
+    <string name="manage_storage_open_settings">Відкрити налаштування</string>
 </resources>

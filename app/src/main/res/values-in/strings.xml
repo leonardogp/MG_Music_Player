@@ -72,4 +72,23 @@
     <string name="unknown_album">Album Tidak Diketahui</string>
     <string name="no_genre">Tanpa genre</string>
     <string name="root">Root</string>
+    <string name="system_default">Default sistem</string>
+
+    <!-- Greetings -->
+    <string name="greeting_morning">Selamat pagi</string>
+    <string name="greeting_afternoon">Selamat siang</string>
+    <string name="greeting_evening">Selamat malam</string>
+
+    <!-- Tag editor feedback -->
+    <string name="tags_saved_ok">Tag berhasil disimpan!</string>
+    <string name="tags_save_error">Gagal menyimpan tag: %s</string>
+    <string name="tags_permission_needed">Izin penyimpanan diperlukan untuk mengedit tag.</string>
+    <string name="tags_permission_grant">Izinkan</string>
+    <string name="tags_saving">Menyimpan\u2026</string>
+    <string name="tags_edit_current_song">Edit tag</string>
+
+    <!-- Storage permission -->
+    <string name="manage_storage_permission_title">Akses penyimpanan diperlukan</string>
+    <string name="manage_storage_permission_body">Untuk mengedit tag lagu, izinkan aplikasi ini untuk mengelola semua file di Pengaturan.</string>
+    <string name="manage_storage_open_settings">Buka pengaturan</string>
 </resources>

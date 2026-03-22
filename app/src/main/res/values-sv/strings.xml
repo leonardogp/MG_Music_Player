@@ -72,4 +72,23 @@
     <string name="unknown_album">Okänt album</string>
     <string name="no_genre">Ingen genre</string>
     <string name="root">Rot</string>
+    <string name="system_default">Systemstandard</string>
+
+    <!-- Greetings -->
+    <string name="greeting_morning">God morgon</string>
+    <string name="greeting_afternoon">God eftermiddag</string>
+    <string name="greeting_evening">God kväll</string>
+
+    <!-- Tag editor feedback -->
+    <string name="tags_saved_ok">Taggar sparades!</string>
+    <string name="tags_save_error">Fel när taggar sparades: %s</string>
+    <string name="tags_permission_needed">Lagringsbehörighet krävs för att redigera taggar.</string>
+    <string name="tags_permission_grant">Bevilja</string>
+    <string name="tags_saving">Sparar\u2026</string>
+    <string name="tags_edit_current_song">Redigera taggar</string>
+
+    <!-- Storage permission -->
+    <string name="manage_storage_permission_title">Lagringsåtkomst krävs</string>
+    <string name="manage_storage_permission_body">För att redigera låttaggar, tillåt den här appen att hantera alla filer i Inställningar.</string>
+    <string name="manage_storage_open_settings">Öppna inställningar</string>
 </resources>

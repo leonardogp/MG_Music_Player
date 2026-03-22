@@ -80,7 +80,7 @@ fun PlayerControls(
                 Icon(
                     Icons.Default.Shuffle,
                     contentDescription = stringResource(R.string.shuffle),
-                    tint = if (playerState.shuffleEnabled) PrimaryOrange else MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = if (playerState.isShuffleMode) PrimaryOrange else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 

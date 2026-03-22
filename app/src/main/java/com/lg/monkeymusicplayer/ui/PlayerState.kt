@@ -17,7 +17,9 @@ data class PlayerState(
     val lyrics: List<LyricLine> = emptyList(),
     val sleepTimerMinutes: Int = 0,
     val sleepTimerRemainingMillis: Long = 0L,
-    val shuffleEnabled: Boolean = false,
+    // ── CORRECCIÓN: shuffleEnabled eliminado ──
+    // Era idéntico a isShuffleMode en todos los lugares donde se asignaba.
+    // Usar isShuffleMode en toda la UI. Búsqueda y reemplazo: shuffleEnabled → isShuffleMode
     val isFavorite: Boolean = false
 ) {
     object RepeatMode {

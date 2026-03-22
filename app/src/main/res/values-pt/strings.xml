@@ -69,7 +69,26 @@
     <string name="minutes">%d minutos</string>
     <string name="unknown">Desconhecido</string>
     <string name="unknown_artist">Artista Desconhecido</string>
-    <string name="unknown_album">Álbum Desconocido</string>
+    <string name="unknown_album">Álbum Desconhecido</string>
     <string name="no_genre">Sem gênero</string>
-    <string name="root">Raiz</string>
+    <string name="root">Raíz</string>
+    <string name="system_default">Padrão do sistema</string>
+
+    <!-- Greetings -->
+    <string name="greeting_morning">Bom dia</string>
+    <string name="greeting_afternoon">Boa tarde</string>
+    <string name="greeting_evening">Boa noite</string>
+
+    <!-- Tag editor feedback -->
+    <string name="tags_saved_ok">Etiquetas salvas com sucesso!</string>
+    <string name="tags_save_error">Erro ao salvar etiquetas: %s</string>
+    <string name="tags_permission_needed">Permissão de armazenamento necessária para editar etiquetas.</string>
+    <string name="tags_permission_grant">Conceder</string>
+    <string name="tags_saving">Salvando\u2026</string>
+    <string name="tags_edit_current_song">Editar etiquetas</string>
+
+    <!-- Storage permission -->
+    <string name="manage_storage_permission_title">Acesso ao armazenamento necessário</string>
+    <string name="manage_storage_permission_body">Para editar as etiquetas das músicas, permita que este aplicativo gerencie todos os arquivos nas Configurações.</string>
+    <string name="manage_storage_open_settings">Abrir configurações</string>
 </resources>

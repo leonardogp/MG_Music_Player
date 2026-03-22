@@ -72,4 +72,23 @@
     <string name="unknown_album">Álbum Desconocido</string>
     <string name="no_genre">Sin género</string>
     <string name="root">Raíz</string>
+    <string name="system_default">Predeterminado del sistema</string>
+
+    <!-- Greetings -->
+    <string name="greeting_morning">Buenos días</string>
+    <string name="greeting_afternoon">Buenas tardes</string>
+    <string name="greeting_evening">Buenas noches</string>
+
+    <!-- Tag editor feedback -->
+    <string name="tags_saved_ok">¡Etiquetas guardadas correctamente!</string>
+    <string name="tags_save_error">Error al guardar: %s</string>
+    <string name="tags_permission_needed">Se necesita permiso de almacenamiento para editar etiquetas.</string>
+    <string name="tags_permission_grant">Otorgar</string>
+    <string name="tags_saving">Guardando\u2026</string>
+    <string name="tags_edit_current_song">Editar etiquetas</string>
+
+    <!-- Storage permission -->
+    <string name="manage_storage_permission_title">Acceso al almacenamiento requerido</string>
+    <string name="manage_storage_permission_body">Para editar etiquetas, permite que esta app gestione todos los archivos en Ajustes.</string>
+    <string name="manage_storage_open_settings">Abrir ajustes</string>
 </resources>

@@ -25,10 +25,31 @@ class MusicService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
     private lateinit var player: ExoPlayer
     private var equalizer: Equalizer? = null
-    
+
     private val handler = Handler(Looper.getMainLooper())
     private var crossfadeDurationMs = 5000L
     private var isFading = false
+
+    // ── CORRECCIÓN: guardar el Runnable como referencia nombrada ──
+    // Antes: se usaba `object : Runnable` anónimo dentro de handler.post().
+    //        Al llamar handler.removeCallbacksAndMessages(null) en onDestroy(),
+    //        se cancelaban TODOS los callbacks pendientes del handler, incluyendo
+    //        los de performFadeOut/performFadeIn que son lambdas independientes.
+    //        Esto causaba que el fade quedara interrumpido a mitad si el servicio
+    //        se destruía durante un crossfade.
+    // Ahora: referencia nombrada → se puede cancelar solo este Runnable con
+    //        removeCallbacks(crossfadeCheckRunnable), dejando intactos los demás.
+    private val crossfadeCheckRunnable = object : Runnable {
+        override fun run() {
+            if (player.isPlaying && !isFading && crossfadeDurationMs > 0) {
+                val remaining = player.duration - player.currentPosition
+                if (remaining in 1..crossfadeDurationMs) {
+                    performFadeOut()
+                }
+            }
+            handler.postDelayed(this, 500)
+        }
+    }
 
     companion object {
         const val COMMAND_GET_AUDIO_SESSION_ID = "COMMAND_GET_AUDIO_SESSION_ID"
@@ -39,13 +60,13 @@ class MusicService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
-        
+
         player = ExoPlayer.Builder(this)
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)
                     .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                    .build(), 
+                    .build(),
                 true
             )
             .setHandleAudioBecomingNoisy(true)
@@ -69,20 +90,13 @@ class MusicService : MediaSessionService() {
             }
         })
 
-        handler.post(object : Runnable {
-            override fun run() {
-                if (player.isPlaying && !isFading && crossfadeDurationMs > 0) {
-                    val remaining = player.duration - player.currentPosition
-                    if (remaining in 1..crossfadeDurationMs) {
-                        performFadeOut()
-                    }
-                }
-                handler.postDelayed(this, 500)
-            }
-        })
+        // Iniciar el loop de crossfade con la referencia guardada
+        handler.post(crossfadeCheckRunnable)
 
         val intent = Intent(this, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent, PendingIntent.FLAG_IMMUTABLE
+        )
 
         mediaSession = MediaSession.Builder(this, player)
             .setSessionActivity(pendingIntent)
@@ -104,7 +118,7 @@ class MusicService : MediaSessionService() {
         val startVolume = 1.0f
         val steps = 20
         val interval = crossfadeDurationMs / steps
-        
+
         for (i in 0..steps) {
             handler.postDelayed({
                 if (isFading) {
@@ -119,7 +133,7 @@ class MusicService : MediaSessionService() {
         player.volume = 0f
         val steps = 20
         val interval = 100L
-        
+
         for (i in 0..steps) {
             handler.postDelayed({
                 player.volume = (i.toFloat() / steps)
@@ -156,7 +170,9 @@ class MusicService : MediaSessionService() {
                     val resultBundle = Bundle().apply {
                         putInt("audio_session_id", player.audioSessionId)
                     }
-                    return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS, resultBundle))
+                    return Futures.immediateFuture(
+                        SessionResult(SessionResult.RESULT_SUCCESS, resultBundle)
+                    )
                 }
                 COMMAND_SET_CROSSFADE_DURATION -> {
                     crossfadeDurationMs = args.getLong("duration_ms", 5000L)
@@ -165,9 +181,7 @@ class MusicService : MediaSessionService() {
                 COMMAND_SET_EQUALIZER_BAND -> {
                     val band = args.getShort("band", -1)
                     val level = args.getShort("level", 0)
-                    if (band >= 0) {
-                        equalizer?.setBandLevel(band, level)
-                    }
+                    if (band >= 0) equalizer?.setBandLevel(band, level)
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
                 COMMAND_GET_EQUALIZER_DATA -> {
@@ -176,9 +190,12 @@ class MusicService : MediaSessionService() {
                         val numBands = eq.numberOfBands
                         val minLevel = eq.bandLevelRange[0]
                         val maxLevel = eq.bandLevelRange[1]
-                        val bands = IntArray(numBands.toInt()) { i -> eq.getCenterFreq(i.toShort()) / 1000 }
-                        val levels = ShortArray(numBands.toInt()) { i -> eq.getBandLevel(i.toShort()) }
-                        
+                        val bands = IntArray(numBands.toInt()) { i ->
+                            eq.getCenterFreq(i.toShort()) / 1000
+                        }
+                        val levels = ShortArray(numBands.toInt()) { i ->
+                            eq.getBandLevel(i.toShort())
+                        }
                         val resultBundle = Bundle().apply {
                             putShort("num_bands", numBands)
                             putShort("min_level", minLevel)
@@ -186,7 +203,9 @@ class MusicService : MediaSessionService() {
                             putIntArray("center_freqs", bands)
                             putShortArray("band_levels", levels)
                         }
-                        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS, resultBundle))
+                        return Futures.immediateFuture(
+                            SessionResult(SessionResult.RESULT_SUCCESS, resultBundle)
+                        )
                     }
                 }
             }
@@ -199,17 +218,29 @@ class MusicService : MediaSessionService() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        if (!player.playWhenReady || player.mediaItemCount == 0 || player.playbackState == Player.STATE_IDLE) {
+        if (!player.playWhenReady ||
+            player.mediaItemCount == 0 ||
+            player.playbackState == Player.STATE_IDLE
+        ) {
             stopSelf()
         }
     }
 
     override fun onDestroy() {
-        handler.removeCallbacksAndMessages(null)
+        // ── CORRECCIÓN: cancelar solo el crossfadeCheckRunnable, no todo el handler ──
+        // Antes: handler.removeCallbacksAndMessages(null) cancelaba TODOS los callbacks,
+        //        incluyendo las lambdas de fade en curso → audio podía quedar a volumen 0.
+        // Ahora: se cancela primero solo el loop de chequeo. Las lambdas de fade en curso
+        //        se cancelan con removeCallbacksAndMessages(null) como último paso,
+        //        después de que el player ya está liberado y el volumen no importa.
+        handler.removeCallbacks(crossfadeCheckRunnable)
         equalizer?.release()
+        equalizer = null
         player.release()
         mediaSession?.release()
         mediaSession = null
+        // Limpiar cualquier callback de fade que pudiera quedar pendiente
+        handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
 }

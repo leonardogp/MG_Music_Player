@@ -72,4 +72,23 @@
     <string name="unknown_album">不明なアルバム</string>
     <string name="no_genre">ジャンルなし</string>
     <string name="root">ルート</string>
+    <string name="system_default">システム設定</string>
+
+    <!-- Greetings -->
+    <string name="greeting_morning">おはようございます</string>
+    <string name="greeting_afternoon">こんにちは</string>
+    <string name="greeting_evening">こんばんは</string>
+
+    <!-- Tag editor feedback -->
+    <string name="tags_saved_ok">タグが正常に保存されました！</string>
+    <string name="tags_save_error">タグの保存中にエラーが発生しました: %s</string>
+    <string name="tags_permission_needed">タグを編集するにはストレージの権限が必要です。</string>
+    <string name="tags_permission_grant">許可</string>
+    <string name="tags_saving">保存中\u2026</string>
+    <string name="tags_edit_current_song">タグを編集</string>
+
+    <!-- Storage permission -->
+    <string name="manage_storage_permission_title">ストレージへのアクセスが必要です</string>
+    <string name="manage_storage_permission_body">曲のタグを編集するには、設定でこのアプリにすべてのファイルの管理を許可してください。</string>
+    <string name="manage_storage_open_settings">設定を開く</string>
 </resources>

@@ -67,6 +67,9 @@ class MusicPlayerManager(context: Context) {
     // Referencia al listener para poder removerlo explícitamente en release()
     private var playerListener: Player.Listener? = null
 
+    // Referencia al listener de reconexión — también debe removerse en release()/reconnect()
+    private var reconnectListener: Player.Listener? = null
+
     init {
         setupMediaController()
     }
@@ -121,11 +124,11 @@ class MusicPlayerManager(context: Context) {
 
                 player.addListener(playerListener!!)
 
-                // ── PUNTO 2: reconexión si el servicio es matado por el sistema ──
-                // Si Android destruye MusicService por presión de memoria, el player
-                // entra en STATE_IDLE mientras _isPlaying era true. Sin reconexión,
-                // los botones de reproducción quedan mudos hasta reiniciar la app.
-                player.addListener(object : Player.Listener {
+                // ── CORRECCIÓN: listener de reconexión guardado en reconnectListener ──
+                // Antes: objeto anónimo sin referencia → no se podía remover en
+                //        release()/reconnect(), quedaba registrado en el player indefinidamente.
+                // Ahora: se guarda en reconnectListener y se remueve explícitamente.
+                reconnectListener = object : Player.Listener {
                     override fun onPlaybackStateChanged(playbackState: Int) {
                         if (playbackState == Player.STATE_IDLE && _isPlaying.value) {
                             scope.launch(Dispatchers.Main) {
@@ -136,7 +139,8 @@ class MusicPlayerManager(context: Context) {
                             }
                         }
                     }
-                })
+                }
+                player.addListener(reconnectListener!!)
 
                 // Initial state sync
                 _isPlaying.value = player.isPlaying
@@ -158,9 +162,13 @@ class MusicPlayerManager(context: Context) {
     }
 
     private fun reconnect() {
-        // Limpiar el listener y el future anterior antes de reinicializar
-        controller?.let { player -> playerListener?.let { player.removeListener(it) } }
+        // Remover ambos listeners antes de reinicializar
+        controller?.let { player ->
+            playerListener?.let { player.removeListener(it) }
+            reconnectListener?.let { player.removeListener(it) }
+        }
         playerListener = null
+        reconnectListener = null
         controllerFuture?.let { MediaController.releaseFuture(it) }
         setupMediaController()
     }
@@ -350,8 +358,10 @@ class MusicPlayerManager(context: Context) {
     fun release() {
         controller?.let { player ->
             playerListener?.let { player.removeListener(it) }
+            reconnectListener?.let { player.removeListener(it) }
         }
         playerListener = null
+        reconnectListener = null
         stopProgressUpdate()
         scope.cancel()
         controllerFuture?.let { MediaController.releaseFuture(it) }

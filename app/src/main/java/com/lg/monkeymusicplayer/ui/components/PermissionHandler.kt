@@ -28,12 +28,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.lg.monkeymusicplayer.R
 import com.lg.monkeymusicplayer.ui.theme.monkeymusicplayerTheme
 
 sealed class PermissionState {
@@ -156,12 +158,14 @@ private fun Context.findActivity(): Activity? {
     return null
 }
 
+@Composable
 private fun getPermissionLabel(permission: String): String {
     return when (permission) {
-        Manifest.permission.READ_MEDIA_AUDIO -> "Acceso a Música y Audio"
-        Manifest.permission.POST_NOTIFICATIONS -> "Notificaciones de Reproducción"
-        Manifest.permission.READ_EXTERNAL_STORAGE -> "Acceso al Almacenamiento"
-        else -> permission.split(".").last().replace("_", " ").lowercase().replaceFirstChar { it.uppercase() }
+        Manifest.permission.READ_MEDIA_AUDIO      -> stringResource(R.string.permission_label_audio)
+        Manifest.permission.POST_NOTIFICATIONS    -> stringResource(R.string.permission_label_notifications)
+        Manifest.permission.READ_EXTERNAL_STORAGE -> stringResource(R.string.permission_label_storage)
+        else -> permission.split(".").last().replace("_", " ")
+                    .lowercase().replaceFirstChar { it.uppercase() }
     }
 }
 
@@ -181,20 +185,20 @@ private fun PermissionRationaleScreen(
     ) {
         Icon(
             imageVector = Icons.Default.Info,
-            contentDescription = "Información de permisos",
+            contentDescription = stringResource(R.string.permission_info_desc),
             modifier = Modifier.size(100.dp),
             tint = MaterialTheme.colorScheme.secondary
         )
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            text = "Acceso Necesario",
+            text = stringResource(R.string.permission_rationale_title),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Para que la app funcione correctamente, necesitamos que aceptes los siguientes permisos:",
+            text = stringResource(R.string.permission_rationale_body),
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodyLarge
         )
@@ -212,14 +216,14 @@ private fun PermissionRationaleScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Default.CheckCircle, 
-                        contentDescription = "Permiso requerido", 
-                        tint = MaterialTheme.colorScheme.secondary, 
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = stringResource(R.string.permission_required_desc),
+                        tint = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = getPermissionLabel(permission), 
+                        text = getPermissionLabel(permission),
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
@@ -232,14 +236,14 @@ private fun PermissionRationaleScreen(
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(16.dp)
         ) {
-            Text("Entendido, reintentar")
+            Text(stringResource(R.string.permission_retry))
         }
         Spacer(modifier = Modifier.height(8.dp))
         TextButton(
             onClick = onExit,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Salir de la aplicación")
+            Text(stringResource(R.string.exit_app))
         }
     }
 }
@@ -260,20 +264,20 @@ private fun PermissionDeniedScreen(
     ) {
         Icon(
             imageVector = Icons.Default.AudioFile,
-            contentDescription = "Error de permisos",
+            contentDescription = stringResource(R.string.permission_denied_desc),
             modifier = Modifier.size(100.dp),
             tint = MaterialTheme.colorScheme.primary
         )
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            text = "Permisos Desactivados",
+            text = stringResource(R.string.permission_denied_title),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Has desactivado permisos críticos. Por favor, habilítalos en la configuración para continuar:",
+            text = stringResource(R.string.permission_denied_body),
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodyLarge
         )
@@ -292,7 +296,7 @@ private fun PermissionDeniedScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Warning,
-                        contentDescription = "Permiso denegado",
+                        contentDescription = stringResource(R.string.permission_denied_item_desc),
                         tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(20.dp)
                     )
@@ -314,14 +318,14 @@ private fun PermissionDeniedScreen(
         ) {
             Icon(Icons.Default.Settings, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Abrir Configuración")
+            Text(stringResource(R.string.permission_open_settings))
         }
         Spacer(modifier = Modifier.height(8.dp))
         TextButton(
             onClick = onExit,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Salir", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.exit_app), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

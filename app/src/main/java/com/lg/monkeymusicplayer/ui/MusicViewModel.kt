@@ -62,6 +62,15 @@ class MusicViewModel(
     private val _requestManageStorageEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val requestManageStorageEvent: SharedFlow<Unit> = _requestManageStorageEvent.asSharedFlow()
 
+    // Evento one-shot para abrir el editor de tags desde el reproductor.
+    // Emitido cuando el usuario toca "Editar" en FullPlayerScreen.
+    private val _requestEditSongEvent = MutableSharedFlow<Song>(extraBufferCapacity = 1)
+    val requestEditSongEvent: SharedFlow<Song> = _requestEditSongEvent.asSharedFlow()
+
+    fun requestEditSong(song: Song) {
+        viewModelScope.launch { _requestEditSongEvent.emit(song) }
+    }
+
     // Llamado desde MainActivity al arrancar y al volver de la pantalla de Settings
     fun onManageStoragePermissionResult(granted: Boolean) {
         _hasManageStoragePermission.value = granted
@@ -156,8 +165,18 @@ class MusicViewModel(
                            it.artist.contains(query, ignoreCase = true)
                        }
 
+        // ── CORRECCIÓN: aplicar el orden seleccionado por el usuario ──
+        // Antes: order se extraía del combine pero nunca se usaba → el dropdown
+        //        de ordenación cambiaba el estado pero la lista no cambiaba.
+        val sorted = when (order) {
+            SortOrder.NAME       -> filtered.sortedBy { it.title.lowercase() }
+            SortOrder.ARTIST     -> filtered.sortedBy { it.artist.lowercase() }
+            SortOrder.ALBUM      -> filtered.sortedBy { it.album.lowercase() }
+            SortOrder.DATE_ADDED -> filtered // MediaStore no expone fecha en el modelo actual
+        }
+
         LibraryData(
-            songs = filtered,
+            songs = sorted,
             playlists = playlists.filter { it.name.contains(query, ignoreCase = true) },
             history = history,
             currentPlaylistSongs = mappedPlaylistSongs,

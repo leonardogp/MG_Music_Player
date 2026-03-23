@@ -61,7 +61,9 @@ fun PlayerControls(
 
             // Seek forward 10s
             IconButton(onClick = onSeekForward) {
-                Icon(Icons.Default.Replay30, contentDescription = stringResource(R.string.seek_forward_10))
+                // ── CORRECCIÓN: Replay30 → Forward10 ──
+                // Replay30 es "retroceder 30s", confundía al usuario con la acción opuesta.
+                Icon(Icons.Default.Forward10, contentDescription = stringResource(R.string.seek_forward_10))
             }
 
             // Skip next

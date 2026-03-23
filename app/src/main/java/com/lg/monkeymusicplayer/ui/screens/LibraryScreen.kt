@@ -60,7 +60,7 @@ import com.lg.monkeymusicplayer.ui.theme.PrimaryOrange
 import androidx.media3.common.Player
 import kotlinx.coroutines.launch
 import java.util.Calendar
-import java.util.Locale
+import com.lg.monkeymusicplayer.util.TimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -133,7 +133,14 @@ fun LibraryScreen(
                     onCycleRepeatMode = viewModel::cycleRepeatMode,
                     onToggleFavorite = { viewModel.toggleFavorite(uiState.playerState.currentSong!!) },
                     onAddToPlaylist = { /* handle */ },
-                    onEditSong = { navController.popBackStack() },
+                    onEditSong = { song ->
+                        // ── CORRECCIÓN: volver a la librería y abrir el editor de tags ──
+                        // Antes: solo hacía popBackStack() → cerraba el reproductor sin abrir editor.
+                        // Ahora: navega atrás primero (para que el diálogo aparezca sobre la librería)
+                        //        y luego dispara onEditSong en LibraryMainContent via el ViewModel.
+                        navController.popBackStack()
+                        viewModel.requestEditSong(song)
+                    },
                     onPlayFromQueue = { viewModel.playSong(it, uiState.playerState.currentQueue) }
                 )
             }
@@ -243,7 +250,7 @@ fun SettingsScreen(
                 modifier = Modifier.clickable { showSleepTimerDialog = true },
                 headlineContent = {
                     val timerText = if (uiState.playerState.sleepTimerMinutes > 0) {
-                        stringResource(R.string.timer_active, formatTime(uiState.playerState.sleepTimerRemainingMillis))
+                        stringResource(R.string.timer_active, TimeFormatter.formatDuration(uiState.playerState.sleepTimerRemainingMillis))
                     } else {
                         stringResource(R.string.sleep_timer)
                     }
@@ -330,6 +337,15 @@ fun LibraryMainContent(
                     duration = SnackbarDuration.Short
                 )
             }
+        }
+    }
+
+    // ── CORRECCIÓN: escuchar evento de edición desde FullPlayerScreen ──
+    // Cuando el usuario toca "Editar" en el reproductor, vuelve a la librería
+    // y este LaunchedEffect abre el editor con la canción correcta.
+    LaunchedEffect(Unit) {
+        viewModel.requestEditSongEvent.collect { song ->
+            editingSong = song
         }
     }
 
@@ -636,11 +652,19 @@ fun MobileLayout(
                     }
                 }
                 7 -> {
-                    val favSongs = uiState.songs.filter { it.isFavorite }
+                    // ── CORRECCIÓN: remember evita recalcular filter en cada recomposición ──
+                    val favSongs = remember(uiState.songs) { uiState.songs.filter { it.isFavorite } }
                     SongList(favSongs, favSongs, onPlay, onAddToQueue, onAddSongToPlaylist, null, onEditSong, onToggleFavorite)
                 }
                 8 -> {
-                    val historySongs = uiState.history.mapNotNull { h -> uiState.songs.find { it.id == h.songId } }.distinctBy { it.id }
+                    // ── CORRECCIÓN: lookup O(1) con Map en lugar de O(N²) con find{} ──
+                    // Antes: por cada entrada del historial se hacía uiState.songs.find{} →
+                    //        50 entradas × 1000 canciones = 50.000 comparaciones por recomposición.
+                    // Ahora: un solo Map construido una vez, lookup en O(1) por entrada.
+                    val songIndex = remember(uiState.songs) { uiState.songs.associateBy { it.id } }
+                    val historySongs = remember(uiState.history, songIndex) {
+                        uiState.history.mapNotNull { songIndex[it.songId] }.distinctBy { it.id }
+                    }
                     SongList(historySongs, historySongs, onPlay, onAddToQueue, onAddSongToPlaylist, null, onEditSong, onToggleFavorite)
                 }
             }
@@ -970,8 +994,8 @@ fun FullPlayerScreen(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(text = formatTime(currentPosition), color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
-                    Text(text = formatTime(duration), color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
+                    Text(text = TimeFormatter.formatDuration(currentPosition), color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
+                    Text(text = TimeFormatter.formatDuration(duration), color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
                 }
             }
 
@@ -1469,9 +1493,3 @@ fun LanguageDialog(
     )
 }
 
-private fun formatTime(milliseconds: Long): String {
-    val totalSeconds = milliseconds / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
-}

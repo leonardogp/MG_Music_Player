@@ -91,4 +91,23 @@
     <string name="manage_storage_permission_title">Storage access required</string>
     <string name="manage_storage_permission_body">To edit song tags, allow this app to manage all files in Settings.</string>
     <string name="manage_storage_open_settings">Open settings</string>
+
+    <!-- Permission screens -->
+    <string name="permission_rationale_title">Access Required</string>
+    <string name="permission_rationale_body">For the app to work correctly, please accept the following permissions:</string>
+    <string name="permission_denied_title">Permissions Disabled</string>
+    <string name="permission_denied_body">You have disabled critical permissions. Please enable them in settings to continue:</string>
+    <string name="permission_retry">Understood, retry</string>
+    <string name="permission_open_settings">Open Settings</string>
+    <string name="exit_app">Exit app</string>
+    <string name="permission_label_audio">Music and Audio Access</string>
+    <string name="permission_label_notifications">Playback Notifications</string>
+    <string name="permission_label_storage">Storage Access</string>
+    <string name="permission_info_desc">Permission information</string>
+    <string name="permission_required_desc">Permission required</string>
+    <string name="permission_denied_desc">Permission error</string>
+    <string name="permission_denied_item_desc">Permission denied</string>
+
+    <!-- Equalizer -->
+    <string name="eq_high_fidelity_mode">High-Fidelity Mode</string>
 </resources>

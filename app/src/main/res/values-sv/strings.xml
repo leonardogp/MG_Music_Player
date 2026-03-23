@@ -91,4 +91,23 @@
     <string name="manage_storage_permission_title">Lagringsåtkomst krävs</string>
     <string name="manage_storage_permission_body">För att redigera låttaggar, tillåt den här appen att hantera alla filer i Inställningar.</string>
     <string name="manage_storage_open_settings">Öppna inställningar</string>
+
+    <!-- Permission screens -->
+    <string name="permission_rationale_title">Åtkomst krävs</string>
+    <string name="permission_rationale_body">För att appen ska fungera korrekt, vänligen acceptera följande behörigheter:</string>
+    <string name="permission_denied_title">Behörigheter inaktiverade</string>
+    <string name="permission_denied_body">Du har inaktiverat viktiga behörigheter. Vänligen aktivera dem i inställningarna för att fortsätta:</string>
+    <string name="permission_retry">Uppfattat, försök igen</string>
+    <string name="permission_open_settings">Öppna inställningar</string>
+    <string name="exit_app">Avsluta appen</string>
+    <string name="permission_label_audio">Åtkomst till musik och ljud</string>
+    <string name="permission_label_notifications">Uppspelningsaviseringar</string>
+    <string name="permission_label_storage">Lagringsåtkomst</string>
+    <string name="permission_info_desc">Behörighetsinformation</string>
+    <string name="permission_required_desc">Behörighet krävs</string>
+    <string name="permission_denied_desc">Behörighetsfel</string>
+    <string name="permission_denied_item_desc">Behörighet nekad</string>
+
+    <!-- Equalizer -->
+    <string name="eq_high_fidelity_mode">High-Fidelity-läge</string>
 </resources>

@@ -91,4 +91,23 @@
     <string name="manage_storage_permission_title">Требуется доступ к хранилищу</string>
     <string name="manage_storage_permission_body">Чтобы редактировать теги песен, разрешите этому приложению управлять всеми файлами в Настройках.</string>
     <string name="manage_storage_open_settings">Открыть настройки</string>
+
+    <!-- Permission screens -->
+    <string name="permission_rationale_title">Требуется доступ</string>
+    <string name="permission_rationale_body">Для корректной работы приложения, пожалуйста, примите следующие разрешения:</string>
+    <string name="permission_denied_title">Разрешения отключены</string>
+    <string name="permission_denied_body">Вы отключили критические разрешения. Пожалуйста, включите их в настройках, чтобы продолжить:</string>
+    <string name="permission_retry">Понятно, повторить</string>
+    <string name="permission_open_settings">Открыть настройки</string>
+    <string name="exit_app">Выйти из приложения</string>
+    <string name="permission_label_audio">Доступ к музыке и аудио</string>
+    <string name="permission_label_notifications">Уведомления о воспроизведении</string>
+    <string name="permission_label_storage">Доступ к хранилищу</string>
+    <string name="permission_info_desc">Информация о разрешениях</string>
+    <string name="permission_required_desc">Требуется разрешение</string>
+    <string name="permission_denied_desc">Ошибка разрешений</string>
+    <string name="permission_denied_item_desc">Разрешение отклонено</string>
+
+    <!-- Equalizer -->
+    <string name="eq_high_fidelity_mode">Режим высокой точности</string>
 </resources>

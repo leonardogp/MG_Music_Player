@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.lg.monkeymusicplayer.R
@@ -105,7 +106,7 @@ fun EqualizerScreen(
                         Icon(Icons.Default.GraphicEq, null, tint = accentColor, modifier = Modifier.size(36.dp))
                         Spacer(modifier = Modifier.width(16.dp))
                         Text(
-                            "Ecualizador Pro",
+                            stringResource(R.string.equalizer),
                             style = MaterialTheme.typography.headlineSmall,
                             color = Color.White,
                             fontWeight = FontWeight.Black
@@ -182,7 +183,7 @@ fun EqualizerScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            "HIGH-FIDELITY MODE",
+                            stringResource(R.string.eq_high_fidelity_mode),
                             style = MaterialTheme.typography.headlineSmall,
                             color = Color.White,
                             fontWeight = FontWeight.Black
@@ -217,16 +218,31 @@ fun EqualizerScreen(
                                 selected = selectedPreset == index,
                                 onClick = {
                                     selectedPreset = index
-                                    // Apply preset levels
-                                    val presetLevels = when(presets[index]) {
-                                        "FLAT" -> List(numBands) { 0f }
-                                        "ROCK" -> listOf(-0.2f, 0f, 0.2f, 0.4f, 0.3f)
-                                        "POP" -> listOf(0.2f, 0.2f, 0f, 0f, 0.2f)
-                                        "JAZZ" -> listOf(0.4f, 0.2f, 0f, -0.2f, 0f)
-                                        "BASS" -> listOf(0.8f, 0.4f, 0f, 0f, 0f)
-                                        else -> listOf(0f, 0f, 0.2f, 0.6f, 0.8f)
+                                    // ── CORRECCIÓN: sincronizar el hardware EQ ──
+                                    // Antes: customLevels se actualizaba visualmente pero
+                                    //        setEqualizerBand() nunca se llamaba → el EQ del
+                                    //        sistema no cambiaba aunque la UI lo mostrara diferente.
+                                    // Ahora: se aplica cada nivel al hardware vía el ViewModel.
+                                    val presetLevels = when (presets[index]) {
+                                        "FLAT"   -> List(numBands) { 0f }
+                                        "ROCK"   -> listOf(-0.2f, 0f, 0.2f, 0.4f, 0.3f)
+                                        "POP"    -> listOf(0.2f, 0.2f, 0f, 0f, 0.2f)
+                                        "JAZZ"   -> listOf(0.4f, 0.2f, 0f, -0.2f, 0f)
+                                        "BASS"   -> listOf(0.8f, 0.4f, 0f, 0f, 0f)
+                                        else     -> listOf(0f, 0f, 0.2f, 0.6f, 0.8f) // TREBLE
                                     }
-                                    customLevels = presetLevels
+                                    // Asegurar que la lista tenga exactamente numBands elementos
+                                    val normalized = List(numBands) { i ->
+                                        presetLevels.getOrElse(i) { 0f }
+                                    }
+                                    customLevels = normalized
+                                    // Aplicar al hardware EQ
+                                    coroutineScope.launch {
+                                        normalized.forEachIndexed { bandIndex, level ->
+                                            val rawLevel = (level * 1500f).toInt().toShort()
+                                            viewModel.setEqualizerBand(bandIndex.toShort(), rawLevel)
+                                        }
+                                    }
                                 },
                                 label = { Text(presets[index], color = Color.White, fontWeight = FontWeight.Bold) },
                                 colors = FilterChipDefaults.filterChipColors(

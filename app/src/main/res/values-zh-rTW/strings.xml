@@ -91,4 +91,23 @@
     <string name="manage_storage_permission_title">需要儲存存取權限</string>
     <string name="manage_storage_permission_body">要編輯歌曲標籤，請在「設定」中允許此應用程式管理所有檔案。</string>
     <string name="manage_storage_open_settings">開啟設定</string>
+
+    <!-- Permission screens -->
+    <string name="permission_rationale_title">需要存取權限</string>
+    <string name="permission_rationale_body">為了讓應用程式正常運行，請接受以下權限：</string>
+    <string name="permission_denied_title">權限已停用</string>
+    <string name="permission_denied_body">您已停用關鍵權限。請在設定中啟用它們以繼續：</string>
+    <string name="permission_retry">明白，重試</string>
+    <string name="permission_open_settings">開啟設定</string>
+    <string name="exit_app">退出應用程式</string>
+    <string name="permission_label_audio">音樂和音訊存取權限</string>
+    <string name="permission_label_notifications">播放通知</string>
+    <string name="permission_label_storage">儲存存取權限</string>
+    <string name="permission_info_desc">權限資訊</string>
+    <string name="permission_required_desc">需要權限</string>
+    <string name="permission_denied_desc">權限錯誤</string>
+    <string name="permission_denied_item_desc">權限被拒絕</string>
+
+    <!-- Equalizer -->
+    <string name="eq_high_fidelity_mode">高保真模式</string>
 </resources>

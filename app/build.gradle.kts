@@ -21,13 +21,22 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // ── FIX 5: activar R8 (minificación + obfuscación) y shrinkResources ──
+            // Con Compose, el APK sin minificar puede ser 30-40% más grande.
+            // Ver proguard-rules.pro para las reglas específicas del proyecto.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
+        debug {
+            isMinifyEnabled = false
+            isShrinkResources = false
+        }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -42,6 +51,14 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    // ── FIX 6 (Room exportSchema) ──
+    // exportSchema = true en MusicDatabase permite auditar el historial de esquemas.
+    // Room genera los JSONs en app/schemas/; se recomienda commitearlos al repo
+    // para poder escribir migraciones verificables.
+    ksp {
+        arg("room.schemaLocation", "$projectDir/schemas")
     }
 }
 

@@ -17,7 +17,6 @@ import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlin.math.abs
 
 @UnstableApi
 class MusicPlayerManager(context: Context) {
@@ -238,12 +237,15 @@ class MusicPlayerManager(context: Context) {
 
     private fun startProgressUpdate() {
         stopProgressUpdate()
-        progressJob = scope.launch(Dispatchers.Default) {
+        progressJob = scope.launch(Dispatchers.Main) {
+            // ── FIX 3: toda la operación read-compare-write en Main ──
+            // Antes: pos se leía en Main pero la comparación y el write ocurrían en Default,
+            // lo que creaba una condición de carrera no atómica sobre _currentPosition.
+            // Ahora: el job corre directamente en Main; la corrutina es ligera (solo lectura
+            // de una propiedad y update de StateFlow) y no bloquea el hilo.
             while (isActive) {
-                val pos = withContext(Dispatchers.Main) {
-                    controller?.currentPosition ?: _currentPosition.value
-                }
-                if (abs(pos - _currentPosition.value) > 500) {
+                val pos = controller?.currentPosition ?: _currentPosition.value
+                if (kotlin.math.abs(pos - _currentPosition.value) > 500) {
                     _currentPosition.value = pos
                 }
                 delay(1000)

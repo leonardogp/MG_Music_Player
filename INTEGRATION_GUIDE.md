@@ -1,43 +1,68 @@
-# Integration Guide for Testing Suite
+# Integration Guide — Monkey Music Player
 
-## Step 1: Checkout the Developer Branch
+## Requisitos
 
-Make sure you're on the `Developer` branch of the repository:
+- Android Studio Hedgehog (2023.1.1) o superior
+- JDK 11
+- Android SDK 35 (compileSdk) / minSdk 24
+
+## Ramas
+
+| Rama        | Propósito                              |
+|-------------|----------------------------------------|
+| `main`      | Versión estable                        |
+| `Developer` | Desarrollo activo, puede ser inestable |
+
+## Setup local
+
 ```bash
+git clone <repo-url>
 git checkout Developer
 ```
 
-## Step 2: Install Dependencies
+Abrir el proyecto en Android Studio y sincronizar Gradle. No hay dependencias externas de npm.
 
-Install any necessary dependencies needed for the testing suite:
+## Ejecutar tests unitarios
+
 ```bash
-npm install
+./gradlew test
 ```
 
-## Step 3: Run the Tests
+## Ejecutar tests instrumentados (emulador/dispositivo)
 
-To run the tests, execute the following command:
 ```bash
-npm test
+./gradlew connectedAndroidTest
 ```
 
-## Step 4: Verify the Setup
+## Build release
 
-Check the output of the test command to ensure all tests have passed. The output should indicate if any tests failed or if the setup was successful.
-
-If you encounter issues, refer to the error messages provided and fix any errors in your code.
-
-## Step 5: Commit Your Changes
-
-Once everything is working as expected, commit your changes:
 ```bash
-git add .
-git commit -m "Integrated testing suite"
+./gradlew assembleRelease
 ```
 
-## Step 6: Push Your Changes
+El APK firmado se genera en `app/build/outputs/apk/release/`.
 
-Finally, push your changes to the remote repository:
-```bash
-git push origin Developer
-```
+> **Nota**: la build de release tiene R8/minificación activa (`isMinifyEnabled = true`).
+> Las reglas ProGuard están en `app/proguard-rules.pro`.
+
+## Room — Migraciones
+
+El esquema de la base de datos se exporta automáticamente a `app/schemas/` en cada compilación.
+Commitear esos JSONs al repo permite auditar cambios de esquema y escribir migraciones verificables.
+
+Al cambiar el esquema:
+1. Incrementar `version` en `MusicDatabase`.
+2. Añadir un objeto `Migration(oldVersion, newVersion)` en `MusicDatabase.Companion`.
+3. Registrarlo con `.addMigrations(...)` en `getDatabase()`.
+
+En DEBUG, `fallbackToDestructiveMigration()` actúa como safety net. En release, Room lanzará
+una excepción clara si falta una migración.
+
+## Permisos
+
+| Permiso                    | Cuándo se solicita                                |
+|----------------------------|---------------------------------------------------|
+| `READ_MEDIA_AUDIO` (API 33+) | Al arrancar, para escanear la biblioteca        |
+| `READ_EXTERNAL_STORAGE`    | Al arrancar (API < 33)                            |
+| `MANAGE_EXTERNAL_STORAGE`  | Solo al intentar editar tags ID3 (API 30+)        |
+| `POST_NOTIFICATIONS`       | Al arrancar (API 33+), para la MediaSession       |

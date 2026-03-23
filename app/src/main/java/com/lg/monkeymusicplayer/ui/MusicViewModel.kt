@@ -258,7 +258,16 @@ class MusicViewModel(
 
     private fun loadLyrics(song: Song) {
         viewModelScope.launch(Dispatchers.IO) {
-            val lyricsFile = File(song.path.replaceAfterLast(".", "lrc", "lrc"))
+            // ── FIX 4: song.path es una URI de ContentStore (content://media/...),
+            // no un path de filesystem. File() sobre esa URI no puede abrir el archivo.
+            // Solución: resolver la ruta real con MediaStore.Audio.Media.DATA via repository,
+            // exactamente igual que hace updateSongTags para acceder al .mp3 físico.
+            val realPath = repository.getFilePathFromId(song.id)
+            if (realPath == null) {
+                _lyrics.value = emptyList()
+                return@launch
+            }
+            val lyricsFile = File(realPath.replaceAfterLast(".", "lrc", "${realPath}.lrc"))
             _lyrics.value = if (lyricsFile.exists()) parseLrc(lyricsFile.readText()) else emptyList()
         }
     }

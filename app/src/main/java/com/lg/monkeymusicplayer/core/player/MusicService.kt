@@ -115,7 +115,10 @@ class MusicService : MediaSessionService() {
 
     private fun performFadeOut() {
         isFading = true
-        val startVolume = 1.0f
+        // ── FIX 2: capturar el volumen actual en lugar de asumir 1.0f ──
+        // Si el usuario ajustó el volumen del player antes del fade, arrancar desde
+        // el valor real evita el salto audible de "subida a 1.0f → bajada a 0".
+        val startVolume = player.volume
         val steps = 20
         val interval = crossfadeDurationMs / steps
 

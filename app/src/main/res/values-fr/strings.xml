@@ -72,4 +72,42 @@
     <string name="unknown_album">Album inconnu</string>
     <string name="no_genre">Pas de genre</string>
     <string name="root">Racine</string>
+    <string name="system_default">Par défaut du système</string>
+
+    <!-- Greetings -->
+    <string name="greeting_morning">Bonjour</string>
+    <string name="greeting_afternoon">Bon après-midi</string>
+    <string name="greeting_evening">Bonsoir</string>
+
+    <!-- Tag editor feedback -->
+    <string name="tags_saved_ok">Tags enregistrés avec succès !</string>
+    <string name="tags_save_error">Erreur lors de l\'enregistrement des tags : %s</string>
+    <string name="tags_permission_needed">L\'autorisation de stockage est requise pour modifier les tags.</string>
+    <string name="tags_permission_grant">Accorder</string>
+    <string name="tags_saving">Enregistrement en cours\u2026</string>
+    <string name="tags_edit_current_song">Modifier les tags</string>
+
+    <!-- Storage permission -->
+    <string name="manage_storage_permission_title">Accès au stockage requis</string>
+    <string name="manage_storage_permission_body">Pour modifier les tags des chansons, autorisez cette application à gérer tous les fichiers dans les Paramètres.</string>
+    <string name="manage_storage_open_settings">Ouvrir les paramètres</string>
+
+    <!-- Permission screens -->
+    <string name="permission_rationale_title">Accès requis</string>
+    <string name="permission_rationale_body">Pour que l\'application fonctionne correctement, veuillez accepter les permissions suivantes :</string>
+    <string name="permission_denied_title">Permissions désactivées</string>
+    <string name="permission_denied_body">Vous avez désactivé des permissions critiques. Veuillez les activer dans les paramètres pour continuer :</string>
+    <string name="permission_retry">Compris, réessayer</string>
+    <string name="permission_open_settings">Ouvrir les paramètres</string>
+    <string name="exit_app">Quitter l\'application</string>
+    <string name="permission_label_audio">Accès à la musique et à l\'audio</string>
+    <string name="permission_label_notifications">Notifications de lecture</string>
+    <string name="permission_label_storage">Accès au stockage</string>
+    <string name="permission_info_desc">Informations sur les permissions</string>
+    <string name="permission_required_desc">Permission requise</string>
+    <string name="permission_denied_desc">Erreur de permission</string>
+    <string name="permission_denied_item_desc">Permission refusée</string>
+
+    <!-- Equalizer -->
+    <string name="eq_high_fidelity_mode">Mode Haute-Fidélité</string>
 </resources>

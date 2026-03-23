@@ -72,4 +72,42 @@
     <string name="unknown_album">ألبوم غير معروف</string>
     <string name="no_genre">بدون نوع</string>
     <string name="root">الجذر</string>
+    <string name="system_default">افتراضي النظام</string>
+
+    <!-- Greetings -->
+    <string name="greeting_morning">صباح الخير</string>
+    <string name="greeting_afternoon">مساء الخير</string>
+    <string name="greeting_evening">مساء الخير</string>
+
+    <!-- Tag editor feedback -->
+    <string name="tags_saved_ok">تم حفظ العلامات بنجاح!</string>
+    <string name="tags_save_error">خطأ في حفظ العلامات: %s</string>
+    <string name="tags_permission_needed">إذن التخزين مطلوب لتعديل العلامات.</string>
+    <string name="tags_permission_grant">منح</string>
+    <string name="tags_saving">جارٍ الحفظ\u2026</string>
+    <string name="tags_edit_current_song">تعديل العلامات</string>
+
+    <!-- Storage permission -->
+    <string name="manage_storage_permission_title">مطلوب الوصول إلى التخزين</string>
+    <string name="manage_storage_permission_body">لتعديل علامات الأغاني، اسمح لهذا التطبيق بإدارة جميع الملفات في الإعدادات.</string>
+    <string name="manage_storage_open_settings">افتح الإعدادات</string>
+
+    <!-- Permission screens -->
+    <string name="permission_rationale_title">الوصول مطلوب</string>
+    <string name="permission_rationale_body">لكي يعمل التطبيق بشكل صحيح، يرجى قبول الأذونات التالية:</string>
+    <string name="permission_denied_title">الأذونات معطلة</string>
+    <string name="permission_denied_body">لقد قمت بتعطيل أذونات هامة. يرجى تفعيلها في الإعدادات للمتابعة:</string>
+    <string name="permission_retry">مفهوم، أعد المحاولة</string>
+    <string name="permission_open_settings">افتح الإعدادات</string>
+    <string name="exit_app">الخروج من التطبيق</string>
+    <string name="permission_label_audio">الوصول إلى الموسيقى والصوت</string>
+    <string name="permission_label_notifications">إشعارات التشغيل</string>
+    <string name="permission_label_storage">الوصول إلى التخزين</string>
+    <string name="permission_info_desc">معلومات الأذونات</string>
+    <string name="permission_required_desc">الإذن مطلوب</string>
+    <string name="permission_denied_desc">خطأ في الأذونات</string>
+    <string name="permission_denied_item_desc">تم رفض الإذن</string>
+
+    <!-- Equalizer -->
+    <string name="eq_high_fidelity_mode">وضع الدقة العالية</string>
 </resources>

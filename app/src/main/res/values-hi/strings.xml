@@ -72,4 +72,42 @@
     <string name="unknown_album">अज्ञात एल्बम</string>
     <string name="no_genre">कोई शैली नहीं</string>
     <string name="root">रूट</string>
+    <string name="system_default">सिस्टम डिफॉल्ट</string>
+
+    <!-- Greetings -->
+    <string name="greeting_morning">सुप्रभात</string>
+    <string name="greeting_afternoon">नमस्कार</string>
+    <string name="greeting_evening">शुभ संध्या</string>
+
+    <!-- Tag editor feedback -->
+    <string name="tags_saved_ok">टैग सफलतापूर्वक सहेजे गए!</string>
+    <string name="tags_save_error">टैग सहेजने में त्रुटि: %s</string>
+    <string name="tags_permission_needed">टैग संपादित करने के लिए स्टोरेज अनुमति आवश्यक है।</string>
+    <string name="tags_permission_grant">अनुमति दें</string>
+    <string name="tags_saving">सहेज रहा है\u2026</string>
+    <string name="tags_edit_current_song">टैग संपादित करें</string>
+
+    <!-- Storage permission -->
+    <string name="manage_storage_permission_title">स्टोरेज एक्सेस आवश्यक</string>
+    <string name="manage_storage_permission_body">गाने के टैग संपादित करने के लिए, इस ऐप को सेटिंग्स में सभी फ़ाइलों को प्रबंधित करने की अनुमति दें।</string>
+    <string name="manage_storage_open_settings">सेटिंग्स खोलें</string>
+
+    <!-- Permission screens -->
+    <string name="permission_rationale_title">पहुँच आवश्यक</string>
+    <string name="permission_rationale_body">ऐप के सही ढंग से कार्य करने के लिए, कृपया निम्नलिखित अनुमतियाँ स्वीकार करें:</string>
+    <string name="permission_denied_title">अनुमतियाँ अक्षम हैं</string>
+    <string name="permission_denied_body">आपने महत्वपूर्ण अनुमतियाँ अक्षम कर दी हैं। कृपया जारी रखने के लिए उन्हें सेटिंग्स में सक्षम करें:</string>
+    <string name="permission_retry">समझ गया, पुनः प्रयास करें</string>
+    <string name="permission_open_settings">सेटिंग्स खोलें</string>
+    <string name="exit_app">ऐप से बाहर निकलें</string>
+    <string name="permission_label_audio">म्यूजिक और ऑडियो एक्सेस</string>
+    <string name="permission_label_notifications">प्लेबैक सूचनाएं</string>
+    <string name="permission_label_storage">स्टोरेज एक्सेस</string>
+    <string name="permission_info_desc">अनुमति जानकारी</string>
+    <string name="permission_required_desc">अनुमति आवश्यक</string>
+    <string name="permission_denied_desc">अनुमति त्रुटि</string>
+    <string name="permission_denied_item_desc">अनुमति अस्वीकृत</string>
+
+    <!-- Equalizer -->
+    <string name="eq_high_fidelity_mode">हाई-फिडेलिटी मोड</string>
 </resources>

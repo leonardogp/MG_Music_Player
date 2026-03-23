@@ -72,4 +72,42 @@
     <string name="unknown_album">Album Tidak Diketahui</string>
     <string name="no_genre">Tanpa genre</string>
     <string name="root">Root</string>
+    <string name="system_default">Default sistem</string>
+
+    <!-- Greetings -->
+    <string name="greeting_morning">Selamat pagi</string>
+    <string name="greeting_afternoon">Selamat siang</string>
+    <string name="greeting_evening">Selamat malam</string>
+
+    <!-- Tag editor feedback -->
+    <string name="tags_saved_ok">Tag berhasil disimpan!</string>
+    <string name="tags_save_error">Gagal menyimpan tag: %s</string>
+    <string name="tags_permission_needed">Izin penyimpanan diperlukan untuk mengedit tag.</string>
+    <string name="tags_permission_grant">Izinkan</string>
+    <string name="tags_saving">Menyimpan\u2026</string>
+    <string name="tags_edit_current_song">Edit tag</string>
+
+    <!-- Storage permission -->
+    <string name="manage_storage_permission_title">Akses penyimpanan diperlukan</string>
+    <string name="manage_storage_permission_body">Untuk mengedit tag lagu, izinkan aplikasi ini untuk mengelola semua file di Pengaturan.</string>
+    <string name="manage_storage_open_settings">Buka pengaturan</string>
+
+    <!-- Permission screens -->
+    <string name="permission_rationale_title">Akses Diperlukan</string>
+    <string name="permission_rationale_body">Agar aplikasi berfungsi dengan benar, harap terima izin berikut:</string>
+    <string name="permission_denied_title">Izin Dinonaktifkan</string>
+    <string name="permission_denied_body">Anda telah menonaktifkan izin penting. Harap aktifkan di pengaturan untuk melanjutkan:</string>
+    <string name="permission_retry">Mengerti, ulangi</string>
+    <string name="permission_open_settings">Buka Pengaturan</string>
+    <string name="exit_app">Keluar dari aplikasi</string>
+    <string name="permission_label_audio">Akses Musik dan Audio</string>
+    <string name="permission_label_notifications">Notifikasi Pemutaran</string>
+    <string name="permission_label_storage">Akses Penyimpanan</string>
+    <string name="permission_info_desc">Informasi izin</string>
+    <string name="permission_required_desc">Izin diperlukan</string>
+    <string name="permission_denied_desc">Kesalahan izin</string>
+    <string name="permission_denied_item_desc">Izin ditolak</string>
+
+    <!-- Equalizer -->
+    <string name="eq_high_fidelity_mode">Mode Hi-Fi</string>
 </resources>

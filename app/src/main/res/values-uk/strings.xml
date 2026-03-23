@@ -72,4 +72,42 @@
     <string name="unknown_album">Невідомий альбом</string>
     <string name="no_genre">Без жанру</string>
     <string name="root">Корінь</string>
+    <string name="system_default">За замовчуванням</string>
+
+    <!-- Greetings -->
+    <string name="greeting_morning">Доброго ранку</string>
+    <string name="greeting_afternoon">Добрий день</string>
+    <string name="greeting_evening">Доброго вечора</string>
+
+    <!-- Tag editor feedback -->
+    <string name="tags_saved_ok">Теги успішно збережено!</string>
+    <string name="tags_save_error">Помилка при збереженні тегів: %s</string>
+    <string name="tags_permission_needed">Для редагування тегів потрібен дозвіл на доступ до сховища.</string>
+    <string name="tags_permission_grant">Надати</string>
+    <string name="tags_saving">Збереження\u2026</string>
+    <string name="tags_edit_current_song">Редагувати теги</string>
+
+    <!-- Storage permission -->
+    <string name="manage_storage_permission_title">Потрібен доступ до сховища</string>
+    <string name="manage_storage_permission_body">Щоб редагувати теги пісень, дозвольте цьому додатку керувати всіма файлами в Налаштуваннях.</string>
+    <string name="manage_storage_open_settings">Відкрити налаштування</string>
+
+    <!-- Permission screens -->
+    <string name="permission_rationale_title">Необхідний доступ</string>
+    <string name="permission_rationale_body">Для коректної роботи додатка, будь ласка, прийміть наступні дозволи:</string>
+    <string name="permission_denied_title">Дозволи вимкнено</string>
+    <string name="permission_denied_body">Ви вимкнули критично важливі дозволи. Будь ласка, увімкніть їх у налаштуваннях, щоб продовжити:</string>
+    <string name="permission_retry">Зрозуміло, повторити</string>
+    <string name="permission_open_settings">Відкрити налаштування</string>
+    <string name="exit_app">Вийти з додатка</string>
+    <string name="permission_label_audio">Доступ до музики та аудіо</string>
+    <string name="permission_label_notifications">Сповіщення про відтворення</string>
+    <string name="permission_label_storage">Доступ до сховища</string>
+    <string name="permission_info_desc">Інформація про дозволи</string>
+    <string name="permission_required_desc">Потрібен дозвіл</string>
+    <string name="permission_denied_desc">Помилка дозволів</string>
+    <string name="permission_denied_item_desc">Дозвіл відхилено</string>
+
+    <!-- Equalizer -->
+    <string name="eq_high_fidelity_mode">Режим високої точності</string>
 </resources>

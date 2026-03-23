@@ -4,9 +4,10 @@ import com.lg.monkeymusicplayer.data.database.HistoryEntity
 import com.lg.monkeymusicplayer.data.database.PlaylistEntity
 import com.lg.monkeymusicplayer.data.model.Song
 
-enum class LayoutMode {
-    LIST, GRID
-}
+// ── CORRECCIÓN: LayoutMode eliminado ──
+// El enum LayoutMode { LIST, GRID } y el campo layoutMode en LibraryUiState
+// nunca fueron leídos por ningún composable. Dead code eliminado.
+// Si se implementa vista de grilla en el futuro, añadir aquí con su lógica completa.
 
 data class LibraryUiState(
     val isLoading: Boolean = true,
@@ -23,6 +24,5 @@ data class LibraryUiState(
     val currentPlaylistSongs: List<Song> = emptyList(),
     val searchQuery: String = "",
     val sortOrder: SortOrder = SortOrder.NAME,
-    val playerState: PlayerState = PlayerState(),
-    val layoutMode: LayoutMode = LayoutMode.LIST
+    val playerState: PlayerState = PlayerState()
 )

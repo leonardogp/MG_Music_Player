@@ -1,6 +1,6 @@
 package com.lg.monkeymusicplayer.ui
 
-import android.content.Context
+import android.app.Application
 import android.os.Bundle
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.lg.monkeymusicplayer.core.player.MusicPlayerManager
@@ -27,7 +27,7 @@ class MusicViewModelTest {
     private lateinit var viewModel: MusicViewModel
     private val repository: MusicRepository = mock()
     private val playerManager: MusicPlayerManager = mock()
-    private val context: Context = mock()
+    private val application: Application = mock()
 
     private val testDispatcher = StandardTestDispatcher()
 
@@ -49,7 +49,7 @@ class MusicViewModelTest {
         whenever(playerManager.audioSessionId).thenReturn(MutableStateFlow(0))
         whenever(playerManager.equalizerData).thenReturn(MutableStateFlow<Bundle?>(null))
 
-        viewModel = MusicViewModel(repository, playerManager, context)
+        viewModel = MusicViewModel(application, repository, playerManager)
     }
 
     @After

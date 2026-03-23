@@ -96,8 +96,17 @@ interface MusicDao {
     @Query("SELECT songId FROM playlist_songs WHERE playlistId = :playlistId")
     suspend fun getSongsInPlaylist(playlistId: Long): List<Long>
 
+    // Query directa por IDs — evita cargar toda la biblioteca solo para filtrar
+    @Query("SELECT * FROM songs WHERE id IN (:ids)")
+    suspend fun getSongsByIds(ids: List<Long>): List<SongEntity>
+
     @Insert
     suspend fun addToHistory(history: HistoryEntity)
+
+    // Limitar el historial a las últimas 50 entradas tras cada inserción.
+    // Sin esto la tabla crece indefinidamente aunque getHistory() solo muestre 50.
+    @Query("DELETE FROM history WHERE id NOT IN (SELECT id FROM history ORDER BY timestamp DESC LIMIT 50)")
+    suspend fun trimHistory()
 
     @Query("SELECT * FROM history ORDER BY timestamp DESC LIMIT 50")
     fun getHistory(): kotlinx.coroutines.flow.Flow<List<HistoryEntity>>
@@ -122,7 +131,15 @@ abstract class MusicDatabase : RoomDatabase() {
                     MusicDatabase::class.java,
                     "music_database"
                 )
-                .fallbackToDestructiveMigration()
+                .apply {
+                    // En debug: migración destructiva para agilizar el desarrollo.
+                    // En release: falla con un error claro en lugar de borrar datos del usuario.
+                    // TODO: añadir migraciones explícitas (addMigrations) antes de cada release
+                    //       que cambie el esquema de la base de datos.
+                    if (com.lg.monkeymusicplayer.BuildConfig.DEBUG) {
+                        fallbackToDestructiveMigration()
+                    }
+                }
                 .build()
                 INSTANCE = instance
                 instance

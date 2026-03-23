@@ -69,7 +69,45 @@
     <string name="minutes">%d minutos</string>
     <string name="unknown">Desconhecido</string>
     <string name="unknown_artist">Artista Desconhecido</string>
-    <string name="unknown_album">Álbum Desconocido</string>
+    <string name="unknown_album">Álbum Desconhecido</string>
     <string name="no_genre">Sem gênero</string>
-    <string name="root">Raiz</string>
+    <string name="root">Raíz</string>
+    <string name="system_default">Padrão do sistema</string>
+
+    <!-- Greetings -->
+    <string name="greeting_morning">Bom dia</string>
+    <string name="greeting_afternoon">Boa tarde</string>
+    <string name="greeting_evening">Boa noite</string>
+
+    <!-- Tag editor feedback -->
+    <string name="tags_saved_ok">Etiquetas salvas com sucesso!</string>
+    <string name="tags_save_error">Erro ao salvar etiquetas: %s</string>
+    <string name="tags_permission_needed">Permissão de armazenamento necessária para editar etiquetas.</string>
+    <string name="tags_permission_grant">Conceder</string>
+    <string name="tags_saving">Salvando\u2026</string>
+    <string name="tags_edit_current_song">Editar etiquetas</string>
+
+    <!-- Storage permission -->
+    <string name="manage_storage_permission_title">Acesso ao armazenamento necessário</string>
+    <string name="manage_storage_permission_body">Para editar as etiquetas das músicas, permita que este aplicativo gerencie todos os arquivos nas Configurações.</string>
+    <string name="manage_storage_open_settings">Abrir configurações</string>
+
+    <!-- Permission screens -->
+    <string name="permission_rationale_title">Acesso Necessário</string>
+    <string name="permission_rationale_body">Para que o aplicativo funcione corretamente, por favor aceite as seguintes permissões:</string>
+    <string name="permission_denied_title">Permissões Desativadas</string>
+    <string name="permission_denied_body">Você desativou permissões críticas. Por favor, ative-as nas configurações para continuar:</string>
+    <string name="permission_retry">Entendido, tentar novamente</string>
+    <string name="permission_open_settings">Abrir Configurações</string>
+    <string name="exit_app">Sair do aplicativo</string>
+    <string name="permission_label_audio">Acesso a Música e Áudio</string>
+    <string name="permission_label_notifications">Notificações de Reprodução</string>
+    <string name="permission_label_storage">Acesso ao Armazenamento</string>
+    <string name="permission_info_desc">Informações de permissão</string>
+    <string name="permission_required_desc">Permissão necessária</string>
+    <string name="permission_denied_desc">Erro de permissão</string>
+    <string name="permission_denied_item_desc">Permissão negada</string>
+
+    <!-- Equalizer -->
+    <string name="eq_high_fidelity_mode">Modo de Alta Fidelidade</string>
 </resources>

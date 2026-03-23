@@ -17,6 +17,7 @@ import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlin.math.abs
 
 @UnstableApi
 class MusicPlayerManager(context: Context) {
@@ -60,6 +61,15 @@ class MusicPlayerManager(context: Context) {
     
     private var lastPlaylist = listOf<Song>()
 
+    // Índice para lookup O(1) en lugar de find{} O(N) en updateQueue/updateCurrentSong
+    private var playlistIndex = mapOf<String, Song>()
+
+    // Referencia al listener para poder removerlo explícitamente en release()
+    private var playerListener: Player.Listener? = null
+
+    // Referencia al listener de reconexión — también debe removerse en release()/reconnect()
+    private var reconnectListener: Player.Listener? = null
+
     init {
         setupMediaController()
     }
@@ -71,7 +81,8 @@ class MusicPlayerManager(context: Context) {
         controllerFuture?.addListener({
             try {
                 val player = controllerFuture?.get() ?: return@addListener
-                player.addListener(object : Player.Listener {
+
+                playerListener = object : Player.Listener {
                     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                         updateCurrentSong(mediaItem)
                         _duration.value = player.duration.coerceAtLeast(0L)
@@ -109,8 +120,28 @@ class MusicPlayerManager(context: Context) {
                     override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
                         updateQueue()
                     }
-                })
-                
+                }
+
+                player.addListener(playerListener!!)
+
+                // ── CORRECCIÓN: listener de reconexión guardado en reconnectListener ──
+                // Antes: objeto anónimo sin referencia → no se podía remover en
+                //        release()/reconnect(), quedaba registrado en el player indefinidamente.
+                // Ahora: se guarda en reconnectListener y se remueve explícitamente.
+                reconnectListener = object : Player.Listener {
+                    override fun onPlaybackStateChanged(playbackState: Int) {
+                        if (playbackState == Player.STATE_IDLE && _isPlaying.value) {
+                            scope.launch(Dispatchers.Main) {
+                                stopProgressUpdate()
+                                _isPlaying.value = false
+                                delay(1000) // Pausa breve para evitar bucle de reconexión
+                                reconnect()
+                            }
+                        }
+                    }
+                }
+                player.addListener(reconnectListener!!)
+
                 // Initial state sync
                 _isPlaying.value = player.isPlaying
                 _playbackState.value = player.playbackState
@@ -128,6 +159,18 @@ class MusicPlayerManager(context: Context) {
                 e.printStackTrace()
             }
         }, MoreExecutors.directExecutor())
+    }
+
+    private fun reconnect() {
+        // Remover ambos listeners antes de reinicializar
+        controller?.let { player ->
+            playerListener?.let { player.removeListener(it) }
+            reconnectListener?.let { player.removeListener(it) }
+        }
+        playerListener = null
+        reconnectListener = null
+        controllerFuture?.let { MediaController.releaseFuture(it) }
+        setupMediaController()
     }
 
     private fun fetchAudioSessionId() {
@@ -176,8 +219,8 @@ class MusicPlayerManager(context: Context) {
     }
 
     private fun updateCurrentSong(mediaItem: MediaItem?) {
-        val song = mediaItem?.localConfiguration?.tag as? Song 
-            ?: lastPlaylist.find { it.id.toString() == mediaItem?.mediaId }
+        val song = mediaItem?.localConfiguration?.tag as? Song
+            ?: playlistIndex[mediaItem?.mediaId]
         _currentSong.value = song
     }
     
@@ -185,8 +228,9 @@ class MusicPlayerManager(context: Context) {
         val player = controller ?: return
         val queue = mutableListOf<Song>()
         for (i in 0 until player.mediaItemCount) {
-            val song = player.getMediaItemAt(i).localConfiguration?.tag as? Song
-                ?: lastPlaylist.find { it.id.toString() == player.getMediaItemAt(i).mediaId }
+            val item = player.getMediaItemAt(i)
+            val song = item.localConfiguration?.tag as? Song
+                ?: playlistIndex[item.mediaId]
             song?.let { queue.add(it) }
         }
         _currentQueue.value = queue
@@ -194,10 +238,13 @@ class MusicPlayerManager(context: Context) {
 
     private fun startProgressUpdate() {
         stopProgressUpdate()
-        progressJob = scope.launch {
+        progressJob = scope.launch(Dispatchers.Default) {
             while (isActive) {
-                controller?.let {
-                    _currentPosition.value = it.currentPosition
+                val pos = withContext(Dispatchers.Main) {
+                    controller?.currentPosition ?: _currentPosition.value
+                }
+                if (abs(pos - _currentPosition.value) > 500) {
+                    _currentPosition.value = pos
                 }
                 delay(1000)
             }
@@ -212,6 +259,7 @@ class MusicPlayerManager(context: Context) {
     fun setPlaylist(songs: List<Song>) {
         val player = controller ?: return
         lastPlaylist = songs
+        playlistIndex = songs.associateBy { it.id.toString() }
         val newMediaItems = songs.map { song ->
             MediaItem.Builder()
                 .setMediaId(song.id.toString())
@@ -234,6 +282,7 @@ class MusicPlayerManager(context: Context) {
             .setTag(song)
             .build()
         player.addMediaItem(mediaItem)
+        playlistIndex = playlistIndex + (song.id.toString() to song)
         if (!player.isPlaying && player.playbackState == Player.STATE_IDLE) {
             player.prepare()
         }
@@ -307,6 +356,12 @@ class MusicPlayerManager(context: Context) {
     }
 
     fun release() {
+        controller?.let { player ->
+            playerListener?.let { player.removeListener(it) }
+            reconnectListener?.let { player.removeListener(it) }
+        }
+        playerListener = null
+        reconnectListener = null
         stopProgressUpdate()
         scope.cancel()
         controllerFuture?.let { MediaController.releaseFuture(it) }

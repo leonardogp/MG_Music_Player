@@ -72,4 +72,42 @@
     <string name="unknown_album">Álbum Desconocido</string>
     <string name="no_genre">Sin género</string>
     <string name="root">Raíz</string>
+    <string name="system_default">Predeterminado del sistema</string>
+
+    <!-- Greetings -->
+    <string name="greeting_morning">Buenos días</string>
+    <string name="greeting_afternoon">Buenas tardes</string>
+    <string name="greeting_evening">Buenas noches</string>
+
+    <!-- Tag editor feedback -->
+    <string name="tags_saved_ok">¡Etiquetas guardadas correctamente!</string>
+    <string name="tags_save_error">Error al guardar: %s</string>
+    <string name="tags_permission_needed">Se necesita permiso de almacenamiento para editar etiquetas.</string>
+    <string name="tags_permission_grant">Otorgar</string>
+    <string name="tags_saving">Guardando\u2026</string>
+    <string name="tags_edit_current_song">Editar etiquetas</string>
+
+    <!-- Storage permission -->
+    <string name="manage_storage_permission_title">Acceso al almacenamiento requerido</string>
+    <string name="manage_storage_permission_body">Para editar etiquetas, permite que esta app gestione todos los archivos en Ajustes.</string>
+    <string name="manage_storage_open_settings">Abrir ajustes</string>
+
+    <!-- Permission screens -->
+    <string name="permission_rationale_title">Acceso Necesario</string>
+    <string name="permission_rationale_body">Para que la app funcione correctamente, necesitamos que aceptes los siguientes permisos:</string>
+    <string name="permission_denied_title">Permisos Desactivados</string>
+    <string name="permission_denied_body">Has desactivado permisos críticos. Por favor, habilítalos en la configuración para continuar:</string>
+    <string name="permission_retry">Entendido, reintentar</string>
+    <string name="permission_open_settings">Abrir Configuración</string>
+    <string name="exit_app">Salir de la aplicación</string>
+    <string name="permission_label_audio">Acceso a Música y Audio</string>
+    <string name="permission_label_notifications">Notificaciones de Reproducción</string>
+    <string name="permission_label_storage">Acceso al Almacenamiento</string>
+    <string name="permission_info_desc">Información de permisos</string>
+    <string name="permission_required_desc">Permiso requerido</string>
+    <string name="permission_denied_desc">Error de permisos</string>
+    <string name="permission_denied_item_desc">Permiso denegado</string>
+
+    <!-- Equalizer -->
+    <string name="eq_high_fidelity_mode">Modo Alta Fidelidad</string>
 </resources>

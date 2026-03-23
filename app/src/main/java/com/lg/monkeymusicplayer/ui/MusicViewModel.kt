@@ -1,14 +1,12 @@
 package com.lg.monkeymusicplayer.ui
 
-import android.content.Context
+import android.app.Application
 import android.content.Intent
-import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.media.audiofx.AudioEffect
-import android.os.Bundle
 import androidx.annotation.OptIn
 import androidx.compose.ui.graphics.Color
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.util.UnstableApi
 import androidx.palette.graphics.Palette
@@ -16,6 +14,7 @@ import coil.ImageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.lg.monkeymusicplayer.core.player.MusicPlayerManager
+import com.lg.monkeymusicplayer.core.result.Result
 import com.lg.monkeymusicplayer.data.database.HistoryEntity
 import com.lg.monkeymusicplayer.data.database.PlaylistEntity
 import com.lg.monkeymusicplayer.data.model.LyricLine
@@ -32,10 +31,12 @@ import java.io.File
 
 @OptIn(UnstableApi::class)
 class MusicViewModel(
+    application: Application,
     private val repository: MusicRepository,
     private val playerManager: MusicPlayerManager,
-    val context: Context
-) : ViewModel() {
+) : AndroidViewModel(application) {
+
+    val context get() = getApplication<Application>()
 
     private val _isLoading = MutableStateFlow(true)
     private val _isScanning = MutableStateFlow(false)
@@ -50,11 +51,45 @@ class MusicViewModel(
     private val _accentColor = MutableStateFlow(PrimaryOrange)
     private val _lyrics = MutableStateFlow<List<LyricLine>>(emptyList())
 
+    // ── PUNTO 5: estado del permiso MANAGE_EXTERNAL_STORAGE ──
+    // true  → el usuario ya otorgó el permiso, el editor de tags puede escribir archivos.
+    // false → hay que pedirlo antes de abrir el diálogo de edición.
+    private val _hasManageStoragePermission = MutableStateFlow(false)
+    val hasManageStoragePermission: StateFlow<Boolean> = _hasManageStoragePermission.asStateFlow()
+
+    // Evento one-shot: la UI escucha este Flow para saber cuándo abrir la pantalla de Settings.
+    // Se usa SharedFlow (no StateFlow) para que el evento no se repita al recomponerse.
+    private val _requestManageStorageEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val requestManageStorageEvent: SharedFlow<Unit> = _requestManageStorageEvent.asSharedFlow()
+
+    // Evento one-shot para abrir el editor de tags desde el reproductor.
+    // Emitido cuando el usuario toca "Editar" en FullPlayerScreen.
+    private val _requestEditSongEvent = MutableSharedFlow<Song>(extraBufferCapacity = 1)
+    val requestEditSongEvent: SharedFlow<Song> = _requestEditSongEvent.asSharedFlow()
+
+    fun requestEditSong(song: Song) {
+        viewModelScope.launch { _requestEditSongEvent.emit(song) }
+    }
+
+    // Llamado desde MainActivity al arrancar y al volver de la pantalla de Settings
+    fun onManageStoragePermissionResult(granted: Boolean) {
+        _hasManageStoragePermission.value = granted
+    }
+
+    // Llamado desde la UI cuando el usuario intenta editar tags sin el permiso.
+    // Emite el evento para que MainActivity abra la pantalla de Settings correcta.
+    fun requestManageStoragePermission() {
+        viewModelScope.launch { _requestManageStorageEvent.emit(Unit) }
+    }
+    // Esto permite que la UI muestre el mensaje de error específico cuando falla,
+    // en lugar de solo saber que "algo salió mal".
+    private val _tagUpdateResult = MutableSharedFlow<Result<Unit>>(extraBufferCapacity = 1)
+    val tagUpdateResult: SharedFlow<Result<Unit>> = _tagUpdateResult.asSharedFlow()
+
     val currentSong: StateFlow<Song?> = playerManager.currentSong
     val searchQuery = _searchQuery.asStateFlow()
     val equalizerData = playerManager.equalizerData
 
-    // Optimizamos la cola mapeada para que no se recalcule cada segundo con el progreso
     private val mappedQueueFlow = combine(
         playerManager.currentQueue,
         repository.favorites
@@ -81,9 +116,8 @@ class MusicViewModel(
         val currentQueue = args[6] as List<Song>
         @Suppress("UNCHECKED_CAST")
         val favorites = args[12] as List<Long>
-        
         val isFavorite = currentSong?.let { favorites.contains(it.id) } ?: false
-        
+
         PlayerState(
             currentSong = currentSong?.copy(isFavorite = isFavorite),
             isPlaying = args[1] as Boolean,
@@ -97,7 +131,6 @@ class MusicViewModel(
             lyrics = (args[9] as? List<*>)?.filterIsInstance<LyricLine>() ?: emptyList(),
             sleepTimerMinutes = args[10] as Int,
             sleepTimerRemainingMillis = args[11] as Long,
-            shuffleEnabled = args[2] as Boolean,
             isFavorite = isFavorite
         )
     }
@@ -126,19 +159,46 @@ class MusicViewModel(
 
         val mappedSongs = songs.map { it.copy(isFavorite = favorites.contains(it.id)) }
         val mappedPlaylistSongs = playlistSongs.map { it.copy(isFavorite = favorites.contains(it.id)) }
-
         val filtered = if (query.isBlank()) mappedSongs
-                      else mappedSongs.filter { it.title.contains(query, ignoreCase = true) || it.artist.contains(query, ignoreCase = true) }
-        
+                       else mappedSongs.filter {
+                           it.title.contains(query, ignoreCase = true) ||
+                           it.artist.contains(query, ignoreCase = true)
+                       }
+
+        // ── CORRECCIÓN: aplicar el orden seleccionado por el usuario ──
+        // Antes: order se extraía del combine pero nunca se usaba → el dropdown
+        //        de ordenación cambiaba el estado pero la lista no cambiaba.
+        val sorted = when (order) {
+            SortOrder.NAME       -> filtered.sortedBy { it.title.lowercase() }
+            SortOrder.ARTIST     -> filtered.sortedBy { it.artist.lowercase() }
+            SortOrder.ALBUM      -> filtered.sortedBy { it.album.lowercase() }
+            SortOrder.DATE_ADDED -> filtered // MediaStore no expone fecha en el modelo actual
+        }
+
         LibraryData(
-            songs = filtered,
+            songs = sorted,
             playlists = playlists.filter { it.name.contains(query, ignoreCase = true) },
             history = history,
             currentPlaylistSongs = mappedPlaylistSongs,
-            genres = filtered.groupBy { it.genre },
-            artists = filtered.groupBy { it.artist },
-            albums = filtered.groupBy { it.album },
-            folders = filtered.groupBy { it.folder }
+            // ── PUNTO 6: filtrar las categorías por query ──
+            // Antes: groupBy se aplicaba sobre filtered (canciones filtradas), lo que
+            //        mostraba géneros/artistas/álbumes cuyas canciones coincidían con la
+            //        búsqueda — pero si buscabas "Rock" en la pestaña Géneros no aparecía
+            //        nada porque el filtro solo buscaba en title y artist de cada canción.
+            // Ahora: se genera primero el mapa completo y luego se filtra por clave,
+            //        de modo que buscar "Rock" muestra el género "Rock" con todas sus canciones.
+            genres = if (query.isBlank()) mappedSongs.groupBy { it.genre }
+                     else mappedSongs.groupBy { it.genre }
+                         .filterKeys { it.contains(query, ignoreCase = true) },
+            artists = if (query.isBlank()) mappedSongs.groupBy { it.artist }
+                      else mappedSongs.groupBy { it.artist }
+                          .filterKeys { it.contains(query, ignoreCase = true) },
+            albums = if (query.isBlank()) mappedSongs.groupBy { it.album }
+                     else mappedSongs.groupBy { it.album }
+                         .filterKeys { it.contains(query, ignoreCase = true) },
+            folders = if (query.isBlank()) mappedSongs.groupBy { it.folder }
+                      else mappedSongs.groupBy { it.folder }
+                          .filterKeys { it.contains(query, ignoreCase = true) }
         )
     }.flowOn(Dispatchers.Default)
 
@@ -186,19 +246,12 @@ class MusicViewModel(
 
     init {
         viewModelScope.launch {
-            repository.allSongsFlow.take(1).collect {
-                _isLoading.value = false
-            }
+            repository.allSongsFlow.take(1).collect { _isLoading.value = false }
         }
-        
         viewModelScope.launch {
             playerManager.currentSong.collect { song ->
-                song?.let { 
-                    updateAccentColor(it)
-                    loadLyrics(it)
-                } ?: run {
-                    _lyrics.value = emptyList()
-                }
+                song?.let { updateAccentColor(it); loadLyrics(it) }
+                    ?: run { _lyrics.value = emptyList() }
             }
         }
     }
@@ -206,12 +259,7 @@ class MusicViewModel(
     private fun loadLyrics(song: Song) {
         viewModelScope.launch(Dispatchers.IO) {
             val lyricsFile = File(song.path.replaceAfterLast(".", "lrc", "lrc"))
-            if (lyricsFile.exists()) {
-                val lines = parseLrc(lyricsFile.readText())
-                _lyrics.value = lines
-            } else {
-                _lyrics.value = emptyList()
-            }
+            _lyrics.value = if (lyricsFile.exists()) parseLrc(lyricsFile.readText()) else emptyList()
         }
     }
 
@@ -219,14 +267,12 @@ class MusicViewModel(
         val lines = mutableListOf<LyricLine>()
         val regex = Regex("\\[(\\d{2}):(\\d{2})\\.(\\d{2,3})](.*)")
         content.lines().forEach { line ->
-            val match = regex.find(line)
-            if (match != null) {
+            regex.find(line)?.let { match ->
                 val min = match.groupValues[1].toLong()
                 val sec = match.groupValues[2].toLong()
                 val ms = match.groupValues[3].toLong().let { if (it < 100) it * 10 else it }
-                val time = (min * 60 * 1000) + (sec * 1000) + ms
                 val text = match.groupValues[4].trim()
-                if (text.isNotBlank()) lines.add(LyricLine(time, text))
+                if (text.isNotBlank()) lines.add(LyricLine((min * 60 * 1000) + (sec * 1000) + ms, text))
             }
         }
         return lines.sortedBy { it.timeMs }
@@ -239,16 +285,12 @@ class MusicViewModel(
                 .data(song.albumArtUri)
                 .allowHardware(false)
                 .build()
-
-            val result = (loader.execute(request) as? SuccessResult)?.drawable
-            val bitmap = (result as? BitmapDrawable)?.bitmap
-
+            val bitmap = ((loader.execute(request) as? SuccessResult)?.drawable
+                as? android.graphics.drawable.BitmapDrawable)?.bitmap
             if (bitmap != null) {
                 Palette.from(bitmap).generate { palette ->
-                    palette?.vibrantSwatch?.rgb?.let { color ->
-                        _accentColor.value = Color(color)
-                    } ?: palette?.dominantSwatch?.rgb?.let { color ->
-                        _accentColor.value = Color(color)
+                    (palette?.vibrantSwatch ?: palette?.dominantSwatch)?.rgb?.let {
+                        _accentColor.value = Color(it)
                     }
                 }
             }
@@ -273,37 +315,42 @@ class MusicViewModel(
         }
     }
 
-    fun openEqualizer(context: Context) {
-        val intent = Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL)
-        intent.putExtra(AudioEffect.EXTRA_AUDIO_SESSION, playerManager.getAudioSessionId())
-        intent.putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
-        intent.putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
+    fun openEqualizer(context: android.content.Context) {
+        val intent = Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL).apply {
+            putExtra(AudioEffect.EXTRA_AUDIO_SESSION, playerManager.getAudioSessionId())
+            putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
+            putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
+        }
         if (intent.resolveActivity(context.packageManager) != null) {
             context.startActivity(intent)
         }
     }
 
-    fun setEqualizerBand(band: Short, level: Short) {
-        playerManager.setEqualizerBand(band, level)
-    }
+    fun setEqualizerBand(band: Short, level: Short) = playerManager.setEqualizerBand(band, level)
+    fun fetchEqualizerData() = playerManager.fetchEqualizerData()
 
-    fun fetchEqualizerData() {
-        playerManager.fetchEqualizerData()
-    }
+    fun createPlaylist(name: String) =
+        viewModelScope.launch(Dispatchers.IO) { repository.createPlaylist(name) }
 
-    fun createPlaylist(name: String) = viewModelScope.launch(Dispatchers.IO) { repository.createPlaylist(name) }
-    fun deletePlaylist(playlist: PlaylistEntity) = viewModelScope.launch(Dispatchers.IO) { repository.deletePlaylist(playlist) }
-    fun addSongToPlaylist(playlistId: String, song: Song) = viewModelScope.launch(Dispatchers.IO) {
-        playlistId.toLongOrNull()?.let { repository.addSongToPlaylist(it, song.id) }
-    }
-    fun addSongsToPlaylist(playlistId: String, songs: List<Song>) = viewModelScope.launch(Dispatchers.IO) {
-        playlistId.toLongOrNull()?.let { repository.addSongsToPlaylist(it, songs) }
-    }
-    fun removeSongFromPlaylist(playlistId: String, songId: Long) = viewModelScope.launch(Dispatchers.IO) {
-        val id = playlistId.toLongOrNull() ?: return@launch
-        repository.removeSongFromPlaylist(id, songId)
-        loadPlaylistSongs(playlistId)
-    }
+    fun deletePlaylist(playlist: PlaylistEntity) =
+        viewModelScope.launch(Dispatchers.IO) { repository.deletePlaylist(playlist) }
+
+    fun addSongToPlaylist(playlistId: String, song: Song) =
+        viewModelScope.launch(Dispatchers.IO) {
+            playlistId.toLongOrNull()?.let { repository.addSongToPlaylist(it, song.id) }
+        }
+
+    fun addSongsToPlaylist(playlistId: String, songs: List<Song>) =
+        viewModelScope.launch(Dispatchers.IO) {
+            playlistId.toLongOrNull()?.let { repository.addSongsToPlaylist(it, songs) }
+        }
+
+    fun removeSongFromPlaylist(playlistId: String, songId: Long) =
+        viewModelScope.launch(Dispatchers.IO) {
+            val id = playlistId.toLongOrNull() ?: return@launch
+            repository.removeSongFromPlaylist(id, songId)
+            loadPlaylistSongs(playlistId)
+        }
 
     fun loadPlaylistSongs(playlistId: String) {
         viewModelScope.launch(Dispatchers.Default) {
@@ -314,36 +361,48 @@ class MusicViewModel(
 
     fun onSearchQueryChanged(query: String) { _searchQuery.value = query }
     fun setSortOrder(order: SortOrder) { _sortOrder.value = order }
-    
+
     fun scanMusic() = viewModelScope.launch {
         if (_isScanning.value) return@launch
         _isScanning.value = true
         _scanProgress.value = 0
         _scanTotal.value = 0
-        repository.refreshMusicDatabase { current, total ->
-            _scanProgress.value = current
-            _scanTotal.value = total
+        try {
+            repository.refreshMusicDatabase { current, total ->
+                _scanProgress.value = current
+                _scanTotal.value = total
+            }
+        } finally {
+            // Garantiza que el indicador de progreso desaparece aunque el scan falle
+            _isScanning.value = false
         }
-        _isScanning.value = false
     }
 
     fun toggleFavorite(song: Song) = viewModelScope.launch {
         val currentFavorites = repository.favorites.first()
-        val isCurrentlyFavorite = currentFavorites.contains(song.id)
-        repository.toggleFavorite(song.id, !isCurrentlyFavorite)
+        repository.toggleFavorite(song.id, !currentFavorites.contains(song.id))
     }
 
-    fun updateSongTags(song: Song, title: String, artist: String, album: String, genre: String) = viewModelScope.launch {
-        repository.updateSongTags(song, title, artist, album, genre)
+    fun updateSongTags(
+        song: Song,
+        title: String,
+        artist: String,
+        album: String,
+        genre: String
+    ) = viewModelScope.launch {
+        val result = repository.updateSongTags(song, title, artist, album, genre)
+        _tagUpdateResult.emit(result)
     }
 
     fun playSong(song: Song, playlist: List<Song> = uiState.value.songs) {
         viewModelScope.launch {
             playerManager.setPlaylist(playlist)
             playerManager.play(song)
+            // Registrar en historial — se ejecuta en IO para no bloquear la reproducción
+            launch(Dispatchers.IO) { repository.addToHistory(song.id) }
         }
     }
-    
+
     fun addToQueue(song: Song) = playerManager.addToQueue(song)
     fun togglePlayPause() = playerManager.togglePlayPause()
     fun skipNext() = playerManager.skipNext()

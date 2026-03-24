@@ -8,6 +8,7 @@ import android.os.Handler
 import android.os.Looper
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -18,15 +19,28 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.lg.monkeymusicplayer.data.database.MusicDao
+import com.lg.monkeymusicplayer.data.database.SongEntity
+import com.lg.monkeymusicplayer.data.model.Song
 import com.lg.monkeymusicplayer.ui.MainActivity
+import com.lg.monkeymusicplayer.ui.widget.MusicWidget
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.firstOrNull
+import javax.inject.Inject
 
 @UnstableApi
+@AndroidEntryPoint
 class MusicService : MediaSessionService() {
+
+    @Inject
+    lateinit var musicDao: MusicDao
 
     private var mediaSession: MediaSession? = null
     private lateinit var player: ExoPlayer
     private var equalizer: Equalizer? = null
 
+    private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val handler = Handler(Looper.getMainLooper())
     private var crossfadeDurationMs = 5000L
     private var isFading = false
@@ -48,23 +62,19 @@ class MusicService : MediaSessionService() {
         const val COMMAND_SET_CROSSFADE_DURATION = "COMMAND_SET_CROSSFADE_DURATION"
         const val COMMAND_SET_EQUALIZER_BAND = "COMMAND_SET_EQUALIZER_BAND"
         const val COMMAND_GET_EQUALIZER_DATA = "COMMAND_GET_EQUALIZER_DATA"
+
+        const val ACTION_WIDGET_PLAY_PAUSE = "com.lg.monkeymusicplayer.ACTION_WIDGET_PLAY_PAUSE"
+        const val ACTION_WIDGET_NEXT = "com.lg.monkeymusicplayer.ACTION_WIDGET_NEXT"
+        const val ACTION_WIDGET_PREV = "com.lg.monkeymusicplayer.ACTION_WIDGET_PREV"
+        const val ACTION_WIDGET_UPDATE_REQUEST = "com.lg.monkeymusicplayer.ACTION_WIDGET_UPDATE_REQUEST"
     }
 
     override fun onCreate() {
         super.onCreate()
 
-        // ── FIX: Configuración para Gapless Playback ──
-        // ExoPlayer soporta gapless nativamente, pero para que sea fluido
-        // (especialmente en transiciones rápidas o álbumes conceptuales),
-        // es necesario asegurar que el siguiente ítem se precargue con suficiente antelación.
         val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(
-                32 * 1024, // minBufferMs: 32s para asegurar precarga holgada
-                64 * 1024, // maxBufferMs
-                1024,      // bufferForPlaybackMs: inicio rápido
-                1024       // bufferForPlaybackAfterRebufferMs
-            )
-            .setBackBuffer(10 * 1024, true) // 10s de back-buffer para rebobinados rápidos
+            .setBufferDurationsMs(32 * 1024, 64 * 1024, 1024, 1024)
+            .setBackBuffer(10 * 1024, true)
             .build()
 
         player = ExoPlayer.Builder(this)
@@ -76,10 +86,18 @@ class MusicService : MediaSessionService() {
                 true
             )
             .setHandleAudioBecomingNoisy(true)
-            .setLoadControl(loadControl) // Aplicar el LoadControl para gapless fluido
+            .setLoadControl(loadControl)
             .build()
 
         player.addListener(object : Player.Listener {
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                updateWidget()
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                updateWidget()
+            }
+
             override fun onPositionDiscontinuity(
                 oldPosition: Player.PositionInfo,
                 newPosition: Player.PositionInfo,
@@ -94,6 +112,7 @@ class MusicService : MediaSessionService() {
                 if (playbackState == Player.STATE_READY && equalizer == null) {
                     setupEqualizer()
                 }
+                updateWidget()
             }
         })
 
@@ -108,6 +127,97 @@ class MusicService : MediaSessionService() {
             .setSessionActivity(pendingIntent)
             .setCallback(CustomMediaSessionCallback())
             .build()
+    }
+
+    private fun updateWidget() {
+        val currentMediaItem = player.currentMediaItem
+        val song = currentMediaItem?.localConfiguration?.tag as? Song
+        
+        if (song != null) {
+            MusicWidget.updateWidget(
+                context = this,
+                songTitle = song.title,
+                artistName = song.artist,
+                isPlaying = player.isPlaying,
+                albumArtUri = song.albumArtUri
+            )
+        } else {
+            // Intentar recuperar la última canción del historial para mostrarla en el widget
+            serviceScope.launch {
+                val lastHistory = withContext(Dispatchers.IO) {
+                    musicDao.getHistory().firstOrNull()?.firstOrNull()
+                }
+                if (lastHistory != null) {
+                    val lastSongEntity = withContext(Dispatchers.IO) {
+                        musicDao.getSongsByIds(listOf(lastHistory.songId)).firstOrNull()
+                    }
+                    val lastSong = lastSongEntity?.toDomainModel()
+                    MusicWidget.updateWidget(
+                        context = this@MusicService,
+                        songTitle = lastSong?.title,
+                        artistName = lastSong?.artist,
+                        isPlaying = false,
+                        albumArtUri = lastSong?.albumArtUri
+                    )
+                } else {
+                    MusicWidget.updateWidget(
+                        context = this@MusicService,
+                        songTitle = null,
+                        artistName = null,
+                        isPlaying = false,
+                        albumArtUri = null
+                    )
+                }
+            }
+        }
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ACTION_WIDGET_PLAY_PAUSE -> {
+                if (player.mediaItemCount == 0) {
+                    restoreLastSessionAndPlay()
+                } else {
+                    if (player.isPlaying) player.pause() else player.play()
+                }
+            }
+            ACTION_WIDGET_NEXT -> player.seekToNext()
+            ACTION_WIDGET_PREV -> player.seekToPrevious()
+            ACTION_WIDGET_UPDATE_REQUEST -> updateWidget()
+        }
+        return super.onStartCommand(intent, flags, startId)
+    }
+
+    private fun restoreLastSessionAndPlay() {
+        serviceScope.launch {
+            val history = withContext(Dispatchers.IO) {
+                musicDao.getHistory().firstOrNull() ?: emptyList()
+            }
+            if (history.isNotEmpty()) {
+                val songIds = history.map { it.songId }
+                val songEntities = withContext(Dispatchers.IO) {
+                    musicDao.getSongsByIds(songIds)
+                }
+                
+                // Reordenar para que coincida con el historial (el más reciente primero)
+                val songs = songIds.mapNotNull { id ->
+                    songEntities.find { it.id == id }?.toDomainModel()
+                }
+
+                if (songs.isNotEmpty()) {
+                    val mediaItems = songs.map { song ->
+                        MediaItem.Builder()
+                            .setMediaId(song.id.toString())
+                            .setUri(song.path)
+                            .setTag(song)
+                            .build()
+                    }
+                    player.setMediaItems(mediaItems)
+                    player.prepare()
+                    player.play()
+                }
+            }
+        }
     }
 
     private fun setupEqualizer() {
@@ -233,6 +343,7 @@ class MusicService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        serviceScope.cancel()
         handler.removeCallbacks(crossfadeCheckRunnable)
         equalizer?.release()
         equalizer = null
@@ -242,4 +353,16 @@ class MusicService : MediaSessionService() {
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
+
+    private fun SongEntity.toDomainModel() = Song(
+        id = id,
+        albumId = albumId,
+        title = title,
+        artist = artist,
+        album = album,
+        genre = genre,
+        folder = folder,
+        path = path,
+        albumArtUri = albumArtUri
+    )
 }

@@ -6,8 +6,12 @@ import android.graphics.drawable.BitmapDrawable
 import android.media.audiofx.AudioEffect
 import androidx.annotation.OptIn
 import androidx.compose.ui.graphics.Color
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import android.content.Context
 import androidx.media3.common.util.UnstableApi
 import androidx.palette.graphics.Palette
 import coil.ImageLoader
@@ -30,13 +34,14 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 @OptIn(UnstableApi::class)
-class MusicViewModel(
-    application: Application,
+@HiltViewModel
+class MusicViewModel @Inject constructor(
+    @ApplicationContext private val applicationContext: Context,
     private val repository: MusicRepository,
     private val playerManager: MusicPlayerManager,
-) : AndroidViewModel(application) {
+) : ViewModel() {
 
-    val context get() = getApplication<Application>()
+    val context get() = applicationContext
 
     private val _isLoading = MutableStateFlow(true)
     private val _isScanning = MutableStateFlow(false)
@@ -128,7 +133,7 @@ class MusicViewModel(
             currentQueue = currentQueue,
             audioSessionId = args[7] as Int,
             accentColor = args[8] as Color,
-            lyrics = (args[9] as? List<*>)?.filterIsInstance<LyricLine>() ?: emptyList(),
+            lyrics = (args[9] as? List<Any?>)?.filterIsInstance<LyricLine>() ?: emptyList(),
             sleepTimerMinutes = args[10] as Int,
             sleepTimerRemainingMillis = args[11] as Long,
             isFavorite = isFavorite

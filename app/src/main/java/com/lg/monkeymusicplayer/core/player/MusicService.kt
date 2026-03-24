@@ -10,6 +10,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -30,15 +31,6 @@ class MusicService : MediaSessionService() {
     private var crossfadeDurationMs = 5000L
     private var isFading = false
 
-    // ── CORRECCIÓN: guardar el Runnable como referencia nombrada ──
-    // Antes: se usaba `object : Runnable` anónimo dentro de handler.post().
-    //        Al llamar handler.removeCallbacksAndMessages(null) en onDestroy(),
-    //        se cancelaban TODOS los callbacks pendientes del handler, incluyendo
-    //        los de performFadeOut/performFadeIn que son lambdas independientes.
-    //        Esto causaba que el fade quedara interrumpido a mitad si el servicio
-    //        se destruía durante un crossfade.
-    // Ahora: referencia nombrada → se puede cancelar solo este Runnable con
-    //        removeCallbacks(crossfadeCheckRunnable), dejando intactos los demás.
     private val crossfadeCheckRunnable = object : Runnable {
         override fun run() {
             if (player.isPlaying && !isFading && crossfadeDurationMs > 0) {
@@ -61,6 +53,20 @@ class MusicService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
 
+        // ── FIX: Configuración para Gapless Playback ──
+        // ExoPlayer soporta gapless nativamente, pero para que sea fluido
+        // (especialmente en transiciones rápidas o álbumes conceptuales),
+        // es necesario asegurar que el siguiente ítem se precargue con suficiente antelación.
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                32 * 1024, // minBufferMs: 32s para asegurar precarga holgada
+                64 * 1024, // maxBufferMs
+                1024,      // bufferForPlaybackMs: inicio rápido
+                1024       // bufferForPlaybackAfterRebufferMs
+            )
+            .setBackBuffer(10 * 1024, true) // 10s de back-buffer para rebobinados rápidos
+            .build()
+
         player = ExoPlayer.Builder(this)
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -70,6 +76,7 @@ class MusicService : MediaSessionService() {
                 true
             )
             .setHandleAudioBecomingNoisy(true)
+            .setLoadControl(loadControl) // Aplicar el LoadControl para gapless fluido
             .build()
 
         player.addListener(object : Player.Listener {
@@ -90,7 +97,6 @@ class MusicService : MediaSessionService() {
             }
         })
 
-        // Iniciar el loop de crossfade con la referencia guardada
         handler.post(crossfadeCheckRunnable)
 
         val intent = Intent(this, MainActivity::class.java)
@@ -115,9 +121,6 @@ class MusicService : MediaSessionService() {
 
     private fun performFadeOut() {
         isFading = true
-        // ── FIX 2: capturar el volumen actual en lugar de asumir 1.0f ──
-        // Si el usuario ajustó el volumen del player antes del fade, arrancar desde
-        // el valor real evita el salto audible de "subida a 1.0f → bajada a 0".
         val startVolume = player.volume
         val steps = 20
         val interval = crossfadeDurationMs / steps
@@ -230,19 +233,12 @@ class MusicService : MediaSessionService() {
     }
 
     override fun onDestroy() {
-        // ── CORRECCIÓN: cancelar solo el crossfadeCheckRunnable, no todo el handler ──
-        // Antes: handler.removeCallbacksAndMessages(null) cancelaba TODOS los callbacks,
-        //        incluyendo las lambdas de fade en curso → audio podía quedar a volumen 0.
-        // Ahora: se cancela primero solo el loop de chequeo. Las lambdas de fade en curso
-        //        se cancelan con removeCallbacksAndMessages(null) como último paso,
-        //        después de que el player ya está liberado y el volumen no importa.
         handler.removeCallbacks(crossfadeCheckRunnable)
         equalizer?.release()
         equalizer = null
         player.release()
         mediaSession?.release()
         mediaSession = null
-        // Limpiar cualquier callback de fade que pudiera quedar pendiente
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }

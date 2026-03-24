@@ -58,12 +58,15 @@ fun EqualizerScreen(
     
     // EQ Data
     val numBands = equalizerData?.getShort("num_bands")?.toInt() ?: 5
-    val bandLevelsNorm = equalizerData?.getShortArray("band_levels")?.map { 
-        it.toFloat() / (equalizerData?.getShort("max_level")?.toFloat() ?: 1500f).coerceAtLeast(1f) 
-    } ?: List(numBands) { 0f }
     val centerFreqs = equalizerData?.getIntArray("center_freqs") ?: IntArray(numBands) { 0 }
     
-    var customLevels by remember { mutableStateOf(bandLevelsNorm) }
+    var customLevels by remember(equalizerData) {
+        val currentData = equalizerData
+        val initialLevels = currentData?.getShortArray("band_levels")?.map { 
+            it.toFloat() / (currentData.getShort("max_level").toFloat().takeIf { v -> v > 0f } ?: 1500f).coerceAtLeast(1f) 
+        } ?: List(numBands) { 0f }
+        mutableStateOf(initialLevels)
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Blurred album art background
@@ -267,7 +270,7 @@ fun EqualizerScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 20.dp)
             ) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
-                    drawEQCurve(bandLevelsNorm, size)
+                    drawEQCurve(customLevels, size)
                 }
             }
 
@@ -275,12 +278,12 @@ fun EqualizerScreen(
 
             // Band Sliders
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                bandLevelsNorm.forEachIndexed { index, level ->
+                customLevels.forEachIndexed { index, level ->
                     AnimatedCard(
                         level = level,
                         frequency = centerFreqs.getOrNull(index) ?: 0,
                         onLevelChange = { newLevel ->
-                            val newList = bandLevelsNorm.toMutableList()
+                            val newList = customLevels.toMutableList()
                             newList[index] = newLevel
                             customLevels = newList
                             coroutineScope.launch {

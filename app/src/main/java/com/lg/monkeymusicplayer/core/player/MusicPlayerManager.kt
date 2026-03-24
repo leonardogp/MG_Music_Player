@@ -86,7 +86,6 @@ class MusicPlayerManager(context: Context) {
                         updateCurrentSong(mediaItem)
                         _duration.value = player.duration.coerceAtLeast(0L)
                         fetchAudioSessionId()
-                        fetchEqualizerData()
                     }
 
                     override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -112,7 +111,6 @@ class MusicPlayerManager(context: Context) {
                         if (playbackState == Player.STATE_READY) {
                             _duration.value = player.duration.coerceAtLeast(0L)
                             fetchAudioSessionId()
-                            fetchEqualizerData()
                         }
                     }
                     
@@ -214,7 +212,6 @@ class MusicPlayerManager(context: Context) {
             putShort("level", level)
         }
         player.sendCustomCommand(SessionCommand(MusicService.COMMAND_SET_EQUALIZER_BAND, Bundle.EMPTY), args)
-        fetchEqualizerData() // Refresh
     }
 
     private fun updateCurrentSong(mediaItem: MediaItem?) {

@@ -19,6 +19,7 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.lg.monkeymusicplayer.core.player.MusicPlayerManager
 import com.lg.monkeymusicplayer.core.result.Result
+import com.lg.monkeymusicplayer.data.database.EqPresetEntity
 import com.lg.monkeymusicplayer.data.database.HistoryEntity
 import com.lg.monkeymusicplayer.data.database.PlaylistEntity
 import com.lg.monkeymusicplayer.data.model.LyricLine
@@ -31,7 +32,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
+import java.io.File  // retenido para posibles extensiones futuras; sin uso directo
 
 @OptIn(UnstableApi::class)
 @HiltViewModel
@@ -55,6 +56,12 @@ class MusicViewModel @Inject constructor(
     private var sleepTimerJob: Job? = null
     private val _accentColor = MutableStateFlow(PrimaryOrange)
     private val _lyrics = MutableStateFlow<List<LyricLine>>(emptyList())
+    private val _isLoadingLyrics = MutableStateFlow(false)
+    val isLoadingLyrics: StateFlow<Boolean> = _isLoadingLyrics.asStateFlow()
+
+    // EQ presets guardados por el usuario — Flow directo desde Room
+    val eqPresets: StateFlow<List<EqPresetEntity>> = repository.eqPresets
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     // ── PUNTO 5: estado del permiso MANAGE_EXTERNAL_STORAGE ──
     // true  → el usuario ya otorgó el permiso, el editor de tags puede escribir archivos.
@@ -263,17 +270,14 @@ class MusicViewModel @Inject constructor(
 
     private fun loadLyrics(song: Song) {
         viewModelScope.launch(Dispatchers.IO) {
-            // ── FIX 4: song.path es una URI de ContentStore (content://media/...),
-            // no un path de filesystem. File() sobre esa URI no puede abrir el archivo.
-            // Solución: resolver la ruta real con MediaStore.Audio.Media.DATA via repository,
-            // exactamente igual que hace updateSongTags para acceder al .mp3 físico.
-            val realPath = repository.getFilePathFromId(song.id)
-            if (realPath == null) {
-                _lyrics.value = emptyList()
-                return@launch
+            _isLoadingLyrics.value = true
+            _lyrics.value = emptyList()
+            try {
+                val lrcContent = repository.fetchLyrics(song)
+                _lyrics.value = if (lrcContent != null) parseLrc(lrcContent) else emptyList()
+            } finally {
+                _isLoadingLyrics.value = false
             }
-            val lyricsFile = File(realPath.replaceAfterLast(".", "lrc", "${realPath}.lrc"))
-            _lyrics.value = if (lyricsFile.exists()) parseLrc(lyricsFile.readText()) else emptyList()
         }
     }
 
@@ -426,4 +430,12 @@ class MusicViewModel @Inject constructor(
     fun seekBack() = playerManager.seekBack()
     fun toggleShuffle() = playerManager.toggleShuffle()
     fun cycleRepeatMode() = playerManager.cycleRepeatMode()
+
+    // ── EQ Presets ──────────────────────────────────────────────────────────────
+
+    fun saveEqPreset(name: String, levels: List<Float>) =
+        viewModelScope.launch(Dispatchers.IO) { repository.saveEqPreset(name, levels) }
+
+    fun deleteEqPreset(preset: EqPresetEntity) =
+        viewModelScope.launch(Dispatchers.IO) { repository.deleteEqPreset(preset) }
 }

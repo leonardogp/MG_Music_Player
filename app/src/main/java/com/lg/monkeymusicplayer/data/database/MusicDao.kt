@@ -78,4 +78,14 @@ interface MusicDao {
 
     @Query("SELECT * FROM history ORDER BY timestamp DESC LIMIT 50")
     fun getHistory(): Flow<List<HistoryEntity>>
+
+    // ── EQ Presets ──
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertEqPreset(preset: EqPresetEntity): Long
+
+    @Delete
+    suspend fun deleteEqPreset(preset: EqPresetEntity)
+
+    @Query("SELECT * FROM eq_presets ORDER BY name ASC")
+    fun getEqPresets(): Flow<List<EqPresetEntity>>
 }

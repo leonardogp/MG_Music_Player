@@ -4,9 +4,11 @@ import android.content.ContentValues
 import android.content.Context
 import android.media.MediaScannerConnection
 import android.provider.MediaStore
+import com.lg.monkeymusicplayer.core.lyrics.LrcLibService
 import com.lg.monkeymusicplayer.core.result.Result
 import timber.log.Timber
 import com.lg.monkeymusicplayer.core.scanner.MusicScanner
+import com.lg.monkeymusicplayer.data.database.EqPresetEntity
 import com.lg.monkeymusicplayer.data.database.FavoriteEntity
 import com.lg.monkeymusicplayer.data.database.HistoryEntity
 import com.lg.monkeymusicplayer.data.database.MusicDao
@@ -235,4 +237,44 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
         path = path,
         albumArtUri = albumArtUri
     )
+
+    // ── EQ Presets ──────────────────────────────────────────────────────────────
+
+    /** Flow reactivo con todos los presets guardados por el usuario, ordenados por nombre. */
+    val eqPresets: Flow<List<EqPresetEntity>> = musicDao.getEqPresets()
+
+    suspend fun saveEqPreset(name: String, levels: List<Float>) = withContext(Dispatchers.IO) {
+        musicDao.insertEqPreset(EqPresetEntity.fromLevels(name.trim(), levels))
+    }
+
+    suspend fun deleteEqPreset(preset: EqPresetEntity) = withContext(Dispatchers.IO) {
+        musicDao.deleteEqPreset(preset)
+    }
+
+    // ── Letras online (LRCLib) ───────────────────────────────────────────────────
+
+    /**
+     * Estrategia de búsqueda de letras con fallback:
+     *  1. Archivo .lrc local junto al mp3 (sin conexión necesaria, máxima prioridad)
+     *  2. LRCLib API (online, gratuita, sin API key)
+     *  3. null → la UI mostrará "No lyrics found"
+     *
+     * @return Contenido LRC como String, o null si no se encontró nada.
+     */
+    suspend fun fetchLyrics(song: Song): String? = withContext(Dispatchers.IO) {
+        // 1 — Intentar archivo .lrc local
+        val realPath = getFilePathFromId(song.id)
+        if (realPath != null) {
+            val lrcFile = java.io.File(realPath.replaceAfterLast(".", "lrc", "$realPath.lrc"))
+            if (lrcFile.exists()) {
+                Timber.d("Lyrics: found local .lrc for '${song.title}'")
+                return@withContext lrcFile.readText()
+            }
+        }
+
+        // 2 — Fallback a LRCLib online
+        Timber.d("Lyrics: fetching online for '${song.title}' by '${song.artist}'")
+        LrcLibService.fetchLyrics(title = song.title, artist = song.artist)
+    }
 }
+

@@ -61,6 +61,8 @@ import androidx.media3.common.Player
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import com.lg.monkeymusicplayer.util.TimeFormatter
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import com.lg.monkeymusicplayer.ui.components.LyricsView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -116,6 +118,8 @@ fun LibraryScreen(
                 FullPlayerScreen(
                     song = uiState.playerState.currentSong!!,
                     queue = uiState.playerState.currentQueue,
+                    lyrics = uiState.playerState.lyrics,
+                    isLoadingLyrics = viewModel.isLoadingLyrics.collectAsState().value,
                     isPlaying = uiState.playerState.isPlaying,
                     isShuffleMode = uiState.playerState.isShuffleMode,
                     repeatMode = uiState.playerState.repeatMode,
@@ -134,10 +138,6 @@ fun LibraryScreen(
                     onToggleFavorite = { viewModel.toggleFavorite(uiState.playerState.currentSong!!) },
                     onAddToPlaylist = { /* handle */ },
                     onEditSong = { song ->
-                        // ── CORRECCIÓN: volver a la librería y abrir el editor de tags ──
-                        // Antes: solo hacía popBackStack() → cerraba el reproductor sin abrir editor.
-                        // Ahora: navega atrás primero (para que el diálogo aparezca sobre la librería)
-                        //        y luego dispara onEditSong en LibraryMainContent via el ViewModel.
                         navController.popBackStack()
                         viewModel.requestEditSong(song)
                     },
@@ -833,6 +833,8 @@ fun PlayerBottomBar(
 fun FullPlayerScreen(
     song: Song,
     queue: List<Song>,
+    lyrics: List<com.lg.monkeymusicplayer.data.model.LyricLine>,
+    isLoadingLyrics: Boolean,
     isPlaying: Boolean,
     isShuffleMode: Boolean,
     repeatMode: Int,
@@ -854,50 +856,9 @@ fun FullPlayerScreen(
     onPlayFromQueue: (Song) -> Unit
 ) {
     BackHandler { onClose() }
-    var showQueue by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState()
 
-    if (showQueue) {
-        ModalBottomSheet(
-            onDismissRequest = { showQueue = false },
-            sheetState = sheetState
-        ) {
-            Text(
-                stringResource(R.string.next_in_queue),
-                modifier = Modifier.padding(16.dp),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            LazyColumn(modifier = Modifier.fillMaxHeight(0.6f)) {
-                items(queue) { queueSong ->
-                    ListItem(
-                        modifier = Modifier.clickable { onPlayFromQueue(queueSong) },
-                        headlineContent = {
-                            Text(
-                                queueSong.title,
-                                color = if (queueSong.id == song.id) PrimaryOrange else Color.Unspecified,
-                                fontWeight = if (queueSong.id == song.id) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        supportingContent = { Text(queueSong.artist) },
-                        leadingContent = {
-                            AsyncImage(
-                                model = queueSong.albumArtUri,
-                                contentDescription = null,
-                                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(4.dp)),
-                                contentScale = ContentScale.Crop
-                            )
-                        },
-                        trailingContent = {
-                            if (queueSong.id == song.id) {
-                                Icon(Icons.Default.PlayArrow, contentDescription = null, tint = PrimaryOrange)
-                            }
-                        }
-                    )
-                }
-            }
-        }
-    }
+    // ── Tabs: 0 = Player, 1 = Lyrics, 2 = Queue ──────────────────────────────
+    var selectedTab by remember { mutableStateOf(0) }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         AsyncImage(
@@ -910,152 +871,251 @@ fun FullPlayerScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f))
-                    )
-                )
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))))
         )
 
         Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp).statusBarsPadding().navigationBarsPadding(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+            modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
         ) {
+            // ── Cabecera fija ─────────────────────────────────────────────────
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onClose) {
-                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.close), tint = Color.White, modifier = Modifier.size(32.dp))
+                    Icon(Icons.Default.KeyboardArrowDown, null, tint = Color.White, modifier = Modifier.size(32.dp))
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(stringResource(R.string.playlist).uppercase(), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.6f), letterSpacing = 1.sp)
-                    Text(song.album, style = MaterialTheme.typography.labelLarge, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text(stringResource(R.string.playlist).uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.6f), letterSpacing = 1.sp)
+                    Text(song.album, style = MaterialTheme.typography.labelLarge,
+                        color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1)
                 }
-                IconButton(onClick = { showQueue = true }) {
-                    Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = stringResource(R.string.view_queue), tint = Color.White)
-                }
+                // Placeholder simétrico
+                Box(modifier = Modifier.size(48.dp))
             }
 
-            Card(
-                modifier = Modifier.fillMaxWidth().aspectRatio(1f).padding(8.dp).shadow(20.dp, RoundedCornerShape(12.dp)),
-                shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-            ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current).data(song.albumArtUri).crossfade(true).build(),
-                    contentDescription = null,
-                    error = painterResource(R.drawable.ic_monkey_head),
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            }
-
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = song.title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(text = song.artist, style = MaterialTheme.typography.titleMedium, color = Color.White.copy(alpha = 0.7f), maxLines = 1)
-                    }
-                    // ── PUNTO 5: botón de edición de tags en el reproductor ──
-                    IconButton(onClick = { onEditSong(song) }) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = stringResource(R.string.tags_edit_current_song),
-                            tint = Color.White.copy(alpha = 0.7f),
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    IconButton(onClick = onToggleFavorite) {
-                        Icon(
-                            imageVector = if (song.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = stringResource(R.string.favorites),
-                            tint = if (song.isFavorite) Color.Red else Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
-            }
-
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Slider(
-                    value = currentPosition.toFloat(),
-                    onValueChange = { onSeekTo(it.toLong()) },
-                    valueRange = 0f..duration.toFloat().coerceAtLeast(1f),
-                    colors = SliderDefaults.colors(
-                        thumbColor = Color.White,
-                        activeTrackColor = Color.White,
-                        inactiveTrackColor = Color.White.copy(alpha = 0.2f)
+            // ── Tabs ──────────────────────────────────────────────────────────
+            TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = Color.Transparent,
+                contentColor = Color.White,
+                indicator = { tabPositions ->
+                    TabRowDefaults.SecondaryIndicator(
+                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                        color = PrimaryOrange
                     )
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(text = TimeFormatter.formatDuration(currentPosition), color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
-                    Text(text = TimeFormatter.formatDuration(duration), color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.bodySmall)
+                },
+                divider = {}
+            ) {
+                listOf(
+                    stringResource(R.string.playlist),
+                    stringResource(R.string.lyrics_tab),
+                    stringResource(R.string.queue_tab)
+                ).forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        text = {
+                            Text(title,
+                                color = if (selectedTab == index) Color.White else Color.White.copy(0.5f),
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal)
+                        }
+                    )
                 }
             }
 
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onToggleShuffle) {
-                        Icon(Icons.Default.Shuffle, contentDescription = stringResource(R.string.shuffle), tint = if (isShuffleMode) PrimaryOrange else Color.White.copy(alpha = 0.6f))
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        IconButton(onClick = onSkipPrevious) {
-                            Icon(Icons.Default.SkipPrevious, contentDescription = stringResource(R.string.previous), modifier = Modifier.size(44.dp), tint = Color.White)
-                        }
-                        Box(
-                            modifier = Modifier.size(72.dp).clip(CircleShape).background(Color.White).clickable { onPlayPause() },
-                            contentAlignment = Alignment.Center
+            // ── Contenido del tab ─────────────────────────────────────────────
+            when (selectedTab) {
+
+                // Tab 0: Player
+                0 -> {
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        // Portada
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f)
+                                .padding(8.dp)
+                                .shadow(20.dp, RoundedCornerShape(12.dp)),
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = CardDefaults.cardElevation(0.dp)
                         ) {
-                            Icon(
-                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = stringResource(R.string.play_pause),
-                                modifier = Modifier.size(40.dp),
-                                tint = Color.Black
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(song.albumArtUri).crossfade(true).build(),
+                                contentDescription = null,
+                                error = painterResource(R.drawable.ic_monkey_head),
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
                             )
                         }
-                        IconButton(onClick = onSkipNext) {
-                            Icon(Icons.Default.SkipNext, contentDescription = stringResource(R.string.skip_next), modifier = Modifier.size(44.dp), tint = Color.White)
+
+                        // Título + acciones
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(song.title, style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold, color = Color.White,
+                                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(song.artist, style = MaterialTheme.typography.titleMedium,
+                                    color = Color.White.copy(0.7f), maxLines = 1)
+                            }
+                            IconButton(onClick = { onEditSong(song) }) {
+                                Icon(Icons.Default.Edit, stringResource(R.string.tags_edit_current_song),
+                                    tint = Color.White.copy(0.7f), modifier = Modifier.size(22.dp))
+                            }
+                            IconButton(onClick = onToggleFavorite) {
+                                Icon(
+                                    if (song.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                    stringResource(R.string.favorites),
+                                    tint = if (song.isFavorite) Color.Red else Color.White,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                        }
+
+                        // Seekbar
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Slider(
+                                value = currentPosition.toFloat(),
+                                onValueChange = { onSeekTo(it.toLong()) },
+                                valueRange = 0f..duration.toFloat().coerceAtLeast(1f),
+                                colors = SliderDefaults.colors(
+                                    thumbColor = Color.White,
+                                    activeTrackColor = Color.White,
+                                    inactiveTrackColor = Color.White.copy(0.2f))
+                            )
+                            Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text(TimeFormatter.formatDuration(currentPosition),
+                                    color = Color.White.copy(0.6f), style = MaterialTheme.typography.bodySmall)
+                                Text(TimeFormatter.formatDuration(duration),
+                                    color = Color.White.copy(0.6f), style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+
+                        // Controles principales
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = onToggleShuffle) {
+                                Icon(Icons.Default.Shuffle, stringResource(R.string.shuffle),
+                                    tint = if (isShuffleMode) PrimaryOrange else Color.White.copy(0.6f))
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                IconButton(onClick = onSkipPrevious) {
+                                    Icon(Icons.Default.SkipPrevious, stringResource(R.string.previous),
+                                        modifier = Modifier.size(44.dp), tint = Color.White)
+                                }
+                                Box(modifier = Modifier.size(72.dp).clip(CircleShape)
+                                    .background(Color.White).clickable { onPlayPause() },
+                                    contentAlignment = Alignment.Center) {
+                                    Icon(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                        stringResource(R.string.play_pause),
+                                        modifier = Modifier.size(40.dp), tint = Color.Black)
+                                }
+                                IconButton(onClick = onSkipNext) {
+                                    Icon(Icons.Default.SkipNext, stringResource(R.string.skip_next),
+                                        modifier = Modifier.size(44.dp), tint = Color.White)
+                                }
+                            }
+                            IconButton(onClick = onCycleRepeatMode) {
+                                Icon(
+                                    when (repeatMode) {
+                                        Player.REPEAT_MODE_ONE -> Icons.Default.RepeatOne
+                                        else -> Icons.Default.Repeat
+                                    },
+                                    stringResource(R.string.repeat),
+                                    tint = if (repeatMode != Player.REPEAT_MODE_OFF) PrimaryOrange else Color.White.copy(0.6f)
+                                )
+                            }
+                        }
+
+                        // Controles secundarios
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = onSeekBack) {
+                                Icon(Icons.Default.Replay10, stringResource(R.string.seek_back_10),
+                                    tint = Color.White.copy(0.7f))
+                            }
+                            IconButton(onClick = onSeekForward) {
+                                Icon(Icons.Default.Forward10, stringResource(R.string.seek_forward_10),
+                                    tint = Color.White.copy(0.7f))
+                            }
+                            IconButton(onClick = onAddToPlaylist) {
+                                Icon(Icons.AutoMirrored.Filled.PlaylistAdd,
+                                    stringResource(R.string.add_to_playlist), tint = Color.White.copy(0.7f))
+                            }
                         }
                     }
-                    IconButton(onClick = onCycleRepeatMode) {
-                        Icon(
-                            imageVector = when (repeatMode) {
-                                Player.REPEAT_MODE_ONE -> Icons.Default.RepeatOne
-                                else -> Icons.Default.Repeat
-                            },
-                            contentDescription = stringResource(R.string.repeat),
-                            tint = if (repeatMode != Player.REPEAT_MODE_OFF) PrimaryOrange else Color.White.copy(alpha = 0.6f)
-                        )
+                }
+
+                // Tab 1: Lyrics
+                1 -> {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        if (isLoadingLyrics) {
+                            Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center) {
+                                CircularProgressIndicator(color = PrimaryOrange)
+                                Spacer(Modifier.height(12.dp))
+                                Text(stringResource(R.string.lyrics_searching),
+                                    color = Color.White.copy(0.6f), style = MaterialTheme.typography.bodyMedium)
+                            }
+                        } else {
+                            LyricsView(
+                                lyrics = lyrics,
+                                currentPosition = currentPosition,
+                                accentColor = PrimaryOrange,
+                                onLyricClick = onSeekTo
+                            )
+                        }
                     }
                 }
-                Spacer(modifier = Modifier.height(24.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onSeekBack) {
-                        Icon(Icons.Default.Replay10, contentDescription = stringResource(R.string.seek_back_10), tint = Color.White.copy(alpha = 0.7f))
-                    }
-                    IconButton(onClick = onSeekForward) {
-                        Icon(Icons.Default.Forward10, contentDescription = stringResource(R.string.seek_forward_10), tint = Color.White.copy(alpha = 0.7f))
-                    }
-                    IconButton(onClick = onAddToPlaylist) {
-                        Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = stringResource(R.string.add_to_playlist), tint = Color.White.copy(alpha = 0.7f))
+
+                // Tab 2: Queue
+                2 -> {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(queue) { queueSong ->
+                            val isCurrent = queueSong.id == song.id
+                            ListItem(
+                                modifier = Modifier.clickable { onPlayFromQueue(queueSong) },
+                                colors = ListItemDefaults.colors(
+                                    containerColor = if (isCurrent) Color.White.copy(0.08f) else Color.Transparent
+                                ),
+                                headlineContent = {
+                                    Text(queueSong.title,
+                                        color = if (isCurrent) PrimaryOrange else Color.White,
+                                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal)
+                                },
+                                supportingContent = {
+                                    Text(queueSong.artist, color = Color.White.copy(0.6f))
+                                },
+                                leadingContent = {
+                                    AsyncImage(
+                                        model = queueSong.albumArtUri,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(44.dp).clip(RoundedCornerShape(6.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                },
+                                trailingContent = {
+                                    if (isCurrent) Icon(Icons.Default.PlayArrow, null, tint = PrimaryOrange)
+                                }
+                            )
+                        }
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }

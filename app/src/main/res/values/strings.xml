@@ -110,4 +110,20 @@
 
     <!-- Equalizer -->
     <string name="eq_high_fidelity_mode">High-Fidelity Mode</string>
+    <string name="eq_save_preset">Save preset</string>
+    <string name="eq_preset_name">Preset name</string>
+    <string name="eq_preset_name_hint">My preset…</string>
+    <string name="eq_preset_saved">Preset saved!</string>
+    <string name="eq_preset_deleted">Preset deleted</string>
+    <string name="eq_delete_preset">Delete preset</string>
+    <string name="eq_my_presets">My presets</string>
+    <string name="eq_built_in">Built-in</string>
+
+    <!-- Lyrics -->
+    <string name="lyrics_searching">Searching lyrics…</string>
+    <string name="lyrics_not_found">No lyrics found</string>
+    <string name="lyrics_source_local">Local (.lrc)</string>
+    <string name="lyrics_source_online">Online</string>
+    <string name="lyrics_tab">Lyrics</string>
+    <string name="queue_tab">Queue</string>
 </resources>

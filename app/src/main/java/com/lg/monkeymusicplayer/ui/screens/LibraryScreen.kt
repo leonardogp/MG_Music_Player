@@ -468,8 +468,7 @@ fun MobileLayout(
         R.string.tab_albums,
         R.string.tab_folders,
         R.string.tab_playlists,
-        R.string.tab_favorites,
-        R.string.tab_history
+        R.string.tab_favorites
     )
     var selectedCategoryItem by remember { mutableStateOf<String?>(null) }
     var selectedPlaylistId by remember { mutableStateOf<String?>(null) }
@@ -628,7 +627,13 @@ fun MobileLayout(
             userScrollEnabled = (selectedCategoryItem == null && selectedPlaylistId == null)
         ) { page ->
             when (page) {
-                0 -> MainTab(uiState.songs, onPlay, onAddToQueue, onAddSongToPlaylist, onEditSong, onToggleFavorite)
+                0 -> {
+                    val songIndex = remember(uiState.songs) { uiState.songs.associateBy { it.id } }
+                    val historySongs = remember(uiState.history, songIndex) {
+                        uiState.history.mapNotNull { songIndex[it.songId] }.distinctBy { it.id }
+                    }
+                    MainTab(uiState.songs, historySongs, onPlay, onAddToQueue, onAddSongToPlaylist, onEditSong, onToggleFavorite)
+                }
                 1 -> SongList(uiState.songs, uiState.songs, onPlay, onAddToQueue, onAddSongToPlaylist, null, onEditSong, onToggleFavorite)
                 2 -> CategoryNavigation(uiState.genres, selectedCategoryItem, onPlay, onAddToQueue, { selectedCategoryItem = it }, Icons.Default.LibraryMusic, onAddSongToPlaylist, onEditSong, onToggleFavorite)
                 3 -> CategoryNavigation(uiState.artists, selectedCategoryItem, onPlay, onAddToQueue, { selectedCategoryItem = it }, Icons.Default.Person, onAddSongToPlaylist, onEditSong, onToggleFavorite)
@@ -652,20 +657,8 @@ fun MobileLayout(
                     }
                 }
                 7 -> {
-                    // ── CORRECCIÓN: remember evita recalcular filter en cada recomposición ──
                     val favSongs = remember(uiState.songs) { uiState.songs.filter { it.isFavorite } }
                     SongList(favSongs, favSongs, onPlay, onAddToQueue, onAddSongToPlaylist, null, onEditSong, onToggleFavorite)
-                }
-                8 -> {
-                    // ── CORRECCIÓN: lookup O(1) con Map en lugar de O(N²) con find{} ──
-                    // Antes: por cada entrada del historial se hacía uiState.songs.find{} →
-                    //        50 entradas × 1000 canciones = 50.000 comparaciones por recomposición.
-                    // Ahora: un solo Map construido una vez, lookup en O(1) por entrada.
-                    val songIndex = remember(uiState.songs) { uiState.songs.associateBy { it.id } }
-                    val historySongs = remember(uiState.history, songIndex) {
-                        uiState.history.mapNotNull { songIndex[it.songId] }.distinctBy { it.id }
-                    }
-                    SongList(historySongs, historySongs, onPlay, onAddToQueue, onAddSongToPlaylist, null, onEditSong, onToggleFavorite)
                 }
             }
         }
@@ -675,51 +668,114 @@ fun MobileLayout(
 @Composable
 fun MainTab(
     songs: List<Song>,
+    historySongs: List<Song>,
     onPlay: (Song, List<Song>) -> Unit,
     onAddToQueue: (Song) -> Unit,
     onAddSongToPlaylist: (Song) -> Unit,
     onEditSong: (Song) -> Unit,
     onToggleFavorite: (Song) -> Unit
 ) {
-    val favoriteSongs = songs.filter { it.isFavorite }
+    val favoriteSongs = remember(songs) { songs.filter { it.isFavorite } }
+    // 8 canciones en historial: llenan exactamente 2 filas de 2 columnas con portadas cuadradas,
+    // equilibrado con los 6 favoritos de arriba y sin necesitar scroll en pantallas normales.
+    val recentSongs = historySongs.take(8)
     val greeting = getGreeting()
 
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = stringResource(greeting),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-
-        if (favoriteSongs.isNotEmpty()) {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.heightIn(max = 240.dp)
-            ) {
-                items(favoriteSongs.take(6)) { song ->
-                    FavoriteGridItem(song, onClick = { onPlay(song, favoriteSongs) })
-                }
-            }
-        } else {
-            Box(
-                modifier = Modifier.height(120.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(stringResource(R.string.no_favorites_yet), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        contentPadding = PaddingValues(bottom = 16.dp)
+    ) {
+        item {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = stringResource(greeting),
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(24.dp))
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
-        Text(stringResource(R.string.recent), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(12.dp))
+        // ── Favoritos ────────────────────────────────────────────────────────
+        item {
+            Text(
+                text = stringResource(R.string.favorites),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+        item {
+            if (favoriteSongs.isNotEmpty()) {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.heightIn(max = 360.dp),
+                    userScrollEnabled = false
+                ) {
+                    items(favoriteSongs.take(6)) { song ->
+                        FavoriteGridItem(song, onClick = { onPlay(song, favoriteSongs) })
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .height(80.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        stringResource(R.string.no_favorites_yet),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(28.dp))
+        }
 
-        LazyColumn(modifier = Modifier.weight(1f)) {
-            items(songs.take(15)) { song ->
-                SongItem(song, songs, onPlay, onAddToQueue, onAddSongToPlaylist, null, onEditSong, onToggleFavorite)
+        // ── Historial reciente ───────────────────────────────────────────────
+        item {
+            Text(
+                text = stringResource(R.string.recent),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+        item {
+            if (recentSongs.isNotEmpty()) {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.heightIn(max = 480.dp),
+                    userScrollEnabled = false
+                ) {
+                    items(recentSongs) { song ->
+                        HistoryGridItem(
+                            song = song,
+                            onClick = { onPlay(song, recentSongs) }
+                        )
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .height(80.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        stringResource(R.string.no_songs),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
         }
     }
@@ -747,6 +803,46 @@ fun FavoriteGridItem(song: Song, onClick: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
                 fontWeight = FontWeight.Bold
             )
+        }
+    }
+}
+
+// Tarjeta de historial: portada cuadrada + título + artista debajo, misma anchura que FavoriteGridItem
+@Composable
+fun HistoryGridItem(song: Song, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onClick() },
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+    ) {
+        Column {
+            AsyncImage(
+                model = song.albumArtUri,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f),
+                contentScale = ContentScale.Crop,
+                error = painterResource(R.drawable.ic_monkey_head)
+            )
+            Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
+                Text(
+                    text = song.title,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = song.artist,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }

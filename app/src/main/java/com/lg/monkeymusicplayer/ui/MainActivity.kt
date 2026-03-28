@@ -76,6 +76,7 @@ class MainActivity : AppCompatActivity(), ImageLoaderFactory {
                     requiredPermissions = permissions,
                     onExit = { finish() },
                     onPermissionsGranted = {
+
                         // Escuchar cuando el ViewModel pide abrir Settings de almacenamiento
                         LaunchedEffect(Unit) {
                             viewModel.requestManageStorageEvent.collect {

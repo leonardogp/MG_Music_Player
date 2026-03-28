@@ -67,6 +67,9 @@ class MusicService : MediaSessionService() {
         const val ACTION_WIDGET_NEXT = "com.lg.monkeymusicplayer.ACTION_WIDGET_NEXT"
         const val ACTION_WIDGET_PREV = "com.lg.monkeymusicplayer.ACTION_WIDGET_PREV"
         const val ACTION_WIDGET_UPDATE_REQUEST = "com.lg.monkeymusicplayer.ACTION_WIDGET_UPDATE_REQUEST"
+        const val ACTION_WIDGET_FAVORITE = "com.lg.monkeymusicplayer.ACTION_WIDGET_FAVORITE"
+        const val ACTION_WIDGET_SHUFFLE  = "com.lg.monkeymusicplayer.ACTION_WIDGET_SHUFFLE"
+        const val ACTION_WIDGET_REPEAT   = "com.lg.monkeymusicplayer.ACTION_WIDGET_REPEAT"
     }
 
     override fun onCreate() {
@@ -130,44 +133,43 @@ class MusicService : MediaSessionService() {
     }
 
     private fun updateWidget() {
-        val currentMediaItem = player.currentMediaItem
-        val song = currentMediaItem?.localConfiguration?.tag as? Song
-        
+        val song = player.currentMediaItem?.localConfiguration?.tag as? Song
+
         if (song != null) {
-            MusicWidget.updateWidget(
-                context = this,
-                songTitle = song.title,
-                artistName = song.artist,
-                isPlaying = player.isPlaying,
-                albumArtUri = song.albumArtUri
-            )
-        } else {
-            // Intentar recuperar la última canción del historial para mostrarla en el widget
             serviceScope.launch {
-                val lastHistory = withContext(Dispatchers.IO) {
+                val isFav = withContext(Dispatchers.IO) {
+                    musicDao.getFavorites().firstOrNull()?.contains(song.id) ?: false
+                }
+                MusicWidget.updateAllWidgets(
+                    context        = this@MusicService,
+                    songTitle      = song.title,
+                    artistName     = song.artist,
+                    albumName      = song.album,
+                    isPlaying      = player.isPlaying,
+                    albumArtUri    = song.albumArtUri,
+                    progressMs     = player.currentPosition,
+                    durationMs     = player.duration.coerceAtLeast(0L),
+                    isFavorite     = isFav,
+                    isShuffleOn    = player.shuffleModeEnabled,
+                    isRepeatOn     = player.repeatMode != androidx.media3.common.Player.REPEAT_MODE_OFF
+                )
+            }
+        } else {
+            // Sin canción activa: mostrar último registro del historial (idle state)
+            serviceScope.launch {
+                val lastEntity = withContext(Dispatchers.IO) {
                     musicDao.getHistory().firstOrNull()?.firstOrNull()
+                        ?.let { hist -> musicDao.getSongsByIds(listOf(hist.songId)).firstOrNull() }
                 }
-                if (lastHistory != null) {
-                    val lastSongEntity = withContext(Dispatchers.IO) {
-                        musicDao.getSongsByIds(listOf(lastHistory.songId)).firstOrNull()
-                    }
-                    val lastSong = lastSongEntity?.toDomainModel()
-                    MusicWidget.updateWidget(
-                        context = this@MusicService,
-                        songTitle = lastSong?.title,
-                        artistName = lastSong?.artist,
-                        isPlaying = false,
-                        albumArtUri = lastSong?.albumArtUri
-                    )
-                } else {
-                    MusicWidget.updateWidget(
-                        context = this@MusicService,
-                        songTitle = null,
-                        artistName = null,
-                        isPlaying = false,
-                        albumArtUri = null
-                    )
-                }
+                val last = lastEntity?.toDomainModel()
+                MusicWidget.updateAllWidgets(
+                    context     = this@MusicService,
+                    songTitle   = last?.title,
+                    artistName  = last?.artist,
+                    albumName   = last?.album,
+                    isPlaying   = false,
+                    albumArtUri = last?.albumArtUri
+                )
             }
         }
     }
@@ -181,8 +183,40 @@ class MusicService : MediaSessionService() {
                     if (player.isPlaying) player.pause() else player.play()
                 }
             }
-            ACTION_WIDGET_NEXT -> player.seekToNext()
-            ACTION_WIDGET_PREV -> player.seekToPrevious()
+            ACTION_WIDGET_NEXT    -> player.seekToNext()
+            ACTION_WIDGET_PREV    -> player.seekToPrevious()
+            ACTION_WIDGET_SHUFFLE -> {
+                player.shuffleModeEnabled = !player.shuffleModeEnabled
+                updateWidget()
+            }
+            ACTION_WIDGET_REPEAT -> {
+                // Ciclar: OFF → ALL → ONE → OFF
+                player.repeatMode = when (player.repeatMode) {
+                    androidx.media3.common.Player.REPEAT_MODE_OFF -> androidx.media3.common.Player.REPEAT_MODE_ALL
+                    androidx.media3.common.Player.REPEAT_MODE_ALL -> androidx.media3.common.Player.REPEAT_MODE_ONE
+                    else -> androidx.media3.common.Player.REPEAT_MODE_OFF
+                }
+                updateWidget()
+            }
+            ACTION_WIDGET_FAVORITE -> {
+                // Toggle favorito de la canción actual a través del DAO en IO
+                val song = player.currentMediaItem?.localConfiguration?.tag as? Song
+                if (song != null) {
+                    serviceScope.launch {
+                        val isFav = withContext(Dispatchers.IO) {
+                            musicDao.getFavorites().firstOrNull()?.contains(song.id) ?: false
+                        }
+                        withContext(Dispatchers.IO) {
+                            if (isFav) musicDao.deleteFavorite(
+                                com.lg.monkeymusicplayer.data.database.FavoriteEntity(song.id)
+                            ) else musicDao.insertFavorite(
+                                com.lg.monkeymusicplayer.data.database.FavoriteEntity(song.id)
+                            )
+                        }
+                        updateWidget()
+                    }
+                }
+            }
             ACTION_WIDGET_UPDATE_REQUEST -> updateWidget()
         }
         return super.onStartCommand(intent, flags, startId)

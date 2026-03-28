@@ -50,6 +50,11 @@
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/music_widget_2x1_info" />
         </receiver>
 
+        <receiver android:name=".ui.widget.MusicWidget2x2" android:exported="false" android:label="Monkey Player (2x2)">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/music_widget_2x2_info" />
+        </receiver>
+
         <receiver android:name=".ui.widget.MusicWidget4x1" android:exported="false" android:label="Monkey Player (4x1)">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/music_widget_4x1_info" />

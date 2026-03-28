@@ -22,23 +22,34 @@ La aplicación sigue los principios de **Clean Architecture** y los patrones rec
 ## Estructura del Proyecto
 
 ```text
-app/src/main/java/com/lg/monkeymusicplayer/
-â”œâ”€â”€ core/                # Lógica central del sistema
-â”?  â”œâ”€â”€ player/          # Motor de reproducción (Media3/ExoPlayer)
-â”?  â”œâ”€â”€ scanner/         # Escáner de archivos multimedia
-â”?  â”œâ”€â”€ lyrics/          # Servicio de letras (Local y LRCLib)
-â”?  â””â”€â”€ exception/       # Gestión global de errores
-â”œâ”€â”€ data/                # Capa de datos y persistencia
-â”?  â”œâ”€â”€ database/        # Room: Entidades, DAOs y Base de Datos
-â”?  â”œâ”€â”€ repository/      # Implementación de repositorios
-â”?  â””â”€â”€ model/           # Modelos de datos de dominio
-â”œâ”€â”€ di/                  # Módulos de Inyección de Dependencias (Hilt)
-â”œâ”€â”€ ui/                  # Capa de presentación (Jetpack Compose)
-â”?  â”œâ”€â”€ screens/         # Pantallas principales (Library, Player, Settings)
-â”?  â”œâ”€â”€ components/      # Componentes UI reutilizables
-â”?  â”œâ”€â”€ theme/           # Definición de colores, tipos y temas
-â”?  â””â”€â”€ widget/          # Implementación de Widgets de escritorio
-â””â”€â”€ util/                # Funciones de utilidad y helpers
+MonkeyMusicPlayer/
+├── app/
+│   ├── src/
+│   │├── main/
+│   │   │   ├── java/com/lg/monkeymusicplayer/
+│   │   │   │   ├── core/                # Lógica central e infraestructura
+│   │   │   │   │   ├── player/          # Gestión de Media3 y ExoPlayer
+│   │   │   │   │   ├── scanner/         # Escaneo de archivos (MediaStore)
+│   │   │   │   │   ├── lyrics/          # Integración de letras (LRCLib)
+│   │   │   │   │   └── exception/       # Manejo global de errores
+│   │   │   │   ├── data/                # Implementación de datos
+│   │   │   │   │   ├── database/        # Room (Entidades, DAOs, DB)
+│   │   │   │   │   ├── repository/      # Repositorios (Lógica de datos)
+│   │   │   │   │   └── model/           # Modelos de dominio (Song, etc.)
+│   │   │   │   ├── di/                  # Inyección de dependencias (Hilt)
+│   │   │   │   ├── ui/                  # Capa de presentación (Compose)
+│   │   │   │   │   ├── screens/         # Pantallas (Library, Player, Settings)
+│   │   │   │   │   ├── components/      # UI reutilizable (Sliders, Controles)
+│   │   │   │   │   └── theme/           # Material 3 (Colores, Tipografía)
+│   │   │   │   ├── util/                # Helpers (Formateadores, Permisos)
+│   │   │   │   └── MonkeyMusicPlayerApp.kt # Clase Application
+│   │   │   └── res/                     # Recursos (XML, Layouts, Drawables)
+│   └── build.gradle.kts                 # Configuración del módulo app
+├── gradle/                              # Archivos del wrapper de Gradle
+│   └── libs.versions.toml               # Catálogo de dependencias
+├── build.gradle.kts                     # Configuración raíz del proyecto
+├── settings.gradle.kts                  # Configuración de módulos
+└── README.md                            # Documentación del proyecto
 ```
 
 ## Funcionalidades Implementadas

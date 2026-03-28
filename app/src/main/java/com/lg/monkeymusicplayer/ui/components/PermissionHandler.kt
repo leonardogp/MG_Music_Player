@@ -55,7 +55,7 @@ val PermissionStateSaver = Saver<MutableState<PermissionState>, Any>(
         }
     },
     restore = { value ->
-        val list = value as List<*>
+        val list = value as List<Any?>
         @Suppress("UNCHECKED_CAST")
         val restored = when (list[0] as String) {
             "Granted" -> PermissionState.Granted
@@ -175,6 +175,7 @@ private fun PermissionRationaleScreen(
     onRetry: () -> Unit,
     onExit: () -> Unit
 ) {
+    @Suppress("UNUSED_EXPRESSION")
     Column(
         modifier = Modifier
             .fillMaxSize()

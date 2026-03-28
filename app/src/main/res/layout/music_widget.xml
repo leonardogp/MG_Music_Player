@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 4x1: Portada + título/artista + prev / play / next bien espaciados. -->
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_background"
+    android:padding="10dp">
+
+    <!-- Portada cuadrada con bordes redondeados -->
+    <ImageView
+        android:id="@+id/widget_album_art"
+        android:layout_width="54dp"
+        android:layout_height="54dp"
+        android:layout_alignParentStart="true"
+        android:layout_centerVertical="true"
+        android:background="@drawable/widget_album_art_bg"
+        android:clipToOutline="true"
+        android:scaleType="centerCrop"
+        android:src="@drawable/ic_monkey_head" />
+
+    <!-- Controles a la derecha -->
+    <LinearLayout
+        android:id="@+id/controls_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_centerVertical="true"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/widget_prev"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/widget_btn_secondary_bg"
+            android:contentDescription="Previous"
+            android:padding="7dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_skip_previous" />
+
+        <ImageButton
+            android:id="@+id/widget_play_pause"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/widget_btn_bg"
+            android:contentDescription="Play/Pause"
+            android:padding="10dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_play"
+            android:tint="#FF000000" />
+
+        <ImageButton
+            android:id="@+id/widget_next"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/widget_btn_secondary_bg"
+            android:contentDescription="Next"
+            android:padding="7dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_skip_next" />
+    </LinearLayout>
+
+    <!-- Título + artista entre portada y controles -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_marginEnd="10dp"
+        android:layout_marginStart="12dp"
+        android:layout_toEndOf="@id/widget_album_art"
+        android:layout_toStartOf="@id/controls_container"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/widget_song_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="marquee"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:scrollHorizontally="true"
+            android:singleLine="true"
+            android:text="Monkey Player"
+            android:textColor="#FFFFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_song_artist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:text="Not playing"
+            android:textColor="#99FFFFFF"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+</RelativeLayout>

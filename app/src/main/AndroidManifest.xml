@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
@@ -42,6 +43,33 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Home Screen Widgets -->
+        <receiver android:name=".ui.widget.MusicWidget2x1" android:exported="false" android:label="Monkey Player (2x1)">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/music_widget_2x1_info" />
+        </receiver>
+
+        <receiver android:name=".ui.widget.MusicWidget2x2" android:exported="false" android:label="Monkey Player (2x2)">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/music_widget_2x2_info" />
+        </receiver>
+
+        <receiver android:name=".ui.widget.MusicWidget4x1" android:exported="false" android:label="Monkey Player (4x1)">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/music_widget_4x1_info" />
+        </receiver>
+
+        <receiver android:name=".ui.widget.MusicWidget4x2" android:exported="false" android:label="Monkey Player (4x2)">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/music_widget_4x2_info" />
+        </receiver>
+
+        <receiver android:name=".ui.widget.MusicWidget4x4" android:exported="false" android:label="Monkey Player (4x4)">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/music_widget_4x4_info" />
+        </receiver>
+
     </application>
 
 </manifest>

@@ -28,24 +28,12 @@ import com.lg.monkeymusicplayer.data.repository.MusicRepository
 import com.lg.monkeymusicplayer.ui.components.PermissionHandler
 import com.lg.monkeymusicplayer.ui.components.ScaffoldWithInsets
 import com.lg.monkeymusicplayer.ui.theme.monkeymusicplayerTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity(), ImageLoaderFactory {
 
-    private val viewModel: MusicViewModel by viewModels {
-        object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                val database = MusicDatabase.getDatabase(applicationContext)
-                val repository = MusicRepository(applicationContext, database.musicDao())
-                val playerManager = MusicPlayerManager(applicationContext)
-                return MusicViewModel(
-                    application = application,
-                    repository = repository,
-                    playerManager = playerManager
-                ) as T
-            }
-        }
-    }
+    private val viewModel: MusicViewModel by viewModels()
 
     // ── PUNTO 5: launcher para la pantalla de Settings de MANAGE_EXTERNAL_STORAGE ──
     // No se puede pedir con requestPermissions() normal — Android exige abrir
@@ -88,9 +76,6 @@ class MainActivity : AppCompatActivity(), ImageLoaderFactory {
                     requiredPermissions = permissions,
                     onExit = { finish() },
                     onPermissionsGranted = {
-                        LaunchedEffect(Unit) {
-                            viewModel.scanMusic()
-                        }
 
                         // Escuchar cuando el ViewModel pide abrir Settings de almacenamiento
                         LaunchedEffect(Unit) {

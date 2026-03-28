@@ -4,51 +4,75 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Environment
 import androidx.core.content.ContextCompat
 
 /**
- * Helper class for managing audio file access permissions
+ * Centraliza la lógica de permisos de la app.
+ *
+ * Separación de responsabilidades:
+ *  - [getRequiredReadPermissions]  → permisos para LEER archivos de audio (scan de biblioteca).
+ *  - [hasManageExternalStorage]    → permiso para ESCRIBIR tags ID3 al filesystem (Android 11+).
+ *
+ * MANAGE_EXTERNAL_STORAGE es un permiso muy invasivo que Google restringe en Play Store.
+ * Se solicita solo cuando el usuario explícitamente quiere editar tags, no al arrancar.
  */
 object PermissionHelper {
 
     /**
-     * Get required permissions based on Android version
+     * Permisos necesarios para escanear y reproducir audio.
+     * MANAGE_EXTERNAL_STORAGE NO está aquí; se gestiona por separado en [hasManageExternalStorage].
      */
-    fun getRequiredAudioPermissions(): Array<String> {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+ requires READ_MEDIA_AUDIO
-            arrayOf(
-                Manifest.permission.READ_MEDIA_AUDIO,
-                Manifest.permission.POST_NOTIFICATIONS
-            )
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Android 11-12 require MANAGE_EXTERNAL_STORAGE for full access
-            arrayOf(Manifest.permission.MANAGE_EXTERNAL_STORAGE)
-        } else {
-            // Android 10 and below use READ_EXTERNAL_STORAGE
-            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+    fun getRequiredReadPermissions(): Array<String> {
+        return when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
+                // Android 13+: READ_MEDIA_AUDIO + notificaciones para la MediaSession
+                arrayOf(
+                    Manifest.permission.READ_MEDIA_AUDIO,
+                    Manifest.permission.POST_NOTIFICATIONS
+                )
+            }
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
+                // Android 11-12: READ_EXTERNAL_STORAGE con maxSdkVersion=32 declarado en el Manifest
+                // es suficiente para leer audio. MANAGE_EXTERNAL_STORAGE es innecesario aquí.
+                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+            else -> {
+                // Android 10 y anteriores
+                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
         }
     }
 
-    /**
-     * Check if all required audio permissions are granted
-     */
-    fun hasAudioPermissions(context: Context): Boolean {
-        return getRequiredAudioPermissions().all { permission ->
+    /** Verifica si todos los permisos de lectura están concedidos. */
+    fun hasReadPermissions(context: Context): Boolean {
+        return getRequiredReadPermissions().all { permission ->
             ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
         }
     }
 
     /**
-     * Check specific permission
+     * Verifica si MANAGE_EXTERNAL_STORAGE está concedido (necesario para escribir tags ID3).
+     *
+     * En Android < 11 devuelve true porque WRITE_EXTERNAL_STORAGE (declarado en el Manifest
+     * con maxSdkVersion=32) es suficiente para escribir archivos.
      */
+    fun hasManageExternalStorage(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
+        } else {
+            true // WRITE_EXTERNAL_STORAGE cubre la escritura en versiones anteriores
+        }
+    }
+
+    /** @deprecated Usa [hasReadPermissions]. Mantenido por compatibilidad con código existente. */
+    @Deprecated("Use hasReadPermissions", ReplaceWith("hasReadPermissions(context)"))
+    fun hasAudioPermissions(context: Context): Boolean = hasReadPermissions(context)
+
     fun hasPermission(context: Context, permission: String): Boolean {
         return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
     }
 
-    /**
-     * Get notification permission (Android 13+)
-     */
     fun getNotificationPermissions(): Array<String> {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             arrayOf(Manifest.permission.POST_NOTIFICATIONS)
@@ -57,9 +81,6 @@ object PermissionHelper {
         }
     }
 
-    /**
-     * Get foreground service permission (Android 12+)
-     */
     fun getForegroundServicePermission(): Array<String> {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             arrayOf(Manifest.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK)

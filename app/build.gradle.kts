@@ -3,6 +3,8 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt.android)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -21,13 +23,22 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // ── FIX 5: activar R8 (minificación + obfuscación) y shrinkResources ──
+            // Con Compose, el APK sin minificar puede ser 30-40% más grande.
+            // Ver proguard-rules.pro para las reglas específicas del proyecto.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
+        debug {
+            isMinifyEnabled = false
+            isShrinkResources = false
+        }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -42,6 +53,14 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    // ── FIX 6 (Room exportSchema) ──
+    // exportSchema = true en MusicDatabase permite auditar el historial de esquemas.
+    // Room genera los JSONs en app/schemas/; se recomienda commitearlos al repo
+    // para poder escribir migraciones verificables.
+    ksp {
+        arg("room.schemaLocation", "$projectDir/schemas")
     }
 }
 
@@ -91,4 +110,14 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.android.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
+
+    // HTTP client para LRCLib (letras online)
+    implementation(libs.ktor.client.android)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.kotlinx.serialization.json)
 }

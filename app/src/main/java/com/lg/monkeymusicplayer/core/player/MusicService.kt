@@ -8,8 +8,10 @@ import android.os.Handler
 import android.os.Looper
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -17,28 +19,32 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.lg.monkeymusicplayer.data.database.MusicDao
+import com.lg.monkeymusicplayer.data.database.SongEntity
+import com.lg.monkeymusicplayer.data.model.Song
 import com.lg.monkeymusicplayer.ui.MainActivity
+import com.lg.monkeymusicplayer.ui.widget.MusicWidget
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.firstOrNull
+import javax.inject.Inject
 
 @UnstableApi
+@AndroidEntryPoint
 class MusicService : MediaSessionService() {
+
+    @Inject
+    lateinit var musicDao: MusicDao
 
     private var mediaSession: MediaSession? = null
     private lateinit var player: ExoPlayer
     private var equalizer: Equalizer? = null
 
+    private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val handler = Handler(Looper.getMainLooper())
     private var crossfadeDurationMs = 5000L
     private var isFading = false
 
-    // ── CORRECCIÓN: guardar el Runnable como referencia nombrada ──
-    // Antes: se usaba `object : Runnable` anónimo dentro de handler.post().
-    //        Al llamar handler.removeCallbacksAndMessages(null) en onDestroy(),
-    //        se cancelaban TODOS los callbacks pendientes del handler, incluyendo
-    //        los de performFadeOut/performFadeIn que son lambdas independientes.
-    //        Esto causaba que el fade quedara interrumpido a mitad si el servicio
-    //        se destruía durante un crossfade.
-    // Ahora: referencia nombrada → se puede cancelar solo este Runnable con
-    //        removeCallbacks(crossfadeCheckRunnable), dejando intactos los demás.
     private val crossfadeCheckRunnable = object : Runnable {
         override fun run() {
             if (player.isPlaying && !isFading && crossfadeDurationMs > 0) {
@@ -56,10 +62,23 @@ class MusicService : MediaSessionService() {
         const val COMMAND_SET_CROSSFADE_DURATION = "COMMAND_SET_CROSSFADE_DURATION"
         const val COMMAND_SET_EQUALIZER_BAND = "COMMAND_SET_EQUALIZER_BAND"
         const val COMMAND_GET_EQUALIZER_DATA = "COMMAND_GET_EQUALIZER_DATA"
+
+        const val ACTION_WIDGET_PLAY_PAUSE = "com.lg.monkeymusicplayer.ACTION_WIDGET_PLAY_PAUSE"
+        const val ACTION_WIDGET_NEXT = "com.lg.monkeymusicplayer.ACTION_WIDGET_NEXT"
+        const val ACTION_WIDGET_PREV = "com.lg.monkeymusicplayer.ACTION_WIDGET_PREV"
+        const val ACTION_WIDGET_UPDATE_REQUEST = "com.lg.monkeymusicplayer.ACTION_WIDGET_UPDATE_REQUEST"
+        const val ACTION_WIDGET_FAVORITE = "com.lg.monkeymusicplayer.ACTION_WIDGET_FAVORITE"
+        const val ACTION_WIDGET_SHUFFLE  = "com.lg.monkeymusicplayer.ACTION_WIDGET_SHUFFLE"
+        const val ACTION_WIDGET_REPEAT   = "com.lg.monkeymusicplayer.ACTION_WIDGET_REPEAT"
     }
 
     override fun onCreate() {
         super.onCreate()
+
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(32 * 1024, 64 * 1024, 1024, 1024)
+            .setBackBuffer(10 * 1024, true)
+            .build()
 
         player = ExoPlayer.Builder(this)
             .setAudioAttributes(
@@ -70,9 +89,18 @@ class MusicService : MediaSessionService() {
                 true
             )
             .setHandleAudioBecomingNoisy(true)
+            .setLoadControl(loadControl)
             .build()
 
         player.addListener(object : Player.Listener {
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                updateWidget()
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                updateWidget()
+            }
+
             override fun onPositionDiscontinuity(
                 oldPosition: Player.PositionInfo,
                 newPosition: Player.PositionInfo,
@@ -87,10 +115,10 @@ class MusicService : MediaSessionService() {
                 if (playbackState == Player.STATE_READY && equalizer == null) {
                     setupEqualizer()
                 }
+                updateWidget()
             }
         })
 
-        // Iniciar el loop de crossfade con la referencia guardada
         handler.post(crossfadeCheckRunnable)
 
         val intent = Intent(this, MainActivity::class.java)
@@ -104,6 +132,128 @@ class MusicService : MediaSessionService() {
             .build()
     }
 
+    private fun updateWidget() {
+        val song = player.currentMediaItem?.localConfiguration?.tag as? Song
+
+        if (song != null) {
+            serviceScope.launch {
+                val isFav = withContext(Dispatchers.IO) {
+                    musicDao.getFavorites().firstOrNull()?.contains(song.id) ?: false
+                }
+                MusicWidget.updateAllWidgets(
+                    context        = this@MusicService,
+                    songTitle      = song.title,
+                    artistName     = song.artist,
+                    albumName      = song.album,
+                    isPlaying      = player.isPlaying,
+                    albumArtUri    = song.albumArtUri,
+                    progressMs     = player.currentPosition,
+                    durationMs     = player.duration.coerceAtLeast(0L),
+                    isFavorite     = isFav,
+                    isShuffleOn    = player.shuffleModeEnabled,
+                    isRepeatOn     = player.repeatMode != androidx.media3.common.Player.REPEAT_MODE_OFF
+                )
+            }
+        } else {
+            // Sin canción activa: mostrar último registro del historial (idle state)
+            serviceScope.launch {
+                val lastEntity = withContext(Dispatchers.IO) {
+                    musicDao.getHistory().firstOrNull()?.firstOrNull()
+                        ?.let { hist -> musicDao.getSongsByIds(listOf(hist.songId)).firstOrNull() }
+                }
+                val last = lastEntity?.toDomainModel()
+                MusicWidget.updateAllWidgets(
+                    context     = this@MusicService,
+                    songTitle   = last?.title,
+                    artistName  = last?.artist,
+                    albumName   = last?.album,
+                    isPlaying   = false,
+                    albumArtUri = last?.albumArtUri
+                )
+            }
+        }
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ACTION_WIDGET_PLAY_PAUSE -> {
+                if (player.mediaItemCount == 0) {
+                    restoreLastSessionAndPlay()
+                } else {
+                    if (player.isPlaying) player.pause() else player.play()
+                }
+            }
+            ACTION_WIDGET_NEXT    -> player.seekToNext()
+            ACTION_WIDGET_PREV    -> player.seekToPrevious()
+            ACTION_WIDGET_SHUFFLE -> {
+                player.shuffleModeEnabled = !player.shuffleModeEnabled
+                updateWidget()
+            }
+            ACTION_WIDGET_REPEAT -> {
+                // Ciclar: OFF → ALL → ONE → OFF
+                player.repeatMode = when (player.repeatMode) {
+                    androidx.media3.common.Player.REPEAT_MODE_OFF -> androidx.media3.common.Player.REPEAT_MODE_ALL
+                    androidx.media3.common.Player.REPEAT_MODE_ALL -> androidx.media3.common.Player.REPEAT_MODE_ONE
+                    else -> androidx.media3.common.Player.REPEAT_MODE_OFF
+                }
+                updateWidget()
+            }
+            ACTION_WIDGET_FAVORITE -> {
+                // Toggle favorito de la canción actual a través del DAO en IO
+                val song = player.currentMediaItem?.localConfiguration?.tag as? Song
+                if (song != null) {
+                    serviceScope.launch {
+                        val isFav = withContext(Dispatchers.IO) {
+                            musicDao.getFavorites().firstOrNull()?.contains(song.id) ?: false
+                        }
+                        withContext(Dispatchers.IO) {
+                            if (isFav) musicDao.deleteFavorite(
+                                com.lg.monkeymusicplayer.data.database.FavoriteEntity(song.id)
+                            ) else musicDao.insertFavorite(
+                                com.lg.monkeymusicplayer.data.database.FavoriteEntity(song.id)
+                            )
+                        }
+                        updateWidget()
+                    }
+                }
+            }
+            ACTION_WIDGET_UPDATE_REQUEST -> updateWidget()
+        }
+        return super.onStartCommand(intent, flags, startId)
+    }
+
+    private fun restoreLastSessionAndPlay() {
+        serviceScope.launch {
+            val history = withContext(Dispatchers.IO) {
+                musicDao.getHistory().firstOrNull() ?: emptyList()
+            }
+            if (history.isNotEmpty()) {
+                val songIds = history.map { it.songId }
+                val songEntities = withContext(Dispatchers.IO) {
+                    musicDao.getSongsByIds(songIds)
+                }
+                
+                // Reordenar para que coincida con el historial (el más reciente primero)
+                val songs = songIds.mapNotNull { id ->
+                    songEntities.find { it.id == id }?.toDomainModel()
+                }
+
+                if (songs.isNotEmpty()) {
+                    val mediaItems = songs.map { song ->
+                        MediaItem.Builder()
+                            .setMediaId(song.id.toString())
+                            .setUri(song.path)
+                            .setTag(song)
+                            .build()
+                    }
+                    player.setMediaItems(mediaItems)
+                    player.prepare()
+                    player.play()
+                }
+            }
+        }
+    }
+
     private fun setupEqualizer() {
         try {
             equalizer = Equalizer(0, player.audioSessionId)
@@ -115,7 +265,7 @@ class MusicService : MediaSessionService() {
 
     private fun performFadeOut() {
         isFading = true
-        val startVolume = 1.0f
+        val startVolume = player.volume
         val steps = 20
         val interval = crossfadeDurationMs / steps
 
@@ -227,20 +377,26 @@ class MusicService : MediaSessionService() {
     }
 
     override fun onDestroy() {
-        // ── CORRECCIÓN: cancelar solo el crossfadeCheckRunnable, no todo el handler ──
-        // Antes: handler.removeCallbacksAndMessages(null) cancelaba TODOS los callbacks,
-        //        incluyendo las lambdas de fade en curso → audio podía quedar a volumen 0.
-        // Ahora: se cancela primero solo el loop de chequeo. Las lambdas de fade en curso
-        //        se cancelan con removeCallbacksAndMessages(null) como último paso,
-        //        después de que el player ya está liberado y el volumen no importa.
+        serviceScope.cancel()
         handler.removeCallbacks(crossfadeCheckRunnable)
         equalizer?.release()
         equalizer = null
         player.release()
         mediaSession?.release()
         mediaSession = null
-        // Limpiar cualquier callback de fade que pudiera quedar pendiente
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
+
+    private fun SongEntity.toDomainModel() = Song(
+        id = id,
+        albumId = albumId,
+        title = title,
+        artist = artist,
+        album = album,
+        genre = genre,
+        folder = folder,
+        path = path,
+        albumArtUri = albumArtUri
+    )
 }

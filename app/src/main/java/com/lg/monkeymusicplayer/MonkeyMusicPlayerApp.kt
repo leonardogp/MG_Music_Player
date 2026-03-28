@@ -3,7 +3,9 @@ package com.lg.monkeymusicplayer
 import android.app.Application
 import com.lg.monkeymusicplayer.core.exception.GlobalExceptionHandler
 import com.lg.monkeymusicplayer.core.logger.AppLogger
+import dagger.hilt.android.HiltAndroidApp
 
+@HiltAndroidApp
 class MonkeyMusicPlayerApp : Application() {
     override fun onCreate() {
         super.onCreate()

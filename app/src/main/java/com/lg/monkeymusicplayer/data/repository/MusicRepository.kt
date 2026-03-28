@@ -4,9 +4,11 @@ import android.content.ContentValues
 import android.content.Context
 import android.media.MediaScannerConnection
 import android.provider.MediaStore
+import com.lg.monkeymusicplayer.core.lyrics.LrcLibService
 import com.lg.monkeymusicplayer.core.result.Result
 import timber.log.Timber
 import com.lg.monkeymusicplayer.core.scanner.MusicScanner
+import com.lg.monkeymusicplayer.data.database.EqPresetEntity
 import com.lg.monkeymusicplayer.data.database.FavoriteEntity
 import com.lg.monkeymusicplayer.data.database.HistoryEntity
 import com.lg.monkeymusicplayer.data.database.MusicDao
@@ -21,8 +23,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -45,7 +45,7 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
     suspend fun refreshMusicDatabase(
         onProgress: (Int, Int) -> Unit = { _, _ -> }
     ) = withContext(Dispatchers.IO) {
-        val allScannedIds = mutableListOf<Long>()
+        val allScannedIds = mutableSetOf<Long>()
         try {
             scanner.scan(
                 onProgress = onProgress,
@@ -55,12 +55,22 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
                     allScannedIds.addAll(songsBatch.map { it.id })
                 }
             )
+
+            // ── FIX 1: diff en Kotlin para evitar SQLiteException con >999 IDs ──
+            // "DELETE FROM songs WHERE id NOT IN (:currentIds)" falla si currentIds > ~999
+            // porque SQLite limita las variables bind a 999 por query.
+            // Solución: obtener los IDs almacenados → calcular huérfanos → borrar solo esos.
+            // Los huérfanos (canciones borradas del dispositivo) suelen ser 0 o pocos,
+            // por lo que la lista para deleteSongsByIds es siempre pequeña.
             if (allScannedIds.isNotEmpty()) {
-                musicDao.removeDeletedSongs(allScannedIds)
+                val storedIds = musicDao.getAllIds().toSet()
+                val orphanIds = storedIds - allScannedIds
+                if (orphanIds.isNotEmpty()) {
+                    // deleteSongsByIds usa IN (:ids) con la lista de huérfanos (normalmente pequeña)
+                    musicDao.deleteSongsByIds(orphanIds.toList())
+                }
             }
         } catch (e: Exception) {
-            // Loguear el error pero no propagarlo: el caller (ViewModel) pone
-            // _isScanning = false en el bloque finally, evitando que quede colgado.
             Timber.e(e, "refreshMusicDatabase failed after scanning ${allScannedIds.size} songs")
         }
     }
@@ -77,8 +87,6 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
         musicDao.addToHistory(
             HistoryEntity(songId = songId, timestamp = System.currentTimeMillis())
         )
-        // Limpiar entradas antiguas para que la tabla no crezca indefinidamente.
-        // La query elimina todo excepto las 50 más recientes.
         musicDao.trimHistory()
     }
 
@@ -106,8 +114,6 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
     }
 
     suspend fun getSongsInPlaylist(playlistId: Long): List<Song> = withContext(Dispatchers.IO) {
-        // Antes: cargaba getAllSongs() completo y filtraba en memoria → O(N) en RAM
-        // Ahora: query directa WHERE id IN (:ids) → solo trae las canciones necesarias
         val songIds = musicDao.getSongsInPlaylist(playlistId)
         if (songIds.isEmpty()) return@withContext emptyList()
         musicDao.getSongsByIds(songIds).map { it.toDomainModel() }
@@ -116,17 +122,11 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
     /**
      * Actualiza los tags ID3 de un archivo MP3 y sincroniza Room + MediaStore.
      *
-     * ── CORRECCIÓN: ahora usa Result<Unit> en lugar de Boolean ──
-     * Antes: devolvía Boolean, pero la causa del fallo se perdía en el catch silencioso.
-     * Ahora: devuelve Result.Success o Result.Error con un mensaje descriptivo,
-     *        permitiendo que la UI muestre un error específico al usuario.
-     *
      * Flujo:
-     *  1. Copiar el archivo original al directorio caché (siempre tenemos permiso ahí).
-     *  2. Editar los tags en el archivo de caché con mp3agic.
-     *  3. Copiar el archivo editado de vuelta al original (requiere MANAGE_EXTERNAL_STORAGE).
-     *  4. Actualizar MediaStore para que otros reproductores vean el cambio.
-     *  5. Actualizar Room para que la UI se refresque inmediatamente via Flow.
+     *  1. Resolver la ruta física del archivo desde MediaStore.
+     *  2. Copiar al caché, editar tags con mp3agic, copiar de vuelta.
+     *  3. Notificar a MediaStore y MediaScanner.
+     *  4. Actualizar Room → UI se refresca via Flow.
      */
     suspend fun updateSongTags(
         song: Song,
@@ -144,14 +144,12 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
                 return@withContext Result.Error("El archivo no existe: $filePath")
             }
 
-            // Paso 1: copiar al caché para editar sin problemas de permisos
             val tempFile = File(context.cacheDir, "tag_edit_${System.currentTimeMillis()}.mp3")
             val editedFile = File(context.cacheDir, "tag_edit_${System.currentTimeMillis()}_out.mp3")
 
             try {
                 originalFile.copyTo(tempFile, overwrite = true)
 
-                // Paso 2: editar los tags en el archivo temporal
                 val mp3File = Mp3File(tempFile.absolutePath)
                 val tag = if (mp3File.hasId3v2Tag()) mp3File.id3v2Tag else ID3v24Tag()
                 tag.title = newTitle
@@ -161,19 +159,15 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
                 mp3File.id3v2Tag = tag
                 mp3File.save(editedFile.absolutePath)
 
-                // Paso 3: copiar el editado de vuelta al original
                 editedFile.copyTo(originalFile, overwrite = true)
 
             } catch (e: Exception) {
                 Timber.e(e, "Error writing ID3 tags to file")
-                // No retornamos error aquí: aunque falle el archivo físico,
-                // actualizamos Room y MediaStore para que la UI sea consistente.
             } finally {
                 tempFile.delete()
                 editedFile.delete()
             }
 
-            // Paso 4: actualizar MediaStore
             val values = ContentValues().apply {
                 put(MediaStore.Audio.Media.TITLE, newTitle)
                 put(MediaStore.Audio.Media.ARTIST, newArtist)
@@ -186,14 +180,12 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
                 arrayOf(song.id.toString())
             )
 
-            // Notificar al MediaScanner para que otros reproductores vean el cambio
             suspendCoroutine { continuation ->
                 MediaScannerConnection.scanFile(
                     context, arrayOf(originalFile.absolutePath), null
                 ) { _, _ -> continuation.resume(Unit) }
             }
 
-            // Paso 5: actualizar Room — la UI se refresca automáticamente via Flow
             musicDao.updateSongTags(song.id, newTitle, newArtist, newAlbum, newGenre)
 
             Result.Success(Unit)
@@ -204,7 +196,9 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
         }
     }
 
-    private fun getFilePathFromId(songId: Long): String? {
+    // ── FIX 4 (soporte): exponer getFilePathFromId como internal ──
+    // MusicViewModel lo usa para resolver la ruta real del .lrc
+    internal fun getFilePathFromId(songId: Long): String? {
         val projection = arrayOf(MediaStore.Audio.Media.DATA)
         val cursor = context.contentResolver.query(
             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
@@ -243,4 +237,44 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
         path = path,
         albumArtUri = albumArtUri
     )
+
+    // ── EQ Presets ──────────────────────────────────────────────────────────────
+
+    /** Flow reactivo con todos los presets guardados por el usuario, ordenados por nombre. */
+    val eqPresets: Flow<List<EqPresetEntity>> = musicDao.getEqPresets()
+
+    suspend fun saveEqPreset(name: String, levels: List<Float>) = withContext(Dispatchers.IO) {
+        musicDao.insertEqPreset(EqPresetEntity.fromLevels(name.trim(), levels))
+    }
+
+    suspend fun deleteEqPreset(preset: EqPresetEntity) = withContext(Dispatchers.IO) {
+        musicDao.deleteEqPreset(preset)
+    }
+
+    // ── Letras online (LRCLib) ───────────────────────────────────────────────────
+
+    /**
+     * Estrategia de búsqueda de letras con fallback:
+     *  1. Archivo .lrc local junto al mp3 (sin conexión necesaria, máxima prioridad)
+     *  2. LRCLib API (online, gratuita, sin API key)
+     *  3. null → la UI mostrará "No lyrics found"
+     *
+     * @return Contenido LRC como String, o null si no se encontró nada.
+     */
+    suspend fun fetchLyrics(song: Song): String? = withContext(Dispatchers.IO) {
+        // 1 — Intentar archivo .lrc local
+        val realPath = getFilePathFromId(song.id)
+        if (realPath != null) {
+            val lrcFile = java.io.File(realPath.replaceAfterLast(".", "lrc", "$realPath.lrc"))
+            if (lrcFile.exists()) {
+                Timber.d("Lyrics: found local .lrc for '${song.title}'")
+                return@withContext lrcFile.readText()
+            }
+        }
+
+        // 2 — Fallback a LRCLib online
+        Timber.d("Lyrics: fetching online for '${song.title}' by '${song.artist}'")
+        LrcLibService.fetchLyrics(title = song.title, artist = song.artist)
+    }
 }
+

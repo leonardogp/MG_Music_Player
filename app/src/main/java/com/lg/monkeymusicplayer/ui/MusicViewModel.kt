@@ -63,6 +63,20 @@ class MusicViewModel @Inject constructor(
     val eqPresets: StateFlow<List<EqPresetEntity>> = repository.eqPresets
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    /**
+     * Última canción reproducida, resuelta desde el historial.
+     * Se usa en el PlayerBottomBar cuando currentSong == null (estado idle).
+     * Combina history + allSongs para resolver Song completa en O(1).
+     */
+    private val lastPlayedSongFlow: Flow<Song?> = combine(
+        repository.history,
+        repository.allSongsFlow
+    ) { history, songs ->
+        if (history.isEmpty()) return@combine null
+        val songIndex = songs.associateBy { it.id }
+        songIndex[history.first().songId]
+    }.flowOn(Dispatchers.Default)
+
     // ── PUNTO 5: estado del permiso MANAGE_EXTERNAL_STORAGE ──
     // true  → el usuario ya otorgó el permiso, el editor de tags puede escribir archivos.
     // false → hay que pedirlo antes de abrir el diálogo de edición.
@@ -122,16 +136,19 @@ class MusicViewModel @Inject constructor(
         _lyrics,
         _sleepTimerMinutes,
         _sleepTimerRemaining,
-        repository.favorites
+        repository.favorites,
+        lastPlayedSongFlow
     ) { args: Array<Any?> ->
         val currentSong = args[0] as Song?
         val currentQueue = args[6] as List<Song>
         @Suppress("UNCHECKED_CAST")
         val favorites = args[12] as List<Long>
+        val lastPlayedSong = args[13] as? Song
         val isFavorite = currentSong?.let { favorites.contains(it.id) } ?: false
 
         PlayerState(
             currentSong = currentSong?.copy(isFavorite = isFavorite),
+            lastPlayedSong = lastPlayedSong,
             isPlaying = args[1] as Boolean,
             isShuffleMode = args[2] as Boolean,
             repeatMode = args[3] as Int,

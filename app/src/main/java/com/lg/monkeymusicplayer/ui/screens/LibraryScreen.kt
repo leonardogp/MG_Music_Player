@@ -27,6 +27,7 @@ import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -602,14 +603,15 @@ fun MobileLayout(
         },
         bottomBar = {
             PlayerBottomBar(
-                uiState.playerState.currentSong,
-                uiState.playerState.isPlaying,
-                uiState.playerState.currentPosition,
-                uiState.playerState.duration,
-                onPlayPause,
-                onSkipNext,
-                onSkipPrevious,
-                onPlayerClick
+                currentSong = uiState.playerState.currentSong,
+                lastPlayedSong = uiState.playerState.lastPlayedSong,
+                isPlaying = uiState.playerState.isPlaying,
+                currentPosition = uiState.playerState.currentPosition,
+                duration = uiState.playerState.duration,
+                onPlayPause = onPlayPause,
+                onSkipNext = onSkipNext,
+                onSkipPrevious = onSkipPrevious,
+                onPlayerClick = onPlayerClick
             )
         }
     ) { padding ->
@@ -860,6 +862,7 @@ fun getGreeting(): Int {
 @Composable
 fun PlayerBottomBar(
     currentSong: Song?,
+    lastPlayedSong: Song?,
     isPlaying: Boolean,
     currentPosition: Long,
     duration: Long,
@@ -868,58 +871,145 @@ fun PlayerBottomBar(
     onSkipPrevious: () -> Unit,
     onPlayerClick: () -> Unit
 ) {
-    if (currentSong != null) {
-        Surface(
-            tonalElevation = 8.dp,
-            modifier = Modifier
-                .padding(8.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .clickable { onPlayerClick() }
-                .shadow(10.dp),
-            color = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp).copy(alpha = 0.95f)
-        ) {
-            Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+    // displaySong: la canción a mostrar visualmente.
+    //   • currentSong != null  → reproducción activa, mostrar currentSong (color normal)
+    //   • currentSong == null && lastPlayedSong != null → idle con historial, mostrar lastPlayedSong (translúcido)
+    //   • ambos null           → primera apertura, mostrar placeholder de texto
+    val displaySong = currentSong ?: lastPlayedSong
+    val isActive = currentSong != null        // controles y click habilitados solo con canción activa
+    val isIdle = currentSong == null          // estado idle: translúcido o placeholder
+
+    Surface(
+        tonalElevation = 8.dp,
+        modifier = Modifier
+            .padding(8.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .then(if (isActive) Modifier.clickable { onPlayerClick() } else Modifier)
+            .shadow(10.dp),
+        color = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp).copy(alpha = 0.95f)
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // ── Portada ───────────────────────────────────────────────
+                if (displaySong != null) {
                     AsyncImage(
-                        model = currentSong.albumArtUri,
+                        model = displaySong.albumArtUri,
                         contentDescription = null,
                         error = painterResource(R.drawable.ic_monkey_head),
-                        modifier = Modifier.size(44.dp).clip(RoundedCornerShape(6.dp)),
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .then(
+                                // Portada translúcida en estado idle con historial
+                                if (isIdle) Modifier.alpha(0.45f) else Modifier
+                            ),
                         contentScale = ContentScale.Crop
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = currentSong.title, style = MaterialTheme.typography.labelLarge, maxLines = 1, fontWeight = FontWeight.Bold)
-                        Text(text = currentSong.artist, style = MaterialTheme.typography.bodySmall, maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onSkipPrevious) {
-                            Icon(Icons.Default.SkipPrevious, contentDescription = stringResource(R.string.previous), modifier = Modifier.size(28.dp))
-                        }
-                        IconButton(onClick = { onPlayPause() }) {
-                            Icon(
-                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = stringResource(R.string.play_pause),
-                                modifier = Modifier.size(36.dp),
-                                tint = PrimaryOrange
-                            )
-                        }
-                        IconButton(onClick = onSkipNext) {
-                            Icon(Icons.Default.SkipNext, contentDescription = stringResource(R.string.next), modifier = Modifier.size(28.dp))
-                        }
+                } else {
+                    // Sin historial: ícono placeholder
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.MusicNote,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                        )
                     }
                 }
-                LinearProgressIndicator(
-                    progress = { if (duration > 0) currentPosition.toFloat() / duration else 0f },
-                    modifier = Modifier.fillMaxWidth().height(2.dp),
-                    color = PrimaryOrange,
-                    trackColor = Color.Transparent
-                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // ── Título y artista ──────────────────────────────────────
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = when {
+                            displaySong != null -> displaySong.title
+                            else -> stringResource(R.string.player_idle_title)
+                        },
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface.copy(
+                            alpha = when {
+                                isActive -> 1f
+                                displaySong != null -> 0.5f   // idle con historial
+                                else -> 0.35f                 // sin historial
+                            }
+                        )
+                    )
+                    Text(
+                        text = when {
+                            displaySong != null -> displaySong.artist
+                            else -> stringResource(R.string.player_idle_subtitle)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                            alpha = when {
+                                isActive -> 1f
+                                displaySong != null -> 0.45f
+                                else -> 0.3f
+                            }
+                        )
+                    )
+                }
+
+                // ── Controles ─────────────────────────────────────────────
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onSkipPrevious, enabled = isActive) {
+                        Icon(
+                            Icons.Default.SkipPrevious,
+                            contentDescription = stringResource(R.string.previous),
+                            modifier = Modifier.size(28.dp),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(
+                                alpha = if (isActive) 1f else 0.25f
+                            )
+                        )
+                    }
+                    IconButton(onClick = onPlayPause, enabled = isActive) {
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = stringResource(R.string.play_pause),
+                            modifier = Modifier.size(36.dp),
+                            tint = if (isActive) PrimaryOrange
+                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+                        )
+                    }
+                    IconButton(onClick = onSkipNext, enabled = isActive) {
+                        Icon(
+                            Icons.Default.SkipNext,
+                            contentDescription = stringResource(R.string.next),
+                            modifier = Modifier.size(28.dp),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(
+                                alpha = if (isActive) 1f else 0.25f
+                            )
+                        )
+                    }
+                }
             }
+
+            // ── Barra de progreso ─────────────────────────────────────────
+            LinearProgressIndicator(
+                progress = {
+                    if (isActive && duration > 0) currentPosition.toFloat() / duration
+                    else 0f
+                },
+                modifier = Modifier.fillMaxWidth().height(2.dp),
+                color = PrimaryOrange,
+                trackColor = Color.Transparent
+            )
         }
     }
 }

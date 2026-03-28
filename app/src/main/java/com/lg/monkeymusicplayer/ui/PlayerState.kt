@@ -6,6 +6,7 @@ import com.lg.monkeymusicplayer.data.model.LyricLine
 
 data class PlayerState(
     val currentSong: Song? = null,
+    val lastPlayedSong: Song? = null,   // última canción del historial; visible en idle state
     val isPlaying: Boolean = false,
     val isShuffleMode: Boolean = false,
     val repeatMode: Int = 0,
@@ -17,9 +18,6 @@ data class PlayerState(
     val lyrics: List<LyricLine> = emptyList(),
     val sleepTimerMinutes: Int = 0,
     val sleepTimerRemainingMillis: Long = 0L,
-    // ── CORRECCIÓN: shuffleEnabled eliminado ──
-    // Era idéntico a isShuffleMode en todos los lugares donde se asignaba.
-    // Usar isShuffleMode en toda la UI. Búsqueda y reemplazo: shuffleEnabled → isShuffleMode
     val isFavorite: Boolean = false
 ) {
     object RepeatMode {

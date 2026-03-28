@@ -79,6 +79,10 @@
     <string name="greeting_afternoon">Good afternoon</string>
     <string name="greeting_evening">Good evening</string>
 
+    <!-- Player states -->
+    <string name="player_idle_title">No song playing</string>
+    <string name="player_idle_subtitle">Select a song to start</string>
+
     <!-- Tag editor feedback -->
     <string name="tags_saved_ok">Tags saved successfully!</string>
     <string name="tags_save_error">Error saving tags: %s</string>

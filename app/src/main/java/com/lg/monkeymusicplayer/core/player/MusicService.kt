@@ -130,6 +130,51 @@ class MusicService : MediaSessionService() {
             .setSessionActivity(pendingIntent)
             .setCallback(CustomMediaSessionCallback())
             .build()
+
+        // Restaurar la última sesión al arrancar el servicio.
+        // Esto garantiza que el reproductor tenga los MediaItems cargados
+        // desde el primer momento — el PlayerBottomBar mostrará la última
+        // canción incluso antes de que el usuario toque algo.
+        // No llamamos player.play() — solo preparamos la cola sin reproducir.
+        restoreLastSession()
+    }
+
+    /**
+     * Carga los MediaItems del historial en el player sin iniciar reproducción.
+     * Permite que el controller sincronice el estado (canción, cola) en cuanto
+     * se conecta, sin necesidad de que el usuario interactúe primero.
+     */
+    private fun restoreLastSession() {
+        serviceScope.launch {
+            val history = withContext(Dispatchers.IO) {
+                musicDao.getHistory().firstOrNull() ?: emptyList()
+            }
+            if (history.isEmpty()) return@launch
+
+            val songIds = history.map { it.songId }
+            val songEntities = withContext(Dispatchers.IO) {
+                musicDao.getSongsByIds(songIds)
+            }
+            val songs = songIds.mapNotNull { id ->
+                songEntities.find { it.id == id }?.toDomainModel()
+            }
+            if (songs.isEmpty()) return@launch
+
+            // Solo cargar si el player no tiene ya items (evitar sobreescribir
+            // una sesión activa si el servicio no fue destruido entre sesiones)
+            if (player.mediaItemCount == 0) {
+                val mediaItems = songs.map { song ->
+                    MediaItem.Builder()
+                        .setMediaId(song.id.toString())
+                        .setUri(song.path)
+                        .setTag(song)
+                        .build()
+                }
+                player.setMediaItems(mediaItems)
+                player.prepare()
+                // No llamar player.play() — estado inicial es pausado
+            }
+        }
     }
 
     private fun updateWidget() {
@@ -224,32 +269,36 @@ class MusicService : MediaSessionService() {
 
     private fun restoreLastSessionAndPlay() {
         serviceScope.launch {
-            val history = withContext(Dispatchers.IO) {
-                musicDao.getHistory().firstOrNull() ?: emptyList()
-            }
-            if (history.isNotEmpty()) {
-                val songIds = history.map { it.songId }
-                val songEntities = withContext(Dispatchers.IO) {
-                    musicDao.getSongsByIds(songIds)
+            // restoreLastSession() es una función regular que lanza su propia corrutina.
+            // Esperamos a que el player tenga items antes de reproducir usando un delay
+            // corto y verificando el estado, o reutilizando la lógica inline.
+            if (player.mediaItemCount == 0) {
+                val history = withContext(Dispatchers.IO) {
+                    musicDao.getHistory().firstOrNull() ?: emptyList()
                 }
-                
-                // Reordenar para que coincida con el historial (el más reciente primero)
-                val songs = songIds.mapNotNull { id ->
-                    songEntities.find { it.id == id }?.toDomainModel()
-                }
-
-                if (songs.isNotEmpty()) {
-                    val mediaItems = songs.map { song ->
-                        MediaItem.Builder()
-                            .setMediaId(song.id.toString())
-                            .setUri(song.path)
-                            .setTag(song)
-                            .build()
+                if (history.isNotEmpty()) {
+                    val songIds = history.map { it.songId }
+                    val songEntities = withContext(Dispatchers.IO) {
+                        musicDao.getSongsByIds(songIds)
                     }
-                    player.setMediaItems(mediaItems)
-                    player.prepare()
-                    player.play()
+                    val songs = songIds.mapNotNull { id ->
+                        songEntities.find { it.id == id }?.toDomainModel()
+                    }
+                    if (songs.isNotEmpty()) {
+                        val mediaItems = songs.map { song ->
+                            MediaItem.Builder()
+                                .setMediaId(song.id.toString())
+                                .setUri(song.path)
+                                .setTag(song)
+                                .build()
+                        }
+                        player.setMediaItems(mediaItems)
+                        player.prepare()
+                    }
                 }
+            }
+            if (player.mediaItemCount > 0) {
+                player.play()
             }
         }
     }

@@ -79,6 +79,10 @@
     <string name="greeting_afternoon">Добрый день</string>
     <string name="greeting_evening">Добрый вечер</string>
 
+    <!-- Player states -->
+    <string name="player_idle_title">Ничего не воспроизводится</string>
+    <string name="player_idle_subtitle">Выберите трек для начала</string>
+
     <!-- Tag editor feedback -->
     <string name="tags_saved_ok">Теги успешно сохранены!</string>
     <string name="tags_save_error">Ошибка при сохранении тегов: %s</string>

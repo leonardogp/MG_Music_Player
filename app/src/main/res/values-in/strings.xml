@@ -79,6 +79,10 @@
     <string name="greeting_afternoon">Selamat siang</string>
     <string name="greeting_evening">Selamat malam</string>
 
+    <!-- Player states -->
+    <string name="player_idle_title">Tidak ada lagu yang diputar</string>
+    <string name="player_idle_subtitle">Pilih lagu untuk memulai</string>
+
     <!-- Tag editor feedback -->
     <string name="tags_saved_ok">Tag berhasil disimpan!</string>
     <string name="tags_save_error">Gagal menyimpan tag: %s</string>

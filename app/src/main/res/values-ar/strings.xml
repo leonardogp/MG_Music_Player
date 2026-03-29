@@ -79,6 +79,10 @@
     <string name="greeting_afternoon">مساء الخير</string>
     <string name="greeting_evening">مساء الخير</string>
 
+    <!-- Player states -->
+    <string name="player_idle_title">لا توجد أغنية قيد التشغيل</string>
+    <string name="player_idle_subtitle">اختر أغنية للبدء</string>
+
     <!-- Tag editor feedback -->
     <string name="tags_saved_ok">تم حفظ العلامات بنجاح!</string>
     <string name="tags_save_error">خطأ في حفظ العلامات: %s</string>

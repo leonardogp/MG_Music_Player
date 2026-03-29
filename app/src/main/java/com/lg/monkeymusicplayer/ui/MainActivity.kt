@@ -57,6 +57,14 @@ class MainActivity : AppCompatActivity(), ImageLoaderFactory {
         installSplashScreen()
         super.onCreate(savedInstanceState)
 
+        // Iniciar el servicio de reproducción explícitamente al arrancar la app.
+        // MediaSessionService solo se crea cuando recibe una conexión de MediaController,
+        // pero ese proceso tiene una race condition — si el servicio no existe aún,
+        // buildAsync() falla silenciosamente y el reproductor queda bloqueado.
+        // startService() garantiza que el servicio esté activo ANTES de que
+        // MusicPlayerManager (inyectado en el ViewModel) intente conectarse.
+        startService(Intent(this, com.lg.monkeymusicplayer.core.player.MusicService::class.java))
+
         // Informar al ViewModel del estado actual del permiso al arrancar
         viewModel.onManageStoragePermissionResult(hasManageStoragePermission())
 

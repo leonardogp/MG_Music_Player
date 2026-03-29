@@ -65,11 +65,11 @@
     <string name="genre">Gênero</string>
     <string name="save">Salvar</string>
     <string name="select_sleep_timer">Selecione em quantos minutos a música deve parar:</string>
-    <string name="disabled">Desativado</string>
+    <string name="disabled">Desactivado</string>
     <string name="minutes">%d minutos</string>
     <string name="unknown">Desconhecido</string>
     <string name="unknown_artist">Artista Desconhecido</string>
-    <string name="unknown_album">Álbum Desconhecido</string>
+    <string name="unknown_album">Álbum Desconocido</string>
     <string name="no_genre">Sem gênero</string>
     <string name="root">Raíz</string>
     <string name="system_default">Padrão do sistema</string>
@@ -78,6 +78,10 @@
     <string name="greeting_morning">Bom dia</string>
     <string name="greeting_afternoon">Boa tarde</string>
     <string name="greeting_evening">Boa noite</string>
+
+    <!-- Player states -->
+    <string name="player_idle_title">Nenhuma música sendo reproduzida</string>
+    <string name="player_idle_subtitle">Selecione uma música para começar</string>
 
     <!-- Tag editor feedback -->
     <string name="tags_saved_ok">Etiquetas salvas com sucesso!</string>
@@ -101,7 +105,7 @@
     <string name="permission_open_settings">Abrir Configurações</string>
     <string name="exit_app">Sair do aplicativo</string>
     <string name="permission_label_audio">Acesso a Música e Áudio</string>
-    <string name="permission_label_notifications">Notificações de Reprodução</string>
+    <string name="permission_label_notifications">Notificaciones de Reproducción</string>
     <string name="permission_label_storage">Acesso ao Armazenamento</string>
     <string name="permission_info_desc">Informações de permissão</string>
     <string name="permission_required_desc">Permissão necessária</string>

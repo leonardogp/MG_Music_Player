@@ -79,6 +79,10 @@
     <string name="greeting_afternoon">Guten Tag</string>
     <string name="greeting_evening">Guten Abend</string>
 
+    <!-- Player states -->
+    <string name="player_idle_title">Keine Wiedergabe</string>
+    <string name="player_idle_subtitle">Wählen Sie einen Titel aus</string>
+
     <!-- Tag editor feedback -->
     <string name="tags_saved_ok">Tags erfolgreich gespeichert!</string>
     <string name="tags_save_error">Fehler beim Speichern der Tags: %s</string>

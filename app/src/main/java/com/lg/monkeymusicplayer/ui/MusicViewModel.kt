@@ -277,13 +277,15 @@ class MusicViewModel @Inject constructor(
         libraryCatalogFlow,
         playerStateFlow,
         _isLoading,
-        _isScanning
-    ) { fs, catalog, playerState, isLoading, isScanning ->
+        combine(_isScanning, _scanProgress, _scanTotal) { scanning, progress, total ->
+            Triple(scanning, progress, total)
+        }
+    ) { fs, catalog, playerState, isLoading, scanState ->
         LibraryUiState(
             isLoading            = isLoading,
-            isScanning           = isScanning,
-            scanProgress         = _scanProgress.value,
-            scanTotal            = _scanTotal.value,
+            isScanning           = scanState.first,
+            scanProgress         = scanState.second,
+            scanTotal            = scanState.third,
             songs                = fs.filtered,
             genres               = catalog.genres,
             artists              = catalog.artists,

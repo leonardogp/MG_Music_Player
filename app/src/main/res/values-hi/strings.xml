@@ -79,6 +79,10 @@
     <string name="greeting_afternoon">नमस्कार</string>
     <string name="greeting_evening">शुभ संध्या</string>
 
+    <!-- Player states -->
+    <string name="player_idle_title">कोई गाना नहीं चल रहा है</string>
+    <string name="player_idle_subtitle">शुरू करने के लिए एक गाना चुनें</string>
+
     <!-- Tag editor feedback -->
     <string name="tags_saved_ok">टैग सफलतापूर्वक सहेजे गए!</string>
     <string name="tags_save_error">टैग सहेजने में त्रुटि: %s</string>

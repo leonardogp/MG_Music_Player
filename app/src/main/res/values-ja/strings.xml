@@ -79,6 +79,10 @@
     <string name="greeting_afternoon">こんにちは</string>
     <string name="greeting_evening">こんばんは</string>
 
+    <!-- Player states -->
+    <string name="player_idle_title">再生中の曲はありません</string>
+    <string name="player_idle_subtitle">曲を選択して開始してください</string>
+
     <!-- Tag editor feedback -->
     <string name="tags_saved_ok">タグが正常に保存されました！</string>
     <string name="tags_save_error">タグの保存中にエラーが発生しました: %s</string>

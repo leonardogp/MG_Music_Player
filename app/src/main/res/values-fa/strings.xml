@@ -36,7 +36,7 @@
     <string name="next_in_queue">بعدی در صف</string>
     <string name="close">بستن</string>
     <string name="view_queue">مشاهده صف</string>
-    <string name="shuffle">پخش تصادفی</string>
+    <string name="shuffle">پخش تصافی</string>
     <string name="repeat">تکرار</string>
     <string name="add_to_playlist">افزودن به لیست پخش</string>
     <string name="seek_back_10">۱۰ ثانیه به عقب</string>
@@ -78,6 +78,10 @@
     <string name="greeting_morning">صبح بخیر</string>
     <string name="greeting_afternoon">بعد از ظهر بخیر</string>
     <string name="greeting_evening">عصر بخیر</string>
+
+    <!-- Player states -->
+    <string name="player_idle_title">هیچ آهنگی در حال پخش نیست</string>
+    <string name="player_idle_subtitle">یک آهنگ برای شروع انتخاب کنید</string>
 
     <!-- Tag editor feedback -->
     <string name="tags_saved_ok">برچسب‌ها با موفقیت ذخیره شدند!</string>

@@ -300,7 +300,6 @@ fun SettingsScreen(
 @Composable
 fun LibraryMainContent(
     uiState: LibraryUiState,
-    // ── CAMBIO 1: recibimos el viewModel para escuchar tagUpdateResult ──
     viewModel: MusicViewModel,
     onSearchQueryChanged: (String) -> Unit,
     onSortOrderChanged: (SortOrder) -> Unit,
@@ -333,16 +332,12 @@ fun LibraryMainContent(
     var editingSong by remember { mutableStateOf<Song?>(null) }
     var songsToAddToPlaylist by remember { mutableStateOf<List<Song>?>(null) }
 
-    // ── CAMBIO 2: estado de guardado y snackbar ──
     var isSavingTags by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    // ── PUNTO 5: observar el permiso de almacenamiento ──
     val hasManageStoragePermission by viewModel.hasManageStoragePermission.collectAsState()
 
-    // ── CAMBIO 3: escuchar el resultado del guardado de tags ──
-    // El diálogo se cierra SOLO cuando el resultado llega (éxito o error)
     val strTagsSavedOk = stringResource(R.string.tags_saved_ok)
     val strTagsSaveError = stringResource(R.string.tags_save_error)
     val strTagsPermissionNeeded = stringResource(R.string.tags_permission_needed)
@@ -350,7 +345,7 @@ fun LibraryMainContent(
     LaunchedEffect(Unit) {
         viewModel.tagUpdateResult.collect { result ->
             isSavingTags = false
-            editingSong = null  // cerrar el diálogo aquí, no en onSave
+            editingSong = null
             coroutineScope.launch {
                 val message = when (result) {
                     is Result.Success -> strTagsSavedOk
@@ -365,16 +360,12 @@ fun LibraryMainContent(
         }
     }
 
-    // ── CORRECCIÓN: escuchar evento de edición desde FullPlayerScreen ──
-    // Cuando el usuario toca "Editar" en el reproductor, vuelve a la librería
-    // y este LaunchedEffect abre el editor con la canción correcta.
     LaunchedEffect(Unit) {
         viewModel.requestEditSongEvent.collect { song ->
             editingSong = song
         }
     }
 
-    // ── CAMBIO 4: diálogo con isSaving para mostrar loading y bloquear doble tap ──
     if (editingSong != null) {
         EditTagsDialog(
             song = editingSong!!,
@@ -383,7 +374,6 @@ fun LibraryMainContent(
                 if (!isSavingTags) editingSong = null
             },
             onSave = { title, artist, album, genre ->
-                // ── PUNTO 5: verificar permiso antes de guardar ──
                 if (!hasManageStoragePermission) {
                     editingSong = null
                     coroutineScope.launch {
@@ -431,7 +421,6 @@ fun LibraryMainContent(
         )
     }
 
-    // ── CAMBIO 5: SnackbarHost dentro del Scaffold de MobileLayout ──
     MobileLayout(
         uiState = uiState,
         snackbarHostState = snackbarHostState,
@@ -462,7 +451,6 @@ fun LibraryMainContent(
 @Composable
 fun MobileLayout(
     uiState: LibraryUiState,
-    // ── CAMBIO 6: recibir snackbarHostState para mostrarlo en el Scaffold ──
     snackbarHostState: SnackbarHostState,
     onSearchQueryChanged: (String) -> Unit,
     onSortOrderChanged: (SortOrder) -> Unit,
@@ -504,7 +492,6 @@ fun MobileLayout(
     val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
-        // ── CAMBIO 7: agregar snackbarHost al Scaffold ──
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             Column(modifier = Modifier.background(MaterialTheme.colorScheme.surface)) {
@@ -705,10 +692,6 @@ fun MainTab(
     val recentSongs   = historySongs.take(8)
     val greeting      = getGreeting()
 
-    // Un único LazyVerticalGrid de 2 columnas gestiona todo el contenido.
-    // Los encabezados, saludo y placeholders usan span = 2 (ancho completo).
-    // Las tarjetas de favoritos e historial usan span = 1 (media columna).
-    // Esto elimina el anidamiento LazyColumn → LazyVerticalGrid que impedía el scroll.
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
         modifier = Modifier
@@ -718,7 +701,6 @@ fun MainTab(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // ── Saludo ────────────────────────────────────────────────────────
         item(span = { GridItemSpan(2) }) {
             Column {
                 Spacer(modifier = Modifier.height(16.dp))
@@ -731,7 +713,6 @@ fun MainTab(
             }
         }
 
-        // ── Título sección Favoritos ──────────────────────────────────────
         item(span = { GridItemSpan(2) }) {
             Text(
                 text = stringResource(R.string.favorites),
@@ -740,7 +721,6 @@ fun MainTab(
             )
         }
 
-        // ── Contenido Favoritos ───────────────────────────────────────────
         if (favoriteSongs.isNotEmpty()) {
             items(
                 items = favoriteSongs.take(6),
@@ -767,7 +747,6 @@ fun MainTab(
             }
         }
 
-        // ── Título sección Recientes ──────────────────────────────────────
         item(span = { GridItemSpan(2) }) {
             Spacer(modifier = Modifier.height(12.dp))
         }
@@ -779,7 +758,6 @@ fun MainTab(
             )
         }
 
-        // ── Contenido Recientes ───────────────────────────────────────────
         if (recentSongs.isNotEmpty()) {
             items(
                 items = recentSongs,
@@ -837,7 +815,6 @@ fun FavoriteGridItem(song: Song, onClick: () -> Unit) {
     }
 }
 
-// Tarjeta de historial: portada cuadrada + título + artista debajo, misma anchura que FavoriteGridItem
 @Composable
 fun HistoryGridItem(song: Song, onClick: () -> Unit) {
     Surface(
@@ -899,13 +876,9 @@ fun PlayerBottomBar(
     onSkipPrevious: () -> Unit,
     onPlayerClick: () -> Unit
 ) {
-    // displaySong: la canción a mostrar visualmente.
-    //   • currentSong != null  → reproducción activa, mostrar currentSong (color normal)
-    //   • currentSong == null && lastPlayedSong != null → idle con historial, mostrar lastPlayedSong (translúcido)
-    //   • ambos null           → primera apertura, mostrar placeholder de texto
     val displaySong = currentSong ?: lastPlayedSong
-    val isActive = currentSong != null        // controles y click habilitados solo con canción activa
-    val isIdle = currentSong == null          // estado idle: translúcido o placeholder
+    val isActive = currentSong != null
+    val isIdle = currentSong == null
 
     Surface(
         tonalElevation = 8.dp,
@@ -924,7 +897,6 @@ fun PlayerBottomBar(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // ── Portada ───────────────────────────────────────────────
                 if (displaySong != null) {
                     AsyncImage(
                         model = displaySong.albumArtUri,
@@ -934,13 +906,11 @@ fun PlayerBottomBar(
                             .size(44.dp)
                             .clip(RoundedCornerShape(6.dp))
                             .then(
-                                // Portada translúcida en estado idle con historial
                                 if (isIdle) Modifier.alpha(0.45f) else Modifier
                             ),
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    // Sin historial: ícono placeholder
                     Box(
                         modifier = Modifier
                             .size(44.dp)
@@ -959,7 +929,6 @@ fun PlayerBottomBar(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // ── Título y artista ──────────────────────────────────────
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = when {
@@ -972,8 +941,8 @@ fun PlayerBottomBar(
                         color = MaterialTheme.colorScheme.onSurface.copy(
                             alpha = when {
                                 isActive -> 1f
-                                displaySong != null -> 0.5f   // idle con historial
-                                else -> 0.35f                 // sin historial
+                                displaySong != null -> 0.5f
+                                else -> 0.35f
                             }
                         )
                     )
@@ -994,7 +963,6 @@ fun PlayerBottomBar(
                     )
                 }
 
-                // ── Controles ─────────────────────────────────────────────
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onSkipPrevious, enabled = isActive) {
                         Icon(
@@ -1028,7 +996,6 @@ fun PlayerBottomBar(
                 }
             }
 
-            // ── Barra de progreso ─────────────────────────────────────────
             LinearProgressIndicator(
                 progress = {
                     if (isActive && duration > 0) currentPosition.toFloat() / duration
@@ -1071,7 +1038,6 @@ fun FullPlayerScreen(
 ) {
     BackHandler { onClose() }
 
-    // ── Tabs: 0 = Player, 1 = Lyrics, 2 = Queue ──────────────────────────────
     var selectedTab by remember { mutableStateOf(0) }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
@@ -1091,7 +1057,6 @@ fun FullPlayerScreen(
         Column(
             modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
         ) {
-            // ── Cabecera fija ─────────────────────────────────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1107,11 +1072,9 @@ fun FullPlayerScreen(
                     Text(song.album, style = MaterialTheme.typography.labelLarge,
                         color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1)
                 }
-                // Placeholder simétrico
                 Box(modifier = Modifier.size(48.dp))
             }
 
-            // ── Tabs ──────────────────────────────────────────────────────────
             TabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = Color.Transparent,
@@ -1142,17 +1105,13 @@ fun FullPlayerScreen(
                 }
             }
 
-            // ── Contenido del tab ─────────────────────────────────────────────
             when (selectedTab) {
-
-                // Tab 0: Player
                 0 -> {
                     Column(
                         modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        // Portada
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1172,7 +1131,6 @@ fun FullPlayerScreen(
                             )
                         }
 
-                        // Título + acciones
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -1198,7 +1156,6 @@ fun FullPlayerScreen(
                             }
                         }
 
-                        // Seekbar
                         Column(modifier = Modifier.fillMaxWidth()) {
                             Slider(
                                 value = currentPosition.toFloat(),
@@ -1218,7 +1175,6 @@ fun FullPlayerScreen(
                             }
                         }
 
-                        // Controles principales
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = onToggleShuffle) {
@@ -1255,7 +1211,6 @@ fun FullPlayerScreen(
                             }
                         }
 
-                        // Controles secundarios
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = onSeekBack) {
@@ -1274,7 +1229,6 @@ fun FullPlayerScreen(
                     }
                 }
 
-                // Tab 1: Lyrics
                 1 -> {
                     Box(modifier = Modifier.fillMaxSize()) {
                         if (isLoadingLyrics) {
@@ -1296,7 +1250,6 @@ fun FullPlayerScreen(
                     }
                 }
 
-                // Tab 2: Queue
                 2 -> {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         items(queue) { queueSong ->
@@ -1612,7 +1565,6 @@ fun CreatePlaylistDialog(
     )
 }
 
-// ── CAMBIO 8: EditTagsDialog con soporte de isSaving ──
 @Composable
 fun EditTagsDialog(
     song: Song,
@@ -1665,7 +1617,6 @@ fun EditTagsDialog(
                 onClick = { onSave(title, artist, album, genre) },
                 enabled = !isSaving
             ) {
-                // ── CAMBIO 9: spinner dentro del botón mientras guarda ──
                 if (isSaving) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
@@ -1733,7 +1684,6 @@ fun ExcludedFoldersScreen(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // ── Descripción ───────────────────────────────────────────────
             item {
                 Text(
                     stringResource(R.string.excluded_folders_desc),
@@ -1743,7 +1693,6 @@ fun ExcludedFoldersScreen(
                 )
             }
 
-            // ── Toggle WhatsApp ───────────────────────────────────────────
             item {
                 ListItem(
                     modifier = Modifier.clickable {
@@ -1760,7 +1709,7 @@ fun ExcludedFoldersScreen(
                     },
                     leadingContent = {
                         Icon(
-                            if (allWhatsappExcluded) Icons.Default.Block else Icons.Default.Chat,
+                            if (allWhatsappExcluded) Icons.Default.Block else Icons.AutoMirrored.Filled.Chat,
                             contentDescription = null,
                             tint = if (allWhatsappExcluded) MaterialTheme.colorScheme.error
                                    else MaterialTheme.colorScheme.onSurface
@@ -1780,7 +1729,6 @@ fun ExcludedFoldersScreen(
                 HorizontalDivider()
             }
 
-            // ── Agregar carpeta personalizada ─────────────────────────────
             item {
                 ListItem(
                     modifier = Modifier.clickable { showAddFolderDialog = true },
@@ -1792,7 +1740,6 @@ fun ExcludedFoldersScreen(
                 HorizontalDivider()
             }
 
-            // ── Lista de carpetas excluidas activas ───────────────────────
             if (excludedFolders.isEmpty()) {
                 item {
                     Box(
@@ -1852,7 +1799,6 @@ fun ExcludedFoldersScreen(
                 }
             }
 
-            // ── Banner de re-escaneo ──────────────────────────────────────
             if (exclusionsChanged) {
                 item {
                     Surface(
@@ -2012,4 +1958,3 @@ fun LanguageDialog(
         }
     )
 }
-

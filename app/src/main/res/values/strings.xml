@@ -142,4 +142,10 @@
     <string name="excluded_folder_hint">/storage/emulated/0/Recordings</string>
     <string name="excluded_folder_invalid">Enter a valid absolute path starting with /</string>
     <string name="rescan_required">Rescan library to apply changes</string>
+
+    <!-- Sort Order -->
+    <string name="sort_name">Name</string>
+    <string name="sort_artist">Artist</string>
+    <string name="sort_album">Album</string>
+    <string name="sort_date_added">Date added</string>
 </resources>

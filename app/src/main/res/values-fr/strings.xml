@@ -114,4 +114,22 @@
 
     <!-- Equalizer -->
     <string name="eq_high_fidelity_mode">Mode Haute-Fidélité</string>
+
+    <!-- Sort Order -->
+    <string name="sort_name">Nom</string>
+    <string name="sort_artist">Artiste</string>
+    <string name="sort_album">Album</string>
+    <string name="sort_date_added">Date d\'ajout</string>
+
+    <!-- Excluded Folders -->
+    <string name="excluded_folders">Dossiers exclus</string>
+    <string name="excluded_folders_subtitle">Ignorés pendant l\'analyse</string>
+    <string name="excluded_folders_desc">Les dossiers listés ici sont ignorés lors de l\'analyse de votre bibliothèque musicale. Les modifications prennent effet lors de la prochaine analyse.</string>
+    <string name="excluded_folders_empty">Aucun dossier exclu</string>
+    <string name="exclude_whatsapp">Exclure l\'audio WhatsApp</string>
+    <string name="exclude_whatsapp_desc">Ignorer les fichiers audio de WhatsApp et WhatsApp Business</string>
+    <string name="add_excluded_folder">Ajouter un chemin de dossier…</string>
+    <string name="excluded_folder_hint">/storage/emulated/0/Recordings</string>
+    <string name="excluded_folder_invalid">Saisissez un chemin absolu valide commençant par /</string>
+    <string name="rescan_required">Une nouvelle analyse de la bibliothèque est requise pour appliquer les modifications</string>
 </resources>

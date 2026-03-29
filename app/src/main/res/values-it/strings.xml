@@ -114,4 +114,38 @@
 
     <!-- Equalizer -->
     <string name="eq_high_fidelity_mode">Modalità Alta Fedeltà</string>
+    <string name="eq_save_preset">Salva preimpostazione</string>
+    <string name="eq_preset_name">Nome preimpostazione</string>
+    <string name="eq_preset_name_hint">La mia preimpostazione…</string>
+    <string name="eq_preset_saved">Preimpostazione salvata!</string>
+    <string name="eq_preset_deleted">Preimpostazione eliminata</string>
+    <string name="eq_delete_preset">Elimina preimpostazione</string>
+    <string name="eq_my_presets">Le mie preimpostazioni</string>
+    <string name="eq_built_in">Integrate</string>
+
+    <!-- Lyrics -->
+    <string name="lyrics_searching">Ricerca testi…</string>
+    <string name="lyrics_not_found">Nessun testo trovato</string>
+    <string name="lyrics_source_local">Locale (.lrc)</string>
+    <string name="lyrics_source_online">Online</string>
+    <string name="lyrics_tab">Testi</string>
+    <string name="queue_tab">Coda</string>
+
+    <!-- Excluded Folders -->
+    <string name="excluded_folders">Cartelle escluse</string>
+    <string name="excluded_folders_subtitle">Ignorate durante la scansione</string>
+    <string name="excluded_folders_desc">Le cartelle qui elencate verranno ignorate durante la scansione della tua libreria musicale. Le modifiche avranno effetto alla prossima scansione.</string>
+    <string name="excluded_folders_empty">Nessuna cartella esclusa</string>
+    <string name="exclude_whatsapp">Escludi audio WhatsApp</string>
+    <string name="exclude_whatsapp_desc">Ignora i file audio di WhatsApp e WhatsApp Business</string>
+    <string name="add_excluded_folder">Aggiungi percorso cartella…</string>
+    <string name="excluded_folder_hint">/storage/emulated/0/Recordings</string>
+    <string name="excluded_folder_invalid">Inserisci un percorso assoluto valido che inizi con /</string>
+    <string name="rescan_required">Scansiona nuovamente la libreria per applicare le modifiche</string>
+
+    <!-- Sort Order -->
+    <string name="sort_name">Nome</string>
+    <string name="sort_artist">Artista</string>
+    <string name="sort_album">Album</string>
+    <string name="sort_date_added">Data di aggiunta</string>
 </resources>

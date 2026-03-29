@@ -114,4 +114,22 @@
 
     <!-- Equalizer -->
     <string name="eq_high_fidelity_mode">Modo Alta Fidelidad</string>
+
+    <!-- Sort Order -->
+    <string name="sort_name">Nombre</string>
+    <string name="sort_artist">Artista</string>
+    <string name="sort_album">Álbum</string>
+    <string name="sort_date_added">Fecha de añadido</string>
+
+    <!-- Excluded Folders -->
+    <string name="excluded_folders">Carpetas excluidas</string>
+    <string name="excluded_folders_subtitle">Omitidas durante el escaneo</string>
+    <string name="excluded_folders_desc">Las carpetas listadas aquí se omiten al escanear tu biblioteca de música. Los cambios surten efecto en el próximo escaneo.</string>
+    <string name="excluded_folders_empty">No hay carpetas excluidas</string>
+    <string name="exclude_whatsapp">Excluir audio de WhatsApp</string>
+    <string name="exclude_whatsapp_desc">Omitir archivos de audio de WhatsApp y WhatsApp Business</string>
+    <string name="add_excluded_folder">Añadir ruta de carpeta…</string>
+    <string name="excluded_folder_hint">/storage/emulated/0/Recordings</string>
+    <string name="excluded_folder_invalid">Introduce una ruta absoluta válida que empiece por /</string>
+    <string name="rescan_required">Se requiere volver a escanear la biblioteca para aplicar los cambios</string>
 </resources>

@@ -114,4 +114,38 @@
 
     <!-- Equalizer -->
     <string name="eq_high_fidelity_mode">Режим высокой точности</string>
+    <string name="eq_save_preset">Сохранить пресет</string>
+    <string name="eq_preset_name">Название пресета</string>
+    <string name="eq_preset_name_hint">Мой пресет…</string>
+    <string name="eq_preset_saved">Пресет сохранен!</string>
+    <string name="eq_preset_deleted">Пресет удален</string>
+    <string name="eq_delete_preset">Удалить пресет</string>
+    <string name="eq_my_presets">Мои пресеты</string>
+    <string name="eq_built_in">Встроенные</string>
+
+    <!-- Lyrics -->
+    <string name="lyrics_searching">Поиск текста…</string>
+    <string name="lyrics_not_found">Текст не найден</string>
+    <string name="lyrics_source_local">Локальный (.lrc)</string>
+    <string name="lyrics_source_online">Онлайн</string>
+    <string name="lyrics_tab">Текст</string>
+    <string name="queue_tab">Очередь</string>
+
+    <!-- Excluded Folders -->
+    <string name="excluded_folders">Исключенные папки</string>
+    <string name="excluded_folders_subtitle">Пропущено при сканировании</string>
+    <string name="excluded_folders_desc">Папки, перечисленные здесь, пропускаются при сканировании вашей музыкальной библиотеки. Изменения вступят в силу при следующем сканировании.</string>
+    <string name="excluded_folders_empty">Нет исключенных папок</string>
+    <string name="exclude_whatsapp">Исключить аудио WhatsApp</string>
+    <string name="exclude_whatsapp_desc">Пропускать аудиофайлы WhatsApp и WhatsApp Business</string>
+    <string name="add_excluded_folder">Добавить путь к папке…</string>
+    <string name="excluded_folder_hint">/storage/emulated/0/Recordings</string>
+    <string name="excluded_folder_invalid">Введите допустимый абсолютный путь, начинающийся с /</string>
+    <string name="rescan_required">Требуется повторное сканирование библиотеки для применения изменений</string>
+
+    <!-- Sort Order -->
+    <string name="sort_name">Название</string>
+    <string name="sort_artist">Исполнитель</string>
+    <string name="sort_album">Альбом</string>
+    <string name="sort_date_added">Дата добавления</string>
 </resources>

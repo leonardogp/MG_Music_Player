@@ -114,4 +114,38 @@
 
     <!-- Equalizer -->
     <string name="eq_high_fidelity_mode">High-Fidelity-Modus</string>
+    <string name="eq_save_preset">Voreinstellung speichern</string>
+    <string name="eq_preset_name">Name der Voreinstellung</string>
+    <string name="eq_preset_name_hint">Meine Voreinstellung…</string>
+    <string name="eq_preset_saved">Voreinstellung gespeichert!</string>
+    <string name="eq_preset_deleted">Voreinstellung gelöscht</string>
+    <string name="eq_delete_preset">Voreinstellung löschen</string>
+    <string name="eq_my_presets">Meine Voreinstellungen</string>
+    <string name="eq_built_in">Integriert</string>
+
+    <!-- Lyrics -->
+    <string name="lyrics_searching">Suche nach Songtexten…</string>
+    <string name="lyrics_not_found">Keine Songtexte gefunden</string>
+    <string name="lyrics_source_local">Lokal (.lrc)</string>
+    <string name="lyrics_source_online">Online</string>
+    <string name="lyrics_tab">Songtexte</string>
+    <string name="queue_tab">Warteschlange</string>
+
+    <!-- Excluded Folders -->
+    <string name="excluded_folders">Ausgeschlossene Ordner</string>
+    <string name="excluded_folders_subtitle">Beim Scannen übersprungen</string>
+    <string name="excluded_folders_desc">Die hier aufgeführten Ordner werden beim Scannen Ihrer Musikbibliothek übersprungen. Änderungen werden beim nächsten Scan wirksam.</string>
+    <string name="excluded_folders_empty">Keine Ordner ausgeschlossen</string>
+    <string name="exclude_whatsapp">WhatsApp-Audio ausschließen</string>
+    <string name="exclude_whatsapp_desc">WhatsApp- und WhatsApp Business-Audiodateien überspringen</string>
+    <string name="add_excluded_folder">Ordnerpfad hinzufügen…</string>
+    <string name="excluded_folder_hint">/storage/emulated/0/Recordings</string>
+    <string name="excluded_folder_invalid">Geben Sie einen gültigen absoluten Pfad ein, der mit / beginnt</string>
+    <string name="rescan_required">Bibliothek neu scannen, um Änderungen zu übernehmen</string>
+
+    <!-- Sort Order -->
+    <string name="sort_name">Name</string>
+    <string name="sort_artist">Künstler</string>
+    <string name="sort_album">Album</string>
+    <string name="sort_date_added">Hinzufügedatum</string>
 </resources>

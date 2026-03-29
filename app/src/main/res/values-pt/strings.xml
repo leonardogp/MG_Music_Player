@@ -29,7 +29,7 @@
     <string name="sort">Ordenar</string>
     <string name="no_favorites_yet">Você ainda não tem favoritos</string>
     <string name="favorites">Favoritos</string>
-    <string name="recent">Recentes</string>
+    <string name="recent">Recientes</string>
     <string name="previous">Anterior</string>
     <string name="play_pause">Play/Pause</string>
     <string name="next">Próxima</string>
@@ -102,10 +102,10 @@
     <string name="permission_denied_title">Permissões Desativadas</string>
     <string name="permission_denied_body">Você desativou permissões críticas. Por favor, ative-as nas configurações para continuar:</string>
     <string name="permission_retry">Entendido, tentar novamente</string>
-    <string name="permission_open_settings">Abrir Configurações</string>
+    <string name="permission_open_settings">Abrir Configurasões</string>
     <string name="exit_app">Sair do aplicativo</string>
     <string name="permission_label_audio">Acesso a Música e Áudio</string>
-    <string name="permission_label_notifications">Notificaciones de Reproducción</string>
+    <string name="permission_label_notifications">Notificações de Reprodução</string>
     <string name="permission_label_storage">Acesso ao Armazenamento</string>
     <string name="permission_info_desc">Informações de permissão</string>
     <string name="permission_required_desc">Permissão necessária</string>
@@ -114,4 +114,22 @@
 
     <!-- Equalizer -->
     <string name="eq_high_fidelity_mode">Modo de Alta Fidelidade</string>
+
+    <!-- Sort Order -->
+    <string name="sort_name">Nome</string>
+    <string name="sort_artist">Artista</string>
+    <string name="sort_album">Álbum</string>
+    <string name="sort_date_added">Data de adição</string>
+
+    <!-- Excluded Folders -->
+    <string name="excluded_folders">Pastas excluídas</string>
+    <string name="excluded_folders_subtitle">Ignoradas durante a varredura</string>
+    <string name="excluded_folders_desc">As pastas listadas aqui são ignoradas ao escanear sua biblioteca de músicas. As alterações entram em vigor na próxima varredura.</string>
+    <string name="excluded_folders_empty">Nenhuma pasta excluída</string>
+    <string name="exclude_whatsapp">Excluir áudio do WhatsApp</string>
+    <string name="exclude_whatsapp_desc">Ignorar arquivos de áudio do WhatsApp e WhatsApp Business</string>
+    <string name="add_excluded_folder">Adicionar caminho da pasta…</string>
+    <string name="excluded_folder_hint">/storage/emulated/0/Recordings</string>
+    <string name="excluded_folder_invalid">Insira um caminho absoluto válido começando com /</string>
+    <string name="rescan_required">É necessário escanear novamente a biblioteca para aplicar as alterações</string>
 </resources>

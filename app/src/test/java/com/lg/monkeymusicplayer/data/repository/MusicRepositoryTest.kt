@@ -17,10 +17,11 @@ class MusicRepositoryTest {
     private lateinit var musicRepository: MusicRepository
     private val context: Context = mock()
     private val musicDao: MusicDao = mock()
+    private val excludedFolders: ExcludedFoldersRepository = mock()
 
     @Before
     fun setUp() {
-        musicRepository = MusicRepository(context, musicDao)
+        musicRepository = MusicRepository(context, musicDao, excludedFolders)
     }
 
     @Test

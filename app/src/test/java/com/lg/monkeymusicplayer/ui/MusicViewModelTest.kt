@@ -4,7 +4,11 @@ import android.app.Application
 import android.os.Bundle
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.lg.monkeymusicplayer.core.player.MusicPlayerManager
+import com.lg.monkeymusicplayer.data.database.EqPresetEntity
+import com.lg.monkeymusicplayer.data.database.HistoryEntity
+import com.lg.monkeymusicplayer.data.database.PlaylistEntity
 import com.lg.monkeymusicplayer.data.model.Song
+import com.lg.monkeymusicplayer.data.repository.ExcludedFoldersRepository
 import com.lg.monkeymusicplayer.data.repository.MusicRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -27,6 +31,7 @@ class MusicViewModelTest {
     private lateinit var viewModel: MusicViewModel
     private val repository: MusicRepository = mock()
     private val playerManager: MusicPlayerManager = mock()
+    private val excludedFoldersRepository: ExcludedFoldersRepository = mock()
     private val application: Application = mock()
 
     private val testDispatcher = StandardTestDispatcher()
@@ -35,9 +40,11 @@ class MusicViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         
-        whenever(repository.allSongsFlow).thenReturn(emptyFlow())
-        whenever(repository.playlists).thenReturn(emptyFlow())
-        whenever(repository.history).thenReturn(emptyFlow())
+        whenever(repository.allSongsFlow).thenReturn(emptyFlow<List<Song>>())
+        whenever(repository.playlists).thenReturn(emptyFlow<List<PlaylistEntity>>())
+        whenever(repository.history).thenReturn(emptyFlow<List<HistoryEntity>>())
+        whenever(repository.favorites).thenReturn(MutableStateFlow<List<Long>>(emptyList()))
+        whenever(repository.eqPresets).thenReturn(emptyFlow<List<EqPresetEntity>>())
         
         whenever(playerManager.currentSong).thenReturn(MutableStateFlow<Song?>(null))
         whenever(playerManager.isPlaying).thenReturn(MutableStateFlow(false))
@@ -49,7 +56,9 @@ class MusicViewModelTest {
         whenever(playerManager.audioSessionId).thenReturn(MutableStateFlow(0))
         whenever(playerManager.equalizerData).thenReturn(MutableStateFlow<Bundle?>(null))
 
-        viewModel = MusicViewModel(application, repository, playerManager)
+        whenever(excludedFoldersRepository.excludedFolders).thenReturn(MutableStateFlow<List<String>>(emptyList()))
+
+        viewModel = MusicViewModel(application, repository, playerManager, excludedFoldersRepository)
     }
 
     @After
@@ -81,6 +90,7 @@ class MusicViewModelTest {
     @Test
     fun testToggleFavorite() = runTest {
         val song = Song(1, 1, "Title", "Artist", "Album", "Genre", "Folder", "Path", "Uri", false)
+        whenever(repository.favorites).thenReturn(MutableStateFlow<List<Long>>(emptyList()))
         viewModel.toggleFavorite(song)
         verify(repository).toggleFavorite(eq(1L), eq(true))
     }

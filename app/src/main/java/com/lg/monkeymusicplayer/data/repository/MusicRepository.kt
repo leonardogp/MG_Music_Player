@@ -26,7 +26,11 @@ import java.io.File
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
-class MusicRepository(private val context: Context, private val musicDao: MusicDao) {
+class MusicRepository(
+    private val context: Context,
+    private val musicDao: MusicDao,
+    private val excludedFolders: ExcludedFoldersRepository
+) {
 
     private val scanner = MusicScanner(context)
 
@@ -48,6 +52,7 @@ class MusicRepository(private val context: Context, private val musicDao: MusicD
         val allScannedIds = mutableSetOf<Long>()
         try {
             scanner.scan(
+                excludedPaths = excludedFolders.excludedFolders.value,
                 onProgress = onProgress,
                 onSongsFound = { songsBatch ->
                     val entities = songsBatch.map { it.toEntity() }

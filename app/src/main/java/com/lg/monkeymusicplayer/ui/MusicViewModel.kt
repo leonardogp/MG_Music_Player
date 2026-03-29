@@ -24,6 +24,7 @@ import com.lg.monkeymusicplayer.data.database.HistoryEntity
 import com.lg.monkeymusicplayer.data.database.PlaylistEntity
 import com.lg.monkeymusicplayer.data.model.LyricLine
 import com.lg.monkeymusicplayer.data.model.Song
+import com.lg.monkeymusicplayer.data.repository.ExcludedFoldersRepository
 import com.lg.monkeymusicplayer.data.repository.MusicRepository
 import com.lg.monkeymusicplayer.ui.theme.PrimaryOrange
 import kotlinx.coroutines.Dispatchers
@@ -40,9 +41,16 @@ class MusicViewModel @Inject constructor(
     @ApplicationContext private val applicationContext: Context,
     private val repository: MusicRepository,
     private val playerManager: MusicPlayerManager,
+    private val excludedFoldersRepository: ExcludedFoldersRepository,
 ) : ViewModel() {
 
     val context get() = applicationContext
+
+    // Carpetas excluidas del escaneo — expuesto directamente desde el repositorio
+    val excludedFolders: StateFlow<List<String>> = excludedFoldersRepository.excludedFolders
+
+    fun addExcludedFolder(path: String) = excludedFoldersRepository.addFolder(path)
+    fun removeExcludedFolder(path: String) = excludedFoldersRepository.removeFolder(path)
 
     private val _isLoading = MutableStateFlow(true)
     private val _isScanning = MutableStateFlow(false)

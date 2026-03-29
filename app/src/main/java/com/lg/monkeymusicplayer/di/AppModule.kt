@@ -4,6 +4,7 @@ import android.content.Context
 import com.lg.monkeymusicplayer.core.player.MusicPlayerManager
 import com.lg.monkeymusicplayer.data.database.MusicDao
 import com.lg.monkeymusicplayer.data.database.MusicDatabase
+import com.lg.monkeymusicplayer.data.repository.ExcludedFoldersRepository
 import com.lg.monkeymusicplayer.data.repository.MusicRepository
 import dagger.Module
 import dagger.Provides
@@ -32,14 +33,21 @@ object AppModule {
     @Singleton
     fun provideMusicRepository(
         @ApplicationContext context: Context,
-        musicDao: MusicDao
+        musicDao: MusicDao,
+        excludedFoldersRepository: ExcludedFoldersRepository
     ): MusicRepository {
-        return MusicRepository(context, musicDao)
+        return MusicRepository(context, musicDao, excludedFoldersRepository)
     }
 
     @Provides
     @Singleton
     fun provideMusicPlayerManager(@ApplicationContext context: Context): MusicPlayerManager {
         return MusicPlayerManager(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideExcludedFoldersRepository(@ApplicationContext context: Context): ExcludedFoldersRepository {
+        return ExcludedFoldersRepository(context)
     }
 }

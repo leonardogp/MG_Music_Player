@@ -130,4 +130,14 @@
     <string name="lyrics_source_online">Online</string>
     <string name="lyrics_tab">Lyrics</string>
     <string name="queue_tab">Queue</string>
+
+    <!-- Excluded Folders -->
+    <string name="excluded_folders">Excluded folders</string>
+    <string name="excluded_folders_subtitle">Music in these folders will not be shown in the library.</string>
+    <string name="exclude_whatsapp">Exclude WhatsApp Audio</string>
+    <string name="add_excluded_folder">Add custom folder</string>
+    <string name="excluded_folders_empty">No folders excluded</string>
+    <string name="excluded_folder_hint">Folder path</string>
+    <string name="excluded_folder_invalid">Invalid path. Must start with /</string>
+    <string name="rescan_required">Exclusions changed. A rescan is required to update the library.</string>
 </resources>

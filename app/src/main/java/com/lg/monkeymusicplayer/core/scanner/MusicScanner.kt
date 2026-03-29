@@ -10,6 +10,7 @@ import java.io.File
 class MusicScanner(private val context: Context) {
 
     suspend fun scan(
+        excludedPaths: List<String> = emptyList(),
         onProgress: (Int, Int) -> Unit = { _, _ -> },
         onSongsFound: suspend (List<Song>) -> Unit = {}
     ): List<Song> {
@@ -69,6 +70,18 @@ class MusicScanner(private val context: Context) {
                 val albumArtUri = ContentUris.withAppendedId(sArtworkUri, albumId).toString()
 
                 val fullPath = it.getString(dataColumn) ?: ""
+
+                // ── Filtro de rutas excluidas ──
+                // Comparamos el path completo contra cada ruta excluida.
+                // startsWith cubre tanto la carpeta exacta como sus subcarpetas.
+                if (excludedPaths.isNotEmpty() && fullPath.isNotEmpty()) {
+                    if (excludedPaths.any { excluded -> fullPath.startsWith(excluded) }) {
+                        current++
+                        onProgress(current, total)
+                        continue
+                    }
+                }
+
                 val folder = if (fullPath.isNotEmpty()) {
                     File(fullPath).parentFile?.name ?: "Raíz"
                 } else {

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -678,48 +679,54 @@ fun MainTab(
     onToggleFavorite: (Song) -> Unit
 ) {
     val favoriteSongs = remember(songs) { songs.filter { it.isFavorite } }
-    // 8 canciones en historial: llenan exactamente 2 filas de 2 columnas con portadas cuadradas,
-    // equilibrado con los 6 favoritos de arriba y sin necesitar scroll en pantallas normales.
-    val recentSongs = historySongs.take(8)
-    val greeting = getGreeting()
+    val recentSongs   = historySongs.take(8)
+    val greeting      = getGreeting()
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(bottom = 16.dp)
+    // Un único LazyVerticalGrid de 2 columnas gestiona todo el contenido.
+    // Los encabezados, saludo y placeholders usan span = 2 (ancho completo).
+    // Las tarjetas de favoritos e historial usan span = 1 (media columna).
+    // Esto elimina el anidamiento LazyColumn → LazyVerticalGrid que impedía el scroll.
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        contentPadding = PaddingValues(bottom = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        item {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = stringResource(greeting),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(24.dp))
+        // ── Saludo ────────────────────────────────────────────────────────
+        item(span = { GridItemSpan(2) }) {
+            Column {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = stringResource(greeting),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+            }
         }
 
-        // ── Favoritos ────────────────────────────────────────────────────────
-        item {
+        // ── Título sección Favoritos ──────────────────────────────────────
+        item(span = { GridItemSpan(2) }) {
             Text(
                 text = stringResource(R.string.favorites),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.height(12.dp))
         }
-        item {
-            if (favoriteSongs.isNotEmpty()) {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.heightIn(max = 360.dp),
-                    userScrollEnabled = false
-                ) {
-                    items(favoriteSongs.take(6)) { song ->
-                        FavoriteGridItem(song, onClick = { onPlay(song, favoriteSongs) })
-                    }
-                }
-            } else {
+
+        // ── Contenido Favoritos ───────────────────────────────────────────
+        if (favoriteSongs.isNotEmpty()) {
+            items(
+                items = favoriteSongs.take(6),
+                span  = { GridItemSpan(1) }
+            ) { song ->
+                FavoriteGridItem(song, onClick = { onPlay(song, favoriteSongs) })
+            }
+        } else {
+            item(span = { GridItemSpan(2) }) {
                 Box(
                     modifier = Modifier
                         .height(80.dp)
@@ -735,35 +742,33 @@ fun MainTab(
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(28.dp))
         }
 
-        // ── Historial reciente ───────────────────────────────────────────────
-        item {
+        // ── Título sección Recientes ──────────────────────────────────────
+        item(span = { GridItemSpan(2) }) {
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+        item(span = { GridItemSpan(2) }) {
             Text(
                 text = stringResource(R.string.recent),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.height(12.dp))
         }
-        item {
-            if (recentSongs.isNotEmpty()) {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.heightIn(max = 480.dp),
-                    userScrollEnabled = false
-                ) {
-                    items(recentSongs) { song ->
-                        HistoryGridItem(
-                            song = song,
-                            onClick = { onPlay(song, recentSongs) }
-                        )
-                    }
-                }
-            } else {
+
+        // ── Contenido Recientes ───────────────────────────────────────────
+        if (recentSongs.isNotEmpty()) {
+            items(
+                items = recentSongs,
+                span  = { GridItemSpan(1) }
+            ) { song ->
+                HistoryGridItem(
+                    song    = song,
+                    onClick = { onPlay(song, recentSongs) }
+                )
+            }
+        } else {
+            item(span = { GridItemSpan(2) }) {
                 Box(
                     modifier = Modifier
                         .height(80.dp)

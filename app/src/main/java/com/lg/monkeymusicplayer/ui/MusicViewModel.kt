@@ -63,20 +63,6 @@ class MusicViewModel @Inject constructor(
     val eqPresets: StateFlow<List<EqPresetEntity>> = repository.eqPresets
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    /**
-     * Última canción reproducida, resuelta desde el historial.
-     * Se usa en el PlayerBottomBar cuando currentSong == null (estado idle).
-     * Combina history + allSongs para resolver Song completa en O(1).
-     */
-    private val lastPlayedSongFlow: Flow<Song?> = combine(
-        repository.history,
-        repository.allSongsFlow
-    ) { history, songs ->
-        if (history.isEmpty()) return@combine null
-        val songIndex = songs.associateBy { it.id }
-        songIndex[history.first().songId]
-    }.flowOn(Dispatchers.Default)
-
     // ── PUNTO 5: estado del permiso MANAGE_EXTERNAL_STORAGE ──
     // true  → el usuario ya otorgó el permiso, el editor de tags puede escribir archivos.
     // false → hay que pedirlo antes de abrir el diálogo de edición.
@@ -116,166 +102,225 @@ class MusicViewModel @Inject constructor(
     val searchQuery = _searchQuery.asStateFlow()
     val equalizerData = playerManager.equalizerData
 
-    private val mappedQueueFlow = combine(
-        playerManager.currentQueue,
-        repository.favorites
-    ) { queue, favorites ->
-        queue.map { it.copy(isFavorite = favorites.contains(it.id)) }
-    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    // ── Flows intermedios: playerStateFlow ───────────────────────────────────
+    //
+    // Dividimos las 14 fuentes originales en 3 flows tipados.
+    // Cada combine interno usa la sobrecarga tipada (≤5 fuentes) — el compilador
+    // valida tipos en lugar de depender de casts Array<Any?> en runtime.
 
-    private val playerStateFlow = combine(
+    /** Posición de reproducción: canción activa, flags de control y progreso. */
+    private data class PlaybackCore(
+        val currentSong: Song?,
+        val isPlaying: Boolean,
+        val isShuffleMode: Boolean,
+        val repeatMode: Int,
+        val currentPosition: Long,
+        val duration: Long,
+        val audioSessionId: Int
+    )
+
+    /** Extras de UI: color de acento, letras y sleep timer. */
+    private data class PlaybackUiExtras(
+        val accentColor: Color,
+        val lyrics: List<LyricLine>,
+        val sleepTimerMinutes: Int,
+        val sleepTimerRemainingMillis: Long
+    )
+
+    private val playbackCoreFlow: Flow<PlaybackCore> = combine(
         playerManager.currentSong,
         playerManager.isPlaying,
         playerManager.isShuffleMode,
         playerManager.repeatMode,
-        playerManager.currentPosition,
-        playerManager.duration,
-        mappedQueueFlow,
-        playerManager.audioSessionId,
+        playerManager.currentPosition
+    ) { song, playing, shuffle, repeat, position ->
+        // duration y audioSessionId se combinan en un segundo paso porque combine
+        // tiene sobrecargas tipadas solo hasta 5 argumentos
+        PlaybackCore(song, playing, shuffle, repeat, position, 0L, -1)
+    }.combine(playerManager.duration) { core, dur ->
+        core.copy(duration = dur)
+    }.combine(playerManager.audioSessionId) { core, sessionId ->
+        core.copy(audioSessionId = sessionId)
+    }.flowOn(Dispatchers.Default)
+
+    private val playbackUiExtrasFlow: Flow<PlaybackUiExtras> = combine(
         _accentColor,
         _lyrics,
         _sleepTimerMinutes,
-        _sleepTimerRemaining,
+        _sleepTimerRemaining
+    ) { color, lyrics, timerMin, timerRem ->
+        PlaybackUiExtras(color, lyrics, timerMin, timerRem)
+    }.flowOn(Dispatchers.Default)
+
+    private val mappedQueueFlow: Flow<List<Song>> = combine(
+        playerManager.currentQueue,
+        repository.favorites
+    ) { queue, favorites ->
+        queue.map { it.copy(isFavorite = favorites.contains(it.id)) }
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    /**
+     * Última canción reproducida, resuelta desde el historial.
+     * Visible en PlayerBottomBar cuando currentSong == null (estado idle).
+     */
+    private val lastPlayedSongFlow: Flow<Song?> = combine(
+        repository.history,
+        repository.allSongsFlow
+    ) { history, songs ->
+        if (history.isEmpty()) return@combine null
+        val songIndex = songs.associateBy { it.id }
+        songIndex[history.first().songId]
+    }.flowOn(Dispatchers.Default)
+
+    // combine final: 5 fuentes tipadas — sin Array<Any?>, sin índices numéricos
+    private val playerStateFlow: Flow<PlayerState> = combine(
+        playbackCoreFlow,
+        playbackUiExtrasFlow,
+        mappedQueueFlow,
         repository.favorites,
         lastPlayedSongFlow
-    ) { args: Array<Any?> ->
-        val currentSong = args[0] as Song?
-        val currentQueue = args[6] as List<Song>
-        @Suppress("UNCHECKED_CAST")
-        val favorites = args[12] as List<Long>
-        val lastPlayedSong = args[13] as? Song
-        val isFavorite = currentSong?.let { favorites.contains(it.id) } ?: false
-
+    ) { core, extras, queue, favorites, lastPlayed ->
+        val isFavorite = core.currentSong?.let { favorites.contains(it.id) } ?: false
         PlayerState(
-            currentSong = currentSong?.copy(isFavorite = isFavorite),
-            lastPlayedSong = lastPlayedSong,
-            isPlaying = args[1] as Boolean,
-            isShuffleMode = args[2] as Boolean,
-            repeatMode = args[3] as Int,
-            currentPosition = args[4] as Long,
-            duration = args[5] as Long,
-            currentQueue = currentQueue,
-            audioSessionId = args[7] as Int,
-            accentColor = args[8] as Color,
-            lyrics = (args[9] as? List<Any?>)?.filterIsInstance<LyricLine>() ?: emptyList(),
-            sleepTimerMinutes = args[10] as Int,
-            sleepTimerRemainingMillis = args[11] as Long,
-            isFavorite = isFavorite
+            currentSong              = core.currentSong?.copy(isFavorite = isFavorite),
+            lastPlayedSong           = lastPlayed,
+            isPlaying                = core.isPlaying,
+            isShuffleMode            = core.isShuffleMode,
+            repeatMode               = core.repeatMode,
+            currentPosition          = core.currentPosition,
+            duration                 = core.duration,
+            currentQueue             = queue,
+            audioSessionId           = core.audioSessionId,
+            accentColor              = extras.accentColor,
+            lyrics                   = extras.lyrics,
+            sleepTimerMinutes        = extras.sleepTimerMinutes,
+            sleepTimerRemainingMillis = extras.sleepTimerRemainingMillis,
+            isFavorite               = isFavorite
         )
     }
 
-    private val libraryDataFlow = combine(
-        repository.allSongsFlow,
-        _searchQuery,
-        _sortOrder,
-        repository.playlists,
-        repository.history,
-        _currentPlaylistSongs,
-        repository.favorites
-    ) { args: Array<Any?> ->
-        @Suppress("UNCHECKED_CAST")
-        val songs = args[0] as List<Song>
-        val query = args[1] as String
-        val order = args[2] as SortOrder
-        @Suppress("UNCHECKED_CAST")
-        val playlists = args[3] as List<PlaylistEntity>
-        @Suppress("UNCHECKED_CAST")
-        val history = args[4] as List<HistoryEntity>
-        @Suppress("UNCHECKED_CAST")
-        val playlistSongs = args[5] as List<Song>
-        @Suppress("UNCHECKED_CAST")
-        val favorites = args[6] as List<Long>
+    // ── Flows intermedios: libraryDataFlow ───────────────────────────────────
+    //
+    // Dividimos las 7 fuentes originales en 2 flows tipados.
 
-        val mappedSongs = songs.map { it.copy(isFavorite = favorites.contains(it.id)) }
-        val mappedPlaylistSongs = playlistSongs.map { it.copy(isFavorite = favorites.contains(it.id)) }
-        val filtered = if (query.isBlank()) mappedSongs
-                       else mappedSongs.filter {
-                           it.title.contains(query, ignoreCase = true) ||
-                           it.artist.contains(query, ignoreCase = true)
-                       }
+    /** Songs filtradas, ordenadas y enriquecidas con isFavorite. */
+    private data class FilteredSongs(
+        val all: List<Song>,            // todas las canciones con isFavorite
+        val filtered: List<Song>,       // filtradas y ordenadas por query/sortOrder
+        val playlistSongs: List<Song>   // canciones de la playlist activa, con isFavorite
+    )
 
-        // ── CORRECCIÓN: aplicar el orden seleccionado por el usuario ──
-        // Antes: order se extraía del combine pero nunca se usaba → el dropdown
-        //        de ordenación cambiaba el estado pero la lista no cambiaba.
-        val sorted = when (order) {
-            SortOrder.NAME       -> filtered.sortedBy { it.title.lowercase() }
-            SortOrder.ARTIST     -> filtered.sortedBy { it.artist.lowercase() }
-            SortOrder.ALBUM      -> filtered.sortedBy { it.album.lowercase() }
-            SortOrder.DATE_ADDED -> filtered // MediaStore no expone fecha en el modelo actual
-        }
-
-        LibraryData(
-            songs = sorted,
-            playlists = playlists.filter { it.name.contains(query, ignoreCase = true) },
-            history = history,
-            currentPlaylistSongs = mappedPlaylistSongs,
-            // ── PUNTO 6: filtrar las categorías por query ──
-            // Antes: groupBy se aplicaba sobre filtered (canciones filtradas), lo que
-            //        mostraba géneros/artistas/álbumes cuyas canciones coincidían con la
-            //        búsqueda — pero si buscabas "Rock" en la pestaña Géneros no aparecía
-            //        nada porque el filtro solo buscaba en title y artist de cada canción.
-            // Ahora: se genera primero el mapa completo y luego se filtra por clave,
-            //        de modo que buscar "Rock" muestra el género "Rock" con todas sus canciones.
-            genres = if (query.isBlank()) mappedSongs.groupBy { it.genre }
-                     else mappedSongs.groupBy { it.genre }
-                         .filterKeys { it.contains(query, ignoreCase = true) },
-            artists = if (query.isBlank()) mappedSongs.groupBy { it.artist }
-                      else mappedSongs.groupBy { it.artist }
-                          .filterKeys { it.contains(query, ignoreCase = true) },
-            albums = if (query.isBlank()) mappedSongs.groupBy { it.album }
-                     else mappedSongs.groupBy { it.album }
-                         .filterKeys { it.contains(query, ignoreCase = true) },
-            folders = if (query.isBlank()) mappedSongs.groupBy { it.folder }
-                      else mappedSongs.groupBy { it.folder }
-                          .filterKeys { it.contains(query, ignoreCase = true) }
-        )
-    }.flowOn(Dispatchers.Default)
-
-    val uiState: StateFlow<LibraryUiState> = combine(
-        libraryDataFlow,
-        playerStateFlow,
-        _isLoading,
-        _isScanning,
-        _scanProgress,
-        _scanTotal,
-        _searchQuery,
-        _sortOrder
-    ) { args: Array<Any?> ->
-        val data = args[0] as LibraryData
-        val player = args[1] as PlayerState
-        LibraryUiState(
-            isLoading = args[2] as Boolean,
-            isScanning = args[3] as Boolean,
-            scanProgress = args[4] as Int,
-            scanTotal = args[5] as Int,
-            songs = data.songs,
-            genres = data.genres,
-            artists = data.artists,
-            albums = data.albums,
-            folders = data.folders,
-            playlists = data.playlists,
-            history = data.history,
-            currentPlaylistSongs = data.currentPlaylistSongs,
-            searchQuery = args[6] as String,
-            sortOrder = args[7] as SortOrder,
-            playerState = player
-        )
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, LibraryUiState())
-
-    private data class LibraryData(
-        val songs: List<Song>,
+    /** Metadatos de biblioteca: playlists, historial, categorías. */
+    private data class LibraryCatalog(
         val playlists: List<PlaylistEntity>,
         val history: List<HistoryEntity>,
-        val currentPlaylistSongs: List<Song>,
         val genres: Map<String, List<Song>>,
         val artists: Map<String, List<Song>>,
         val albums: Map<String, List<Song>>,
         val folders: Map<String, List<Song>>
     )
 
+    private val filteredSongsFlow: Flow<FilteredSongs> = combine(
+        repository.allSongsFlow,
+        repository.favorites,
+        _currentPlaylistSongs,
+        _searchQuery,
+        _sortOrder
+    ) { songs, favorites, playlistSongs, query, order ->
+        val mapped = songs.map { it.copy(isFavorite = favorites.contains(it.id)) }
+        val mappedPlaylist = playlistSongs.map { it.copy(isFavorite = favorites.contains(it.id)) }
+
+        val filtered = if (query.isBlank()) mapped
+                       else mapped.filter {
+                           it.title.contains(query, ignoreCase = true) ||
+                           it.artist.contains(query, ignoreCase = true)
+                       }
+        val sorted = when (order) {
+            SortOrder.NAME       -> filtered.sortedBy { it.title.lowercase() }
+            SortOrder.ARTIST     -> filtered.sortedBy { it.artist.lowercase() }
+            SortOrder.ALBUM      -> filtered.sortedBy { it.album.lowercase() }
+            SortOrder.DATE_ADDED -> filtered
+        }
+        FilteredSongs(all = mapped, filtered = sorted, playlistSongs = mappedPlaylist)
+    }.flowOn(Dispatchers.Default)
+
+    private val libraryCatalogFlow: Flow<LibraryCatalog> = combine(
+        repository.playlists,
+        repository.history,
+        filteredSongsFlow,
+        _searchQuery
+    ) { playlists, history, fs, query ->
+        val mapped = fs.all
+        LibraryCatalog(
+            playlists = playlists.filter { it.name.contains(query, ignoreCase = true) },
+            history   = history,
+            genres    = if (query.isBlank()) mapped.groupBy { it.genre }
+                        else mapped.groupBy { it.genre }.filterKeys { it.contains(query, ignoreCase = true) },
+            artists   = if (query.isBlank()) mapped.groupBy { it.artist }
+                        else mapped.groupBy { it.artist }.filterKeys { it.contains(query, ignoreCase = true) },
+            albums    = if (query.isBlank()) mapped.groupBy { it.album }
+                        else mapped.groupBy { it.album }.filterKeys { it.contains(query, ignoreCase = true) },
+            folders   = if (query.isBlank()) mapped.groupBy { it.folder }
+                        else mapped.groupBy { it.folder }.filterKeys { it.contains(query, ignoreCase = true) }
+        )
+    }.flowOn(Dispatchers.Default)
+
+    // ── uiState final: 5 fuentes tipadas ────────────────────────────────────
+    //
+    // Antes: 8 fuentes con Array<Any?>.
+    // Ahora: filteredSongsFlow y libraryCatalogFlow ya agrupan todo —
+    // solo necesitamos 5 fuentes para construir LibraryUiState completo.
+
+    val uiState: StateFlow<LibraryUiState> = combine(
+        filteredSongsFlow,
+        libraryCatalogFlow,
+        playerStateFlow,
+        _isLoading,
+        _isScanning
+    ) { fs, catalog, playerState, isLoading, isScanning ->
+        LibraryUiState(
+            isLoading            = isLoading,
+            isScanning           = isScanning,
+            scanProgress         = _scanProgress.value,
+            scanTotal            = _scanTotal.value,
+            songs                = fs.filtered,
+            genres               = catalog.genres,
+            artists              = catalog.artists,
+            albums               = catalog.albums,
+            folders              = catalog.folders,
+            playlists            = catalog.playlists,
+            history              = catalog.history,
+            currentPlaylistSongs = fs.playlistSongs,
+            searchQuery          = _searchQuery.value,
+            sortOrder            = _sortOrder.value,
+            playerState          = playerState
+        )
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, LibraryUiState())
+
     init {
         viewModelScope.launch {
-            repository.allSongsFlow.take(1).collect { _isLoading.value = false }
+            // Esperar el primer valor de la librería.
+            // Si está vacía → primera instalación o DB limpia → lanzar escaneo automático.
+            // Si ya tiene canciones → solo quitar el loading, no re-escanear.
+            repository.allSongsFlow.take(1).collect { songs ->
+                if (songs.isEmpty()) {
+                    // El isLoading se mantiene true hasta que el scan termine:
+                    // AppRoot seguirá mostrando LoadingScreen con el progreso.
+                    scanMusic()
+                } else {
+                    _isLoading.value = false
+                }
+            }
+        }
+        viewModelScope.launch {
+            // Cuando el scan automático termine (isScanning pasa a false),
+            // apagar el loading independientemente de cuántas canciones haya.
+            _isScanning.drop(1).collect { scanning ->
+                if (!scanning && _isLoading.value) {
+                    _isLoading.value = false
+                }
+            }
         }
         viewModelScope.launch {
             playerManager.currentSong.collect { song ->

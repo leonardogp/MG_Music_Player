@@ -63,28 +63,49 @@ class MusicPlayerManager(context: Context) {
     // Índice para lookup O(1) en lugar de find{} O(N) en updateQueue/updateCurrentSong
     private var playlistIndex = mapOf<String, Song>()
 
-    // Referencia al listener para poder removerlo explícitamente en release()
+    // playerListener: Player.Listener para eventos de reproducción
     private var playerListener: Player.Listener? = null
 
-    // Referencia al listener de reconexión — también debe removerse en release()/reconnect()
-    private var reconnectListener: Player.Listener? = null
+    // reconnectListener: MediaController.Listener para detectar desconexión de sesión.
+    private var reconnectListener: MediaController.Listener? = null
 
     init {
         setupMediaController()
     }
 
+    // Contador de intentos para backoff exponencial en reconexión
+    private var reconnectAttempts = 0
+    private var reconnectJob: Job? = null
+
     private fun setupMediaController() {
         val sessionToken = SessionToken(appContext, ComponentName(appContext, MusicService::class.java))
-        controllerFuture = MediaController.Builder(appContext, sessionToken).buildAsync()
         
+        // Creamos el listener de la sesión
+        val mcl = object : MediaController.Listener {
+            override fun onDisconnected(controller: MediaController) {
+                scheduleReconnect()
+            }
+        }
+        reconnectListener = mcl
+
+        // Lo establecemos en el Builder antes de construir el controlador
+        controllerFuture = MediaController.Builder(appContext, sessionToken)
+            .setListener(mcl)
+            .buildAsync()
+
         controllerFuture?.addListener({
             try {
-                val player = controllerFuture?.get() ?: return@addListener
+                val mediaController = controllerFuture?.get() ?: run {
+                    scheduleReconnect()
+                    return@addListener
+                }
+                // Conexión exitosa — resetear contador de reintentos
+                reconnectAttempts = 0
 
                 playerListener = object : Player.Listener {
                     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                         updateCurrentSong(mediaItem)
-                        _duration.value = player.duration.coerceAtLeast(0L)
+                        _duration.value = mediaController.duration.coerceAtLeast(0L)
                         fetchAudioSessionId()
                     }
 
@@ -109,64 +130,61 @@ class MusicPlayerManager(context: Context) {
                     override fun onPlaybackStateChanged(playbackState: Int) {
                         _playbackState.value = playbackState
                         if (playbackState == Player.STATE_READY) {
-                            _duration.value = player.duration.coerceAtLeast(0L)
+                            _duration.value = mediaController.duration.coerceAtLeast(0L)
                             fetchAudioSessionId()
                         }
                     }
-                    
+
                     override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
                         updateQueue()
                     }
                 }
-
-                player.addListener(playerListener!!)
-
-                // ── CORRECCIÓN: listener de reconexión guardado en reconnectListener ──
-                // Antes: objeto anónimo sin referencia → no se podía remover en
-                //        release()/reconnect(), quedaba registrado en el player indefinidamente.
-                // Ahora: se guarda en reconnectListener y se remueve explícitamente.
-                reconnectListener = object : Player.Listener {
-                    override fun onPlaybackStateChanged(playbackState: Int) {
-                        if (playbackState == Player.STATE_IDLE && _isPlaying.value) {
-                            scope.launch(Dispatchers.Main) {
-                                stopProgressUpdate()
-                                _isPlaying.value = false
-                                delay(1000) // Pausa breve para evitar bucle de reconexión
-                                reconnect()
-                            }
-                        }
-                    }
-                }
-                player.addListener(reconnectListener!!)
+                mediaController.addListener(playerListener!!)
 
                 // Initial state sync
-                _isPlaying.value = player.isPlaying
-                _playbackState.value = player.playbackState
-                _isShuffleMode.value = player.shuffleModeEnabled
-                _repeatMode.value = player.repeatMode
-                updateCurrentSong(player.currentMediaItem)
-                _duration.value = player.duration.coerceAtLeast(0L)
+                _isPlaying.value = mediaController.isPlaying
+                _playbackState.value = mediaController.playbackState
+                _isShuffleMode.value = mediaController.shuffleModeEnabled
+                _repeatMode.value = mediaController.repeatMode
+                updateCurrentSong(mediaController.currentMediaItem)
+                _duration.value = mediaController.duration.coerceAtLeast(0L)
                 updateQueue()
-                if (player.isPlaying) startProgressUpdate()
-                
+                if (mediaController.isPlaying) startProgressUpdate()
+
                 fetchAudioSessionId()
                 fetchEqualizerData()
-                
+
             } catch (e: Exception) {
                 e.printStackTrace()
+                scheduleReconnect()
             }
         }, MoreExecutors.directExecutor())
     }
 
+    /**
+     * Reconexión con backoff exponencial: 500ms → 1s → 2s → 4s (máx).
+     * Cancela cualquier reintento pendiente para no acumular corrutinas.
+     */
+    private fun scheduleReconnect() {
+        reconnectJob?.cancel()
+        reconnectJob = scope.launch(Dispatchers.Main) {
+            val delayMs = minOf(500L * (1L shl reconnectAttempts), 4000L)
+            delay(delayMs)
+            reconnectAttempts = (reconnectAttempts + 1).coerceAtMost(4)
+            reconnect()
+        }
+    }
+
     private fun reconnect() {
-        // Remover ambos listeners antes de reinicializar
         controller?.let { player ->
             playerListener?.let { player.removeListener(it) }
-            reconnectListener?.let { player.removeListener(it) }
+            // No es necesario (ni posible) remover el MediaController.Listener manualmente
+            // ya que se asocia al ciclo de vida del controlador en el Builder.
         }
         playerListener = null
         reconnectListener = null
         controllerFuture?.let { MediaController.releaseFuture(it) }
+        controllerFuture = null
         setupMediaController()
     }
 
@@ -335,6 +353,11 @@ class MusicPlayerManager(context: Context) {
     fun skipNext() { controller?.seekToNext() }
     fun skipPrevious() { controller?.seekToPrevious() }
 
+    fun setCurrentPosition(position: Long) {
+        controller?.seekTo(position)
+        _currentPosition.value = position
+    }
+
     fun seekTo(position: Long) {
         controller?.seekTo(position)
         _currentPosition.value = position
@@ -355,9 +378,9 @@ class MusicPlayerManager(context: Context) {
     }
 
     fun release() {
+        reconnectJob?.cancel()
         controller?.let { player ->
             playerListener?.let { player.removeListener(it) }
-            reconnectListener?.let { player.removeListener(it) }
         }
         playerListener = null
         reconnectListener = null

@@ -168,28 +168,25 @@ fun UltraProSplashScreen(
         contentAlignment = Alignment.Center
     ) {
 
-        // ── Ripple 1 (Naranja) ──
-        Canvas(modifier = Modifier.size(240.dp)) {
-            drawCircle(
-                color  = Color(0xFFFF8C00),
-                radius = size.minDimension / 2 * rippleScale,
-                alpha  = rippleAlpha * logoAlpha
-            )
-        }
+        // Contenedor para alinear el logo y las ondas en el mismo centro exacto
+        Box(contentAlignment = Alignment.Center) {
+            // ── Ripple 1 (Naranja) ──
+            Canvas(modifier = Modifier.size(240.dp)) {
+                drawCircle(
+                    color  = Color(0xFFFF8C00),
+                    radius = size.minDimension / 2 * rippleScale,
+                    alpha  = rippleAlpha * logoAlpha
+                )
+            }
 
-        // ── Ripple 2 (Dorado) ──
-        Canvas(modifier = Modifier.size(240.dp)) {
-            drawCircle(
-                color  = Color(0xFFFFD700),
-                radius = size.minDimension / 2 * ripple2Scale,
-                alpha  = ripple2Alpha * logoAlpha
-            )
-        }
-
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
+            // ── Ripple 2 (Dorado) ──
+            Canvas(modifier = Modifier.size(240.dp)) {
+                drawCircle(
+                    color  = Color(0xFFFFD700),
+                    radius = size.minDimension / 2 * ripple2Scale,
+                    alpha  = ripple2Alpha * logoAlpha
+                )
+            }
 
             // ── Logo del mono ─────────────────────────────────────────────
             Image(
@@ -200,68 +197,78 @@ fun UltraProSplashScreen(
                     .scale(logoScale)
                     .graphicsLayer(alpha = logoAlpha)
             )
+        }
 
-            Spacer(modifier = Modifier.height(28.dp))
-
-            // ── Barras de ecualizador ─────────────────────────────────────
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                verticalAlignment     = Alignment.CenterVertically,
-                modifier              = Modifier.graphicsLayer(alpha = contentAlpha)
+        // El resto del contenido (barras, texto, progreso) debajo
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Bottom
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(bottom = 80.dp) // Espacio desde el fondo
             ) {
-                barHeights.forEachIndexed { index, bar ->
-                    val isCenter = index == barHeights.size / 2
-                    Box(
-                        modifier = Modifier
-                            .width(5.dp)
-                            .height(bar.value.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(
-                                if (isCenter) Color(0xFFFF8C00) // Centro naranja
-                                else Color.White.copy(alpha = 0.75f)
-                            )
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // ── Nombre de la app ──────────────────────────────────────────
-            Text(
-                text        = stringResource(id = R.string.app_name),
-                color       = Color.White.copy(alpha = 0.85f),
-                fontSize    = 20.sp,
-                fontWeight  = FontWeight.Bold,
-                letterSpacing = 3.sp,
-                modifier    = Modifier.graphicsLayer(alpha = contentAlpha)
-            )
-
-            // ── Barra de progreso ──
-            if (isScanning) {
-                Spacer(modifier = Modifier.height(44.dp))
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier            = Modifier.padding(horizontal = 48.dp)
+                // ── Barras de ecualizador ─────────────────────────────────────
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
+                    modifier              = Modifier.graphicsLayer(alpha = contentAlpha)
                 ) {
-                    if (scanTotal > 0) {
-                        LinearProgressIndicator(
-                            progress  = { animatedProgress },
-                            modifier  = Modifier.fillMaxWidth().height(3.dp),
-                            color     = Color(0xFFFF8C00),
-                            trackColor = Color.White.copy(alpha = 0.12f)
+                    barHeights.forEachIndexed { index, bar ->
+                        val isCenter = index == barHeights.size / 2
+                        Box(
+                            modifier = Modifier
+                                .width(5.dp)
+                                .height(bar.value.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(
+                                    if (isCenter) Color(0xFFFF8C00) // Centro naranja
+                                    else Color.White.copy(alpha = 0.75f)
+                                )
                         )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text  = stringResource(R.string.scanning_progress, scanProgress, scanTotal),
-                            color = Color.White.copy(alpha = 0.55f),
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    } else {
-                        CircularProgressIndicator(
-                            color       = Color(0xFFFF8C00),
-                            strokeWidth = 2.dp,
-                            modifier    = Modifier.size(24.dp)
-                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // ── Nombre de la app ──────────────────────────────────────────
+                Text(
+                    text        = stringResource(id = R.string.app_name),
+                    color       = Color.White.copy(alpha = 0.85f),
+                    fontSize    = 20.sp,
+                    fontWeight  = FontWeight.Bold,
+                    letterSpacing = 3.sp,
+                    modifier    = Modifier.graphicsLayer(alpha = contentAlpha)
+                )
+
+                // ── Barra de progreso ──
+                if (isScanning) {
+                    Spacer(modifier = Modifier.height(44.dp))
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier            = Modifier.padding(horizontal = 48.dp)
+                    ) {
+                        if (scanTotal > 0) {
+                            LinearProgressIndicator(
+                                progress  = { animatedProgress },
+                                modifier  = Modifier.fillMaxWidth().height(3.dp),
+                                color     = Color(0xFFFF8C00),
+                                trackColor = Color.White.copy(alpha = 0.12f)
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text  = stringResource(R.string.scanning_progress, scanProgress, scanTotal),
+                                color = Color.White.copy(alpha = 0.55f),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        } else {
+                            CircularProgressIndicator(
+                                color       = Color(0xFFFF8C00),
+                                strokeWidth = 2.dp,
+                                modifier    = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
             }

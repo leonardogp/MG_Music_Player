@@ -14,6 +14,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.expandVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AudioFile
@@ -27,6 +28,7 @@ import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -175,10 +177,10 @@ private fun PermissionRationaleScreen(
     onRetry: () -> Unit,
     onExit: () -> Unit
 ) {
-    @Suppress("UNUSED_EXPRESSION")
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color(0xFF121212)) // Fondo oscuro
             .padding(32.dp)
             .animateContentSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -188,19 +190,21 @@ private fun PermissionRationaleScreen(
             imageVector = Icons.Default.Info,
             contentDescription = stringResource(R.string.permission_info_desc),
             modifier = Modifier.size(100.dp),
-            tint = MaterialTheme.colorScheme.secondary
+            tint = Color.White.copy(alpha = 0.7f)
         )
         Spacer(modifier = Modifier.height(24.dp))
         Text(
             text = stringResource(R.string.permission_rationale_title),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
+            color = Color.White,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = stringResource(R.string.permission_rationale_body),
             textAlign = TextAlign.Center,
+            color = Color.White.copy(alpha = 0.8f),
             style = MaterialTheme.typography.bodyLarge
         )
         Spacer(modifier = Modifier.height(16.dp))
@@ -219,13 +223,14 @@ private fun PermissionRationaleScreen(
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
                         contentDescription = stringResource(R.string.permission_required_desc),
-                        tint = MaterialTheme.colorScheme.secondary,
+                        tint = Color(0xFF22C55E),
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = getPermissionLabel(permission),
-                        style = MaterialTheme.typography.titleMedium
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White
                     )
                 }
             }
@@ -235,16 +240,17 @@ private fun PermissionRationaleScreen(
         Button(
             onClick = onRetry,
             modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF22C55E)),
             contentPadding = PaddingValues(16.dp)
         ) {
-            Text(stringResource(R.string.permission_retry))
+            Text(stringResource(R.string.permission_retry), color = Color.White)
         }
         Spacer(modifier = Modifier.height(8.dp))
         TextButton(
             onClick = onExit,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(stringResource(R.string.exit_app))
+            Text(stringResource(R.string.exit_app), color = Color.White.copy(alpha = 0.6f))
         }
     }
 }
@@ -258,6 +264,7 @@ private fun PermissionDeniedScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color(0xFF121212)) // Fondo oscuro
             .padding(32.dp)
             .animateContentSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -267,19 +274,21 @@ private fun PermissionDeniedScreen(
             imageVector = Icons.Default.AudioFile,
             contentDescription = stringResource(R.string.permission_denied_desc),
             modifier = Modifier.size(100.dp),
-            tint = MaterialTheme.colorScheme.primary
+            tint = Color(0xFF22C55E)
         )
         Spacer(modifier = Modifier.height(24.dp))
         Text(
             text = stringResource(R.string.permission_denied_title),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
+            color = Color.White,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = stringResource(R.string.permission_denied_body),
             textAlign = TextAlign.Center,
+            color = Color.White.copy(alpha = 0.8f),
             style = MaterialTheme.typography.bodyLarge
         )
         Spacer(modifier = Modifier.height(16.dp))
@@ -315,18 +324,19 @@ private fun PermissionDeniedScreen(
         Button(
             onClick = onOpenSettings,
             modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF22C55E)),
             contentPadding = PaddingValues(16.dp)
         ) {
-            Icon(Icons.Default.Settings, contentDescription = null)
+            Icon(Icons.Default.Settings, contentDescription = null, tint = Color.White)
             Spacer(modifier = Modifier.width(8.dp))
-            Text(stringResource(R.string.permission_open_settings))
+            Text(stringResource(R.string.permission_open_settings), color = Color.White)
         }
         Spacer(modifier = Modifier.height(8.dp))
         TextButton(
             onClick = onExit,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(stringResource(R.string.exit_app), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.exit_app), color = Color.White.copy(alpha = 0.6f))
         }
     }
 }

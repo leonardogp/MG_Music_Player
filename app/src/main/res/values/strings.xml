@@ -133,11 +133,13 @@
 
     <!-- Excluded Folders -->
     <string name="excluded_folders">Excluded folders</string>
-    <string name="excluded_folders_subtitle">Music in these folders will not be shown in the library.</string>
-    <string name="exclude_whatsapp">Exclude WhatsApp Audio</string>
-    <string name="add_excluded_folder">Add custom folder</string>
+    <string name="excluded_folders_subtitle">Skipped during scan</string>
+    <string name="excluded_folders_desc">Folders listed here are skipped when scanning your music library. Changes take effect on the next scan.</string>
     <string name="excluded_folders_empty">No folders excluded</string>
-    <string name="excluded_folder_hint">Folder path</string>
-    <string name="excluded_folder_invalid">Invalid path. Must start with /</string>
-    <string name="rescan_required">Exclusions changed. A rescan is required to update the library.</string>
+    <string name="exclude_whatsapp">Exclude WhatsApp audio</string>
+    <string name="exclude_whatsapp_desc">Skip WhatsApp and WhatsApp Business audio files</string>
+    <string name="add_excluded_folder">Add folder path…</string>
+    <string name="excluded_folder_hint">/storage/emulated/0/Recordings</string>
+    <string name="excluded_folder_invalid">Enter a valid absolute path starting with /</string>
+    <string name="rescan_required">Rescan library to apply changes</string>
 </resources>

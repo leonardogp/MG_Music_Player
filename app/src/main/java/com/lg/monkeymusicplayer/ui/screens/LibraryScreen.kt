@@ -149,7 +149,6 @@ fun LibraryScreen(
             }
         }
         composable("settings") {
-            val excludedFolders by viewModel.excludedFolders.collectAsState()
             SettingsScreen(
                 uiState = uiState,
                 navController = navController,
@@ -164,8 +163,15 @@ fun LibraryScreen(
                         LocaleListCompat.forLanguageTags(lang)
                     }
                     AppCompatDelegate.setApplicationLocales(appLocale)
-                },
+                }
+            )
+        }
+        composable("excluded_folders") {
+            val excludedFolders by viewModel.excludedFolders.collectAsState()
+            ExcludedFoldersScreen(
                 excludedFolders = excludedFolders,
+                onBack = { navController.popBackStack() },
+                onScanMusic = { viewModel.scanMusic() },
                 onAddExcludedFolder = viewModel::addExcludedFolder,
                 onRemoveExcludedFolder = viewModel::removeExcludedFolder
             )
@@ -188,16 +194,10 @@ fun SettingsScreen(
     onScanMusic: () -> Unit,
     onOpenEqualizer: () -> Unit,
     onSetSleepTimer: (Int) -> Unit,
-    onChangeLanguage: (String) -> Unit,
-    excludedFolders: List<String> = emptyList(),
-    onAddExcludedFolder: (String) -> Unit = {},
-    onRemoveExcludedFolder: (String) -> Unit = {}
+    onChangeLanguage: (String) -> Unit
 ) {
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
-    var showAddFolderDialog by remember { mutableStateOf(false) }
-    // true si el usuario modificó exclusiones → mostrar aviso de re-escaneo
-    var exclusionsChanged by remember { mutableStateOf(false) }
 
     if (showSleepTimerDialog) {
         SleepTimerDialog(
@@ -220,17 +220,6 @@ fun SettingsScreen(
         )
     }
 
-    if (showAddFolderDialog) {
-        AddFolderDialog(
-            onDismiss = { showAddFolderDialog = false },
-            onConfirm = { path ->
-                onAddExcludedFolder(path)
-                exclusionsChanged = true
-                showAddFolderDialog = false
-            }
-        )
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -243,242 +232,67 @@ fun SettingsScreen(
             )
         }
     ) { padding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // ── Escanear música ───────────────────────────────────────────
-            item {
-                ListItem(
-                    modifier = Modifier.clickable { onScanMusic() },
-                    headlineContent = { Text(stringResource(R.string.scan_music)) },
-                    leadingContent = {
-                        if (uiState.isScanning) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                        } else {
-                            Icon(Icons.Default.Refresh, contentDescription = null)
-                        }
-                    },
-                    supportingContent = {
-                        if (uiState.isScanning) {
-                            Column {
-                                val progress = if (uiState.scanTotal > 0) uiState.scanProgress.toFloat() / uiState.scanTotal else 0f
-                                LinearProgressIndicator(
-                                    progress = { progress },
-                                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
-                                )
-                                Text(
-                                    stringResource(R.string.scanning_progress, uiState.scanProgress, uiState.scanTotal),
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                        }
+            ListItem(
+                modifier = Modifier.clickable { onScanMusic() },
+                headlineContent = { Text(stringResource(R.string.scan_music)) },
+                leadingContent = {
+                    if (uiState.isScanning) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Default.Refresh, contentDescription = null)
                     }
-                )
-            }
-
-            // ── Sleep timer ───────────────────────────────────────────────
-            item {
-                ListItem(
-                    modifier = Modifier.clickable { showSleepTimerDialog = true },
-                    headlineContent = {
-                        val timerText = if (uiState.playerState.sleepTimerMinutes > 0) {
-                            stringResource(R.string.timer_active, TimeFormatter.formatDuration(uiState.playerState.sleepTimerRemainingMillis))
-                        } else {
-                            stringResource(R.string.sleep_timer)
-                        }
-                        Text(timerText)
-                    },
-                    leadingContent = { Icon(Icons.Default.Timer, contentDescription = null) }
-                )
-            }
-
-            // ── Ecualizador ───────────────────────────────────────────────
-            item {
-                ListItem(
-                    modifier = Modifier.clickable { navController.navigate("equalizer") },
-                    headlineContent = { Text(stringResource(R.string.equalizer)) },
-                    leadingContent = { Icon(Icons.Default.GraphicEq, contentDescription = null) }
-                )
-            }
-
-            // ── Idioma ────────────────────────────────────────────────────
-            item {
-                ListItem(
-                    modifier = Modifier.clickable { showLanguageDialog = true },
-                    headlineContent = { Text(stringResource(R.string.language)) },
-                    leadingContent = { Icon(Icons.Default.Language, contentDescription = null) }
-                )
-            }
-
-            // ── Divider antes de sección de exclusiones ───────────────────
-            item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
-
-            // ── Cabecera sección: Carpetas excluidas ──────────────────────
-            item {
-                ListItem(
-                    headlineContent = {
-                        Text(
-                            stringResource(R.string.excluded_folders),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    supportingContent = {
-                        Text(
-                            stringResource(R.string.excluded_folders_subtitle),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    leadingContent = {
-                        Icon(Icons.Default.FolderOff, contentDescription = null)
-                    }
-                )
-            }
-
-            // ── Acceso rápido: excluir WhatsApp ───────────────────────────
-            item {
-                val whatsappPaths = com.lg.monkeymusicplayer.data.repository.ExcludedFoldersRepository.buildDefaultExclusions()
-                val allWhatsappExcluded = whatsappPaths.all { excludedFolders.contains(it) }
-                ListItem(
-                    modifier = Modifier.clickable {
-                        if (allWhatsappExcluded) {
-                            whatsappPaths.forEach { onRemoveExcludedFolder(it) }
-                        } else {
-                            whatsappPaths.forEach { onAddExcludedFolder(it) }
-                        }
-                        exclusionsChanged = true
-                    },
-                    headlineContent = { Text(stringResource(R.string.exclude_whatsapp)) },
-                    leadingContent = {
-                        Icon(
-                            if (allWhatsappExcluded) Icons.Default.Block else Icons.Default.Chat,
-                            contentDescription = null,
-                            tint = if (allWhatsappExcluded) MaterialTheme.colorScheme.error
-                                   else MaterialTheme.colorScheme.onSurface
-                        )
-                    },
-                    trailingContent = {
-                        Switch(
-                            checked = allWhatsappExcluded,
-                            onCheckedChange = { checked ->
-                                if (checked) whatsappPaths.forEach { onAddExcludedFolder(it) }
-                                else whatsappPaths.forEach { onRemoveExcludedFolder(it) }
-                                exclusionsChanged = true
-                            }
-                        )
-                    }
-                )
-            }
-
-            // ── Agregar carpeta personalizada ─────────────────────────────
-            item {
-                ListItem(
-                    modifier = Modifier.clickable { showAddFolderDialog = true },
-                    headlineContent = { Text(stringResource(R.string.add_excluded_folder)) },
-                    leadingContent = { Icon(Icons.Default.CreateNewFolder, contentDescription = null) }
-                )
-            }
-
-            // ── Lista de carpetas excluidas activas ───────────────────────
-            val customFolders = excludedFolders.filterNot { path ->
-                com.lg.monkeymusicplayer.data.repository.ExcludedFoldersRepository
-                    .buildDefaultExclusions().contains(path)
-            }
-
-            if (excludedFolders.isEmpty()) {
-                item {
-                    Text(
-                        stringResource(R.string.excluded_folders_empty),
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                items(excludedFolders) { path ->
-                    ListItem(
-                        headlineContent = {
-                            Text(
-                                path.substringAfterLast('/').ifBlank { path },
-                                style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        },
-                        supportingContent = {
-                            Text(
-                                path,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        },
-                        leadingContent = {
-                            Icon(
-                                Icons.Default.FolderOff,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        trailingContent = {
-                            IconButton(onClick = {
-                                onRemoveExcludedFolder(path)
-                                exclusionsChanged = true
-                            }) {
-                                Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = stringResource(R.string.cancel),
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        }
-                    )
-                }
-            }
-
-            // ── Aviso de re-escaneo ───────────────────────────────────────
-            if (exclusionsChanged) {
-                item {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Info,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.size(18.dp)
+                },
+                supportingContent = {
+                    if (uiState.isScanning) {
+                        Column {
+                            val progress = if (uiState.scanTotal > 0) uiState.scanProgress.toFloat() / uiState.scanTotal else 0f
+                            LinearProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                             )
                             Text(
-                                stringResource(R.string.rescan_required),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                                stringResource(R.string.scanning_progress, uiState.scanProgress, uiState.scanTotal),
+                                style = MaterialTheme.typography.bodySmall
                             )
-                            Spacer(Modifier.weight(1f))
-                            TextButton(onClick = {
-                                onScanMusic()
-                                exclusionsChanged = false
-                            }) {
-                                Text(stringResource(R.string.scan_music))
-                            }
                         }
                     }
                 }
-            }
+            )
+            ListItem(
+                modifier = Modifier.clickable { showSleepTimerDialog = true },
+                headlineContent = {
+                    val timerText = if (uiState.playerState.sleepTimerMinutes > 0) {
+                        stringResource(R.string.timer_active, TimeFormatter.formatDuration(uiState.playerState.sleepTimerRemainingMillis))
+                    } else {
+                        stringResource(R.string.sleep_timer)
+                    }
+                    Text(timerText)
+                },
+                leadingContent = { Icon(Icons.Default.Timer, contentDescription = null) }
+            )
+            ListItem(
+                modifier = Modifier.clickable { navController.navigate("equalizer") },
+                headlineContent = { Text(stringResource(R.string.equalizer)) },
+                leadingContent = { Icon(Icons.Default.GraphicEq, contentDescription = null) }
+            )
+            ListItem(
+                modifier = Modifier.clickable { showLanguageDialog = true },
+                headlineContent = { Text(stringResource(R.string.language)) },
+                leadingContent = { Icon(Icons.Default.Language, contentDescription = null) }
+            )
+            ListItem(
+                modifier = Modifier.clickable { navController.navigate("excluded_folders") },
+                headlineContent = { Text(stringResource(R.string.excluded_folders)) },
+                supportingContent = { Text(stringResource(R.string.excluded_folders_subtitle)) },
+                leadingContent = { Icon(Icons.Default.FolderOff, contentDescription = null) },
+                trailingContent = { Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null) }
+            )
         }
     }
 }
@@ -1874,6 +1688,209 @@ fun EditTagsDialog(
             }
         }
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ExcludedFoldersScreen(
+    excludedFolders: List<String>,
+    onBack: () -> Unit,
+    onScanMusic: () -> Unit,
+    onAddExcludedFolder: (String) -> Unit,
+    onRemoveExcludedFolder: (String) -> Unit
+) {
+    val whatsappPaths = ExcludedFoldersRepository.buildDefaultExclusions()
+    val allWhatsappExcluded = whatsappPaths.all { excludedFolders.contains(it) }
+    var showAddFolderDialog by remember { mutableStateOf(false) }
+    var exclusionsChanged by remember { mutableStateOf(false) }
+
+    if (showAddFolderDialog) {
+        AddFolderDialog(
+            onDismiss = { showAddFolderDialog = false },
+            onConfirm = { path ->
+                onAddExcludedFolder(path)
+                exclusionsChanged = true
+                showAddFolderDialog = false
+            }
+        )
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.excluded_folders)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            // ── Descripción ───────────────────────────────────────────────
+            item {
+                Text(
+                    stringResource(R.string.excluded_folders_desc),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // ── Toggle WhatsApp ───────────────────────────────────────────
+            item {
+                ListItem(
+                    modifier = Modifier.clickable {
+                        if (allWhatsappExcluded) whatsappPaths.forEach { onRemoveExcludedFolder(it) }
+                        else whatsappPaths.forEach { onAddExcludedFolder(it) }
+                        exclusionsChanged = true
+                    },
+                    headlineContent = { Text(stringResource(R.string.exclude_whatsapp)) },
+                    supportingContent = {
+                        Text(
+                            stringResource(R.string.exclude_whatsapp_desc),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    },
+                    leadingContent = {
+                        Icon(
+                            if (allWhatsappExcluded) Icons.Default.Block else Icons.Default.Chat,
+                            contentDescription = null,
+                            tint = if (allWhatsappExcluded) MaterialTheme.colorScheme.error
+                                   else MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = allWhatsappExcluded,
+                            onCheckedChange = { checked ->
+                                if (checked) whatsappPaths.forEach { onAddExcludedFolder(it) }
+                                else whatsappPaths.forEach { onRemoveExcludedFolder(it) }
+                                exclusionsChanged = true
+                            }
+                        )
+                    }
+                )
+                HorizontalDivider()
+            }
+
+            // ── Agregar carpeta personalizada ─────────────────────────────
+            item {
+                ListItem(
+                    modifier = Modifier.clickable { showAddFolderDialog = true },
+                    headlineContent = { Text(stringResource(R.string.add_excluded_folder)) },
+                    leadingContent = {
+                        Icon(Icons.Default.CreateNewFolder, contentDescription = null)
+                    }
+                )
+                HorizontalDivider()
+            }
+
+            // ── Lista de carpetas excluidas activas ───────────────────────
+            if (excludedFolders.isEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            stringResource(R.string.excluded_folders_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
+                items(excludedFolders, key = { it }) { path ->
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                path.substringAfterLast('/').ifBlank { path },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
+                        supportingContent = {
+                            Text(
+                                path,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        },
+                        leadingContent = {
+                            Icon(
+                                Icons.Default.FolderOff,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        trailingContent = {
+                            IconButton(onClick = {
+                                onRemoveExcludedFolder(path)
+                                exclusionsChanged = true
+                            }) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = stringResource(R.string.cancel),
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    )
+                    HorizontalDivider()
+                }
+            }
+
+            // ── Banner de re-escaneo ──────────────────────────────────────
+            if (exclusionsChanged) {
+                item {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                stringResource(R.string.rescan_required),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.weight(1f)
+                            )
+                            TextButton(onClick = {
+                                onScanMusic()
+                                exclusionsChanged = false
+                            }) {
+                                Text(stringResource(R.string.scan_music))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable

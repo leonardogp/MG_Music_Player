@@ -12,8 +12,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -21,17 +23,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lg.monkeymusicplayer.R
 import com.lg.monkeymusicplayer.ui.screens.LibraryScreen
+import kotlinx.coroutines.delay
 
 @Composable
 fun AppRoot(viewModel: MusicViewModel, windowSizeClass: WindowSizeClass) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // Mostrar la pantalla de bienvenida cuando:
-    //   • isLoading == true  (Room aún no emitió el primer valor)
-    //   • isScanning == true && no hay canciones todavía (escaneo inicial en curso)
-    // En cuanto haya canciones en la librería la app es usable aunque siga escaneando.
+    // Estado para asegurar que el splash sea visible al menos un tiempo
+    var showSplashTimeout by remember { mutableStateOf(true) }
+    
+    LaunchedEffect(Unit) {
+        delay(2500) // 2.5 segundos para apreciar la animación completa
+        showSplashTimeout = false
+    }
+
     val showLoading = uiState.isLoading ||
-            (uiState.isScanning && uiState.songs.isEmpty())
+            (uiState.isScanning && uiState.songs.isEmpty()) ||
+            showSplashTimeout
 
     if (showLoading) {
         UltraProSplashScreen(
@@ -41,7 +49,7 @@ fun AppRoot(viewModel: MusicViewModel, windowSizeClass: WindowSizeClass) {
         )
     } else {
         LibraryScreen(
-            viewModel     = viewModel,
+            viewModel       = viewModel,
             windowSizeClass = windowSizeClass
         )
     }
@@ -53,58 +61,96 @@ fun UltraProSplashScreen(
     scanProgress: Int = 0,
     scanTotal: Int = 0
 ) {
+    // ── Estado de entrada ──
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+
     val infiniteTransition = rememberInfiniteTransition(label = "SplashInfinite")
 
-    // Animación de escala del mono al aparecer
-    val scale by animateFloatAsState(
-        targetValue = 1f,
-        animationSpec = tween(900, easing = EaseOutBack),
-        label = "MonkeyScale"
+    // Logo: entra desde escala 0 → 1 con rebote (Naranja PrimaryOrange #FF8C00)
+    val logoScale by animateFloatAsState(
+        targetValue   = if (visible) 1f else 0f,
+        animationSpec = tween(800, easing = EaseOutBack),
+        label         = "LogoScale"
     )
 
-    // Ripple (onda circular)
+    val logoAlpha by animateFloatAsState(
+        targetValue   = if (visible) 1f else 0f,
+        animationSpec = tween(600),
+        label         = "LogoAlpha"
+    )
+
+    // Texto y barras: aparecen con retraso
+    val contentAlpha by animateFloatAsState(
+        targetValue   = if (visible) 1f else 0f,
+        animationSpec = tween(600, delayMillis = 500),
+        label         = "ContentAlpha"
+    )
+
+    // Ripple 1 — Naranja Principal (#FF8C00)
     val rippleScale by infiniteTransition.animateFloat(
-        initialValue = 0.6f,
-        targetValue = 1.8f,
+        initialValue  = 0.5f,
+        targetValue   = 2.2f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing),
+            animation  = tween(2200, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "RippleScale"
     )
-
     val rippleAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 0f,
+        initialValue  = 0.35f,
+        targetValue   = 0f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2000),
+            animation  = tween(2200),
             repeatMode = RepeatMode.Restart
         ),
         label = "RippleAlpha"
     )
 
-    // Barras tipo audio
-    val bars = List(5) { index ->
+    // Ripple 2 — Dorado Secundario (#FFD700) desfasado
+    val ripple2Scale by infiniteTransition.animateFloat(
+        initialValue  = 0.5f,
+        targetValue   = 2.2f,
+        animationSpec = infiniteRepeatable(
+            animation  = tween(2200, easing = LinearEasing, delayMillis = 1100),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "RippleScale2"
+    )
+    val ripple2Alpha by infiniteTransition.animateFloat(
+        initialValue  = 0f,
+        targetValue   = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 2200
+                0f at 0
+                0.25f at 300
+                0f at 2200
+            },
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "RippleAlpha2"
+    )
+
+    // Barras de ecualizador animadas
+    val barHeights = List(7) { index ->
         infiniteTransition.animateFloat(
-            initialValue = 20f,
-            targetValue = 80f,
+            initialValue  = 12f,
+            targetValue   = 56f,
             animationSpec = infiniteRepeatable(
-                animation = tween(
-                    durationMillis = 500,
-                    delayMillis = index * 120
-                ),
+                animation  = tween(450, delayMillis = index * 90, easing = EaseInOutSine),
                 repeatMode = RepeatMode.Reverse
             ),
             label = "Bar_$index"
         )
     }
 
-    // Progreso de escaneo (si aplica)
+    // Progreso del escaneo
     val progressFraction = if (scanTotal > 0) scanProgress.toFloat() / scanTotal else 0f
     val animatedProgress by animateFloatAsState(
-        targetValue  = progressFraction,
-        animationSpec = tween(durationMillis = 300),
-        label        = "ScanProgress"
+        targetValue   = progressFraction,
+        animationSpec = tween(300),
+        label         = "ScanProgress"
     )
 
     Box(
@@ -112,21 +158,31 @@ fun UltraProSplashScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    listOf(
-                        Color(0xFF0F172A),
-                        Color(0xFF020617)
+                    colorStops = arrayOf(
+                        0.0f to Color(0xFF121212), // DarkBackground
+                        0.7f to Color(0xFF1E1E1E), // DarkSurface
+                        1.0f to Color(0xFF121212)
                     )
                 )
             ),
         contentAlignment = Alignment.Center
     ) {
 
-        // Ripple detrás
-        Canvas(modifier = Modifier.size(260.dp)) {
+        // ── Ripple 1 (Naranja) ──
+        Canvas(modifier = Modifier.size(240.dp)) {
             drawCircle(
-                color = Color(0xFF22C55E),
+                color  = Color(0xFFFF8C00),
                 radius = size.minDimension / 2 * rippleScale,
-                alpha = rippleAlpha
+                alpha  = rippleAlpha * logoAlpha
+            )
+        }
+
+        // ── Ripple 2 (Dorado) ──
+        Canvas(modifier = Modifier.size(240.dp)) {
+            drawCircle(
+                color  = Color(0xFFFFD700),
+                radius = size.minDimension / 2 * ripple2Scale,
+                alpha  = ripple2Alpha * logoAlpha
             )
         }
 
@@ -135,63 +191,78 @@ fun UltraProSplashScreen(
             verticalArrangement = Arrangement.Center
         ) {
 
-            // 🐵 Mono (icono)
+            // ── Logo del mono ─────────────────────────────────────────────
             Image(
-                painter = painterResource(id = R.drawable.ic_monkey_head),
+                painter           = painterResource(id = R.drawable.ic_monkey_head),
                 contentDescription = null,
-                modifier = Modifier
-                    .size((140 * scale).dp)
+                modifier          = Modifier
+                    .size(140.dp)
+                    .scale(logoScale)
+                    .graphicsLayer(alpha = logoAlpha)
             )
 
-            Spacer(modifier = Modifier.height(30.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
-            // 🎧 Barras ecualizador
+            // ── Barras de ecualizador ─────────────────────────────────────
             Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment     = Alignment.CenterVertically,
+                modifier              = Modifier.graphicsLayer(alpha = contentAlpha)
             ) {
-                bars.forEach { bar ->
+                barHeights.forEachIndexed { index, bar ->
+                    val isCenter = index == barHeights.size / 2
                     Box(
                         modifier = Modifier
-                            .width(6.dp)
+                            .width(5.dp)
                             .height(bar.value.dp)
                             .clip(RoundedCornerShape(50))
-                            .background(Color.White)
+                            .background(
+                                if (isCenter) Color(0xFFFF8C00) // Centro naranja
+                                else Color.White.copy(alpha = 0.75f)
+                            )
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // 📝 Nombre app
+            // ── Nombre de la app ──────────────────────────────────────────
             Text(
-                text = stringResource(id = R.string.app_name),
-                color = Color.White.copy(alpha = 0.8f),
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 2.sp
+                text        = stringResource(id = R.string.app_name),
+                color       = Color.White.copy(alpha = 0.85f),
+                fontSize    = 20.sp,
+                fontWeight  = FontWeight.Bold,
+                letterSpacing = 3.sp,
+                modifier    = Modifier.graphicsLayer(alpha = contentAlpha)
             )
 
-            if (isScanning && scanTotal > 0) {
-                Spacer(modifier = Modifier.height(40.dp))
+            // ── Barra de progreso ──
+            if (isScanning) {
+                Spacer(modifier = Modifier.height(44.dp))
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(horizontal = 48.dp)
+                    modifier            = Modifier.padding(horizontal = 48.dp)
                 ) {
-                    LinearProgressIndicator(
-                        progress = { animatedProgress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(4.dp),
-                        color = Color(0xFF22C55E),
-                        trackColor = Color.White.copy(alpha = 0.15f)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = stringResource(R.string.scanning_progress, scanProgress, scanTotal),
-                        color = Color.White.copy(alpha = 0.6f),
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    if (scanTotal > 0) {
+                        LinearProgressIndicator(
+                            progress  = { animatedProgress },
+                            modifier  = Modifier.fillMaxWidth().height(3.dp),
+                            color     = Color(0xFFFF8C00),
+                            trackColor = Color.White.copy(alpha = 0.12f)
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text  = stringResource(R.string.scanning_progress, scanProgress, scanTotal),
+                            color = Color.White.copy(alpha = 0.55f),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    } else {
+                        CircularProgressIndicator(
+                            color       = Color(0xFFFF8C00),
+                            strokeWidth = 2.dp,
+                            modifier    = Modifier.size(24.dp)
+                        )
+                    }
                 }
             }
         }

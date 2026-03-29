@@ -15,6 +15,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -54,7 +55,11 @@ class MainActivity : AppCompatActivity(), ImageLoaderFactory {
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class, UnstableApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        // Mantener el splash del sistema visible hasta que el primer frame de Compose
+        // esté listo. Sin esto hay un flash negro entre ambas pantallas.
+        var splashDone = false
+        installSplashScreen().setKeepOnScreenCondition { !splashDone }
+
         super.onCreate(savedInstanceState)
 
         // Iniciar el servicio de reproducción explícitamente al arrancar la app.
@@ -78,6 +83,9 @@ class MainActivity : AppCompatActivity(), ImageLoaderFactory {
 
         setContent {
             val windowSizeClass = calculateWindowSizeClass(this)
+
+            // Liberar el splash del sistema en el primer frame de Compose
+            SideEffect { splashDone = true }
 
             monkeymusicplayerTheme {
                 PermissionHandler(

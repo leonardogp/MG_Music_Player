@@ -51,12 +51,36 @@ class MusicRepository(
     ) = withContext(Dispatchers.IO) {
         val allScannedIds = mutableSetOf<Long>()
         try {
+            // IDs ya presentes en Room antes de empezar el scan.
+            // insertSongs usa IGNORE, por lo que canciones nuevas se insertan completas
+            // y canciones existentes se saltan (preservando genre editado por el usuario).
+            // Para canciones existentes usamos updateSongMetadata, que actualiza todos
+            // los campos EXCEPTO genre — evitando que MediaStore sobrescriba ediciones.
+            val existingIds = musicDao.getAllIds().toSet()
+
             scanner.scan(
                 excludedPaths = excludedFolders.excludedFolders.value,
                 onProgress = onProgress,
                 onSongsFound = { songsBatch ->
-                    val entities = songsBatch.map { it.toEntity() }
-                    musicDao.insertSongs(entities)
+                    val newSongs = mutableListOf<SongEntity>()
+                    val oldSongs = mutableListOf<Song>()
+                    for (song in songsBatch) {
+                        if (song.id in existingIds) oldSongs.add(song)
+                        else newSongs.add(song.toEntity())
+                    }
+                    if (newSongs.isNotEmpty()) musicDao.insertSongs(newSongs)
+                    for (song in oldSongs) {
+                        musicDao.updateSongMetadata(
+                            id = song.id,
+                            title = song.title,
+                            artist = song.artist,
+                            album = song.album,
+                            albumId = song.albumId,
+                            folder = song.folder,
+                            path = song.path,
+                            albumArtUri = song.albumArtUri
+                        )
+                    }
                     allScannedIds.addAll(songsBatch.map { it.id })
                 }
             )
@@ -156,11 +180,33 @@ class MusicRepository(
                 originalFile.copyTo(tempFile, overwrite = true)
 
                 val mp3File = Mp3File(tempFile.absolutePath)
-                val tag = if (mp3File.hasId3v2Tag()) mp3File.id3v2Tag else ID3v24Tag()
+
+                // Siempre escribir en un tag ID3v2.4 fresco para evitar problemas
+                // con frames heredados en formato ID3v2.3/v2.2 que contienen el género
+                // codificado como índice numérico "(N)Description" (e.g. "(17)Rock").
+                // Si se llama setGenreDescription() sobre ese frame existente, mp3agic
+                // concatena el texto nuevo → "Rock, Rock".
+                // La solución es descartar el tag existente y crear uno ID3v24Tag limpio,
+                // copiando solo los campos que nos interesan. Esto garantiza que TCON
+                // contenga únicamente el texto libre, sin índice heredado.
+                val existingTag: com.mpatric.mp3agic.ID3v2? =
+                    if (mp3File.hasId3v2Tag()) mp3File.id3v2Tag else null
+
+                val tag = ID3v24Tag()
+                // Preservar album art si existía
+                existingTag?.albumImage?.let { art ->
+                    tag.setAlbumImage(art, existingTag.albumImageMimeType ?: "image/jpeg")
+                }
+                // Preservar otros campos que no editamos
+                existingTag?.track?.let { tag.track = it }
+                existingTag?.year?.let { tag.year = it }
+
                 tag.title = newTitle
                 tag.artist = newArtist
                 tag.album = newAlbum
+                // TCON se escribe como texto libre puro — sin índice numérico heredado.
                 tag.genreDescription = newGenre
+
                 mp3File.id3v2Tag = tag
                 mp3File.save(editedFile.absolutePath)
 

@@ -44,6 +44,7 @@ class MusicService : MediaSessionService() {
     private val handler = Handler(Looper.getMainLooper())
     private var crossfadeDurationMs = 5000L
     private var isFading = false
+    private var widgetUpdateJob: Job? = null
 
     private val crossfadeCheckRunnable = object : Runnable {
         override fun run() {
@@ -178,13 +179,24 @@ class MusicService : MediaSessionService() {
     }
 
     private fun updateWidget() {
+        // Capturar la canción actual en Main antes de lanzar la corrutina.
         val song = player.currentMediaItem?.localConfiguration?.tag as? Song
 
-        if (song != null) {
-            serviceScope.launch {
+        // Cancelar cualquier update pendiente — evita que un evento anterior
+        // (e.g. onIsPlayingChanged disparado justo antes de onMediaItemTransition)
+        // sobreescriba al widget con datos de la canción ya abandonada.
+        widgetUpdateJob?.cancel()
+        widgetUpdateJob = serviceScope.launch {
+            if (song != null) {
                 val isFav = withContext(Dispatchers.IO) {
                     musicDao.getFavorites().firstOrNull()?.contains(song.id) ?: false
                 }
+
+                // Guard post-IO: si la canción cambió mientras esperábamos el DAO,
+                // descartar este update para no pintar información stale.
+                val stillCurrent = player.currentMediaItem?.localConfiguration?.tag as? Song
+                if (stillCurrent?.id != song.id) return@launch
+
                 MusicWidget.updateAllWidgets(
                     context        = this@MusicService,
                     songTitle      = song.title,
@@ -198,10 +210,8 @@ class MusicService : MediaSessionService() {
                     isShuffleOn    = player.shuffleModeEnabled,
                     isRepeatOn     = player.repeatMode != androidx.media3.common.Player.REPEAT_MODE_OFF
                 )
-            }
-        } else {
-            // Sin canción activa: mostrar último registro del historial (idle state)
-            serviceScope.launch {
+            } else {
+                // Sin canción activa: mostrar último registro del historial (idle state)
                 val lastEntity = withContext(Dispatchers.IO) {
                     musicDao.getHistory().firstOrNull()?.firstOrNull()
                         ?.let { hist -> musicDao.getSongsByIds(listOf(hist.songId)).firstOrNull() }

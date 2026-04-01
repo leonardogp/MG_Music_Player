@@ -14,8 +14,15 @@ interface MusicDao {
     @Query("SELECT id FROM songs")
     suspend fun getAllIds(): List<Long>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    // INSERT OR IGNORE: si la cancion ya existe en Room, no sobreescribir.
+    // Protege el campo `genre` editado manualmente de ser pisado por el scanner.
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertSongs(songs: List<SongEntity>)
+
+    // Actualiza metadatos de canciones existentes SIN tocar genre.
+    // Llamado por el scanner para canciones que ya estaban en Room.
+    @Query("UPDATE songs SET title = :title, artist = :artist, album = :album, albumId = :albumId, folder = :folder, path = :path, albumArtUri = :albumArtUri WHERE id = :id")
+    suspend fun updateSongMetadata(id: Long, title: String, artist: String, album: String, albumId: Long, folder: String, path: String, albumArtUri: String?)
 
     @Query("UPDATE songs SET title = :title, artist = :artist, album = :album, genre = :genre WHERE id = :id")
     suspend fun updateSongTags(id: Long, title: String, artist: String, album: String, genre: String)

@@ -25,16 +25,26 @@ object PermissionHelper {
      */
     fun getRequiredReadPermissions(): Array<String> {
         return when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                // Android 14+ (API 34): READ_MEDIA_AUDIO + READ_MEDIA_VISUAL_USER_SELECTED
+                // El segundo es obligatorio desde Android 14 para el nuevo modelo de acceso
+                // parcial a medios. Sin él, algunos OEMs (Xiaomi HyperOS, Samsung One UI 6+)
+                // bloquean el acceso a MediaStore.Audio aunque READ_MEDIA_AUDIO esté concedido.
+                arrayOf(
+                    Manifest.permission.READ_MEDIA_AUDIO,
+                    Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+                    Manifest.permission.POST_NOTIFICATIONS
+                )
+            }
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
-                // Android 13+: READ_MEDIA_AUDIO + notificaciones para la MediaSession
+                // Android 13 (API 33): READ_MEDIA_AUDIO + notificaciones
                 arrayOf(
                     Manifest.permission.READ_MEDIA_AUDIO,
                     Manifest.permission.POST_NOTIFICATIONS
                 )
             }
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
-                // Android 11-12: READ_EXTERNAL_STORAGE con maxSdkVersion=32 declarado en el Manifest
-                // es suficiente para leer audio. MANAGE_EXTERNAL_STORAGE es innecesario aquí.
+                // Android 11-12: READ_EXTERNAL_STORAGE con maxSdkVersion=32
                 arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
             }
             else -> {

@@ -26,6 +26,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -133,8 +136,32 @@ fun PermissionHandler(
             )
         }
         is PermissionState.Requesting -> {
+            // Lanzar el diálogo de permisos
             LaunchedEffect(requiredPermissions) {
                 permissionLauncher.launch(requiredPermissions.toTypedArray())
+            }
+
+            // Guardia para Xiaomi HyperOS / MIUI: en estos sistemas el launcher puede
+            // ser silenciado si la app no está completamente en foreground en el momento
+            // del lanzamiento (race condition durante el cold start). Al volver al
+            // foreground (onResume) re-verificamos si ya están concedidos; si no,
+            // re-lanzamos el diálogo. Esto garantiza que el usuario siempre vea el prompt.
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_RESUME) {
+                        if (checkPermissions(context, requiredPermissions)) {
+                            permissionState.value = PermissionState.Granted
+                        } else {
+                            // Re-lanzar solo si aún estamos en Requesting (no Denied/Rationale)
+                            if (permissionState.value is PermissionState.Requesting) {
+                                permissionLauncher.launch(requiredPermissions.toTypedArray())
+                            }
+                        }
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
             }
         }
     }

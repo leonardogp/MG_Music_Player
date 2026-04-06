@@ -27,6 +27,7 @@ import com.lg.monkeymusicplayer.core.utils.SongCoverFetcher
 import com.lg.monkeymusicplayer.data.database.MusicDatabase
 import com.lg.monkeymusicplayer.data.repository.MusicRepository
 import com.lg.monkeymusicplayer.ui.components.PermissionHandler
+import com.lg.monkeymusicplayer.util.PermissionHelper
 import com.lg.monkeymusicplayer.ui.components.ScaffoldWithInsets
 import com.lg.monkeymusicplayer.ui.theme.monkeymusicplayerTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -73,13 +74,10 @@ class MainActivity : AppCompatActivity(), ImageLoaderFactory {
         // Informar al ViewModel del estado actual del permiso al arrancar
         viewModel.onManageStoragePermissionResult(hasManageStoragePermission())
 
-        val permissions = mutableListOf<String>()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissions.add(Manifest.permission.READ_MEDIA_AUDIO)
-            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
-        } else {
-            permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
-        }
+        // Usar PermissionHelper como única fuente de verdad para el listado de permisos.
+        // Centraliza la lógica por versión de API, incluyendo Android 14+ con
+        // READ_MEDIA_VISUAL_USER_SELECTED requerido por OEMs como Xiaomi HyperOS.
+        val permissions = PermissionHelper.getRequiredReadPermissions().toMutableList()
 
         setContent {
             val windowSizeClass = calculateWindowSizeClass(this)

@@ -5,6 +5,8 @@ import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore
 import com.lg.monkeymusicplayer.data.model.Song
+import com.lg.monkeymusicplayer.util.PermissionHelper
+import timber.log.Timber
 import java.io.File
 
 class MusicScanner(private val context: Context) {
@@ -34,6 +36,14 @@ class MusicScanner(private val context: Context) {
 
         val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
 
+        // Guard: en Android 14+ (especialmente Xiaomi HyperOS) el ContentResolver puede
+        // devolver cursor vacío silenciosamente si READ_MEDIA_AUDIO no está concedido.
+        // Verificar antes de consultar para evitar confundir "sin permisos" con "sin música".
+        if (!PermissionHelper.hasReadPermissions(context)) {
+            Timber.w("MusicScanner: scan abortado — permisos de lectura no concedidos")
+            return songs
+        }
+
         val cursor = context.contentResolver.query(
             uri,
             projection,
@@ -42,8 +52,17 @@ class MusicScanner(private val context: Context) {
             null
         )
 
-        cursor?.use {
+        if (cursor == null) {
+            Timber.w("MusicScanner: ContentResolver devolvió cursor null — posible bloqueo de permisos OEM (HyperOS/MIUI)")
+            return songs
+        }
+
+        cursor.use {
             val total = it.count
+            Timber.d("MusicScanner: encontradas $total canciones en MediaStore")
+            if (total == 0) {
+                Timber.w("MusicScanner: MediaStore devuelve 0 canciones — verificar permisos en Ajustes de la app o restricciones del OEM")
+            }
             val idColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
             val albumIdColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
             val titleColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)

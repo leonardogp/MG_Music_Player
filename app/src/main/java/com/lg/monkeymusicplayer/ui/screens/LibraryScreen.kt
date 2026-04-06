@@ -66,6 +66,16 @@ import com.lg.monkeymusicplayer.util.TimeFormatter
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import com.lg.monkeymusicplayer.ui.components.LyricsView
 import com.lg.monkeymusicplayer.data.repository.ExcludedFoldersRepository
+import android.net.Uri
+import android.os.Environment
+import android.provider.DocumentsContract
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.vector.ImageVector
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -570,12 +580,38 @@ fun MobileLayout(
                                 IconButton(onClick = { showSortMenu = true }) {
                                     Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.sort))
                                 }
-                                DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
-                                    SortOrder.entries.forEach { order ->
-                                        DropdownMenuItem(
-                                            text = { Text(order.name) },
-                                            onClick = { onSortOrderChanged(order); showSortMenu = false }
-                                        )
+                                if (showSortMenu) {
+                                    ModalBottomSheet(
+                                        onDismissRequest = { showSortMenu = false },
+                                        containerColor = Color(0xFF181818),
+                                        dragHandle = {
+                                            Box(modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp),
+                                                contentAlignment = Alignment.Center) {
+                                                Box(modifier = Modifier.width(40.dp).height(4.dp)
+                                                    .background(Color.White.copy(0.25f), RoundedCornerShape(2.dp)))
+                                            }
+                                        }
+                                    ) {
+                                        Text(stringResource(R.string.sort), color = Color.White, fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp))
+                                        HorizontalDivider(color = Color.White.copy(0.08f), modifier = Modifier.padding(horizontal = 20.dp))
+                                        Spacer(Modifier.height(8.dp))
+                                        SortOrder.entries.forEach { order ->
+                                            Row(modifier = Modifier.fillMaxWidth()
+                                                .clickable { onSortOrderChanged(order); showSortMenu = false }
+                                                .padding(horizontal = 20.dp, vertical = 14.dp),
+                                                verticalAlignment = Alignment.CenterVertically) {
+                                                Box(modifier = Modifier.size(40.dp).background(PrimaryOrange.copy(0.1f), RoundedCornerShape(10.dp)),
+                                                    contentAlignment = Alignment.Center) {
+                                                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null,
+                                                        tint = PrimaryOrange, modifier = Modifier.size(20.dp))
+                                                }
+                                                Spacer(Modifier.width(16.dp))
+                                                Text(order.name, color = Color.White.copy(0.9f), style = MaterialTheme.typography.bodyLarge)
+                                            }
+                                        }
+                                        Spacer(Modifier.height(24.dp))
                                     }
                                 }
                             }
@@ -1287,6 +1323,7 @@ fun FullPlayerScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SongItem(
     song: Song,
@@ -1298,7 +1335,75 @@ fun SongItem(
     onEditSong: (Song) -> Unit,
     onToggleFavorite: (Song) -> Unit
 ) {
-    var showMenu by remember { mutableStateOf(false) }
+    var showSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    if (showSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showSheet = false },
+            sheetState = sheetState,
+            containerColor = Color(0xFF181818),
+            dragHandle = {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(modifier = Modifier.width(40.dp).height(4.dp)
+                        .background(Color.White.copy(0.25f), RoundedCornerShape(2.dp)))
+                }
+            }
+        ) {
+            // Header con info de la canción
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AsyncImage(
+                    model = song.albumArtUri,
+                    contentDescription = null,
+                    error = painterResource(R.drawable.ic_monkey_head),
+                    modifier = Modifier.size(56.dp).clip(RoundedCornerShape(10.dp)),
+                    contentScale = ContentScale.Crop
+                )
+                Spacer(Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(song.title, color = Color.White, fontWeight = FontWeight.Bold,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.titleMedium)
+                    Text(song.artist, color = Color.White.copy(0.55f), maxLines = 1,
+                        overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+
+            HorizontalDivider(color = Color.White.copy(0.08f), modifier = Modifier.padding(horizontal = 20.dp))
+            Spacer(Modifier.height(8.dp))
+
+            // Opciones
+            SongSheetOption(
+                icon = if (song.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                label = stringResource(if (song.isFavorite) R.string.remove_from_favorites else R.string.add_to_favorites),
+                iconTint = if (song.isFavorite) Color(0xFFFF4D6D) else Color.White.copy(0.85f)
+            ) { onToggleFavorite(song); showSheet = false }
+
+            SongSheetOption(Icons.AutoMirrored.Filled.PlaylistAdd, stringResource(R.string.add_to_queue)) {
+                onAddToQueue(song); showSheet = false
+            }
+            SongSheetOption(Icons.AutoMirrored.Filled.QueueMusic, stringResource(R.string.add_to_playlist)) {
+                onAddSongToPlaylist(song); showSheet = false
+            }
+            if (onRemoveFromPlaylist != null) {
+                SongSheetOption(Icons.Default.Delete, stringResource(R.string.remove_from_playlist),
+                    iconTint = Color(0xFFFF4D6D)) {
+                    onRemoveFromPlaylist(); showSheet = false
+                }
+            }
+            SongSheetOption(Icons.Default.Edit, stringResource(R.string.edit_tags)) {
+                onEditSong(song); showSheet = false
+            }
+
+            Spacer(Modifier.height(24.dp))
+        }
+    }
 
     ListItem(
         modifier = Modifier.clickable { onPlay(song, contextPlaylist) },
@@ -1315,42 +1420,38 @@ fun SongItem(
             )
         },
         trailingContent = {
-            IconButton(onClick = { showMenu = true }) {
+            IconButton(onClick = { showSheet = true }) {
                 Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.options))
-            }
-            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(if (song.isFavorite) R.string.remove_from_favorites else R.string.add_to_favorites)) },
-                    leadingIcon = { Icon(if (song.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder, contentDescription = null, tint = if (song.isFavorite) Color.Red else LocalContentColor.current) },
-                    onClick = { onToggleFavorite(song); showMenu = false }
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.add_to_queue)) },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null) },
-                    onClick = { onAddToQueue(song); showMenu = false }
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.add_to_playlist)) },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null) },
-                    onClick = { onAddSongToPlaylist(song); showMenu = false }
-                )
-                if (onRemoveFromPlaylist != null) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.remove_from_playlist)) },
-                        leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                        onClick = { onRemoveFromPlaylist(); showMenu = false }
-                    )
-                }
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.edit_tags)) },
-                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                    onClick = { onEditSong(song); showMenu = false }
-                )
             }
         }
     )
 }
 
+@Composable
+private fun SongSheetOption(
+    icon: ImageVector,
+    label: String,
+    iconTint: Color = Color.White.copy(0.85f),
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier.size(40.dp)
+                .background(Color.White.copy(0.07f), RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
+        }
+        Spacer(Modifier.width(16.dp))
+        Text(label, color = Color.White.copy(0.9f), style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SongList(
     songs: List<Song>,
@@ -1382,6 +1483,7 @@ fun SongList(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryNavigation(
     data: Map<String, List<Song>>,
@@ -1402,6 +1504,7 @@ fun CategoryNavigation(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategorySummaryList(
     data: Map<String, List<Song>>,
@@ -1445,6 +1548,7 @@ fun CategorySummaryList(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaylistSummaryList(
     playlists: List<PlaylistEntity>,
@@ -1484,12 +1588,45 @@ fun PlaylistSummaryList(
                             IconButton(onClick = { showMenu = true }) {
                                 Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.playlist_options))
                             }
-                            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.delete_playlist)) },
-                                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                                    onClick = { onDeletePlaylist(playlist); showMenu = false }
-                                )
+                            if (showMenu) {
+                                ModalBottomSheet(
+                                    onDismissRequest = { showMenu = false },
+                                    containerColor = Color(0xFF181818),
+                                    dragHandle = {
+                                        Box(modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp),
+                                            contentAlignment = Alignment.Center) {
+                                            Box(modifier = Modifier.width(40.dp).height(4.dp)
+                                                .background(Color.White.copy(0.25f), RoundedCornerShape(2.dp)))
+                                        }
+                                    }
+                                ) {
+                                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically) {
+                                        Box(modifier = Modifier.size(56.dp).background(Color.White.copy(0.07f), RoundedCornerShape(10.dp)),
+                                            contentAlignment = Alignment.Center) {
+                                            Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = null,
+                                                tint = PrimaryOrange, modifier = Modifier.size(28.dp))
+                                        }
+                                        Spacer(Modifier.width(14.dp))
+                                        Text(playlist.name, color = Color.White, fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.titleMedium)
+                                    }
+                                    HorizontalDivider(color = Color.White.copy(0.08f), modifier = Modifier.padding(horizontal = 20.dp))
+                                    Spacer(Modifier.height(8.dp))
+                                    Row(modifier = Modifier.fillMaxWidth().clickable { onDeletePlaylist(playlist); showMenu = false }
+                                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                                        verticalAlignment = Alignment.CenterVertically) {
+                                        Box(modifier = Modifier.size(40.dp).background(Color(0xFFFF4D6D).copy(0.12f), RoundedCornerShape(10.dp)),
+                                            contentAlignment = Alignment.Center) {
+                                            Icon(Icons.Default.Delete, contentDescription = null,
+                                                tint = Color(0xFFFF4D6D), modifier = Modifier.size(20.dp))
+                                        }
+                                        Spacer(Modifier.width(16.dp))
+                                        Text(stringResource(R.string.delete_playlist), color = Color(0xFFFF4D6D),
+                                            style = MaterialTheme.typography.bodyLarge)
+                                    }
+                                    Spacer(Modifier.height(24.dp))
+                                }
                             }
                         }
                     )
@@ -1500,71 +1637,137 @@ fun PlaylistSummaryList(
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun AddToPlaylistDialog(
     playlists: List<PlaylistEntity>,
     onDismiss: () -> Unit,
     onPlaylistSelected: (String) -> Unit,
     onCreateNew: () -> Unit
 ) {
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.add_to_playlist)) },
-        text = {
-            Column {
-                if (playlists.isEmpty()) {
-                    Text(stringResource(R.string.no_playlists))
-                } else {
-                    LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
-                        items(playlists) { playlist ->
-                            ListItem(
-                                modifier = Modifier.clickable { onPlaylistSelected(playlist.id.toString()) },
-                                headlineContent = { Text(playlist.name) },
-                                leadingContent = { Icon(Icons.AutoMirrored.Filled.PlaylistPlay, contentDescription = null) }
-                            )
+        containerColor = Color(0xFF181818),
+        dragHandle = {
+            Box(modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp),
+                contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.width(40.dp).height(4.dp)
+                    .background(Color.White.copy(0.25f), RoundedCornerShape(2.dp)))
+            }
+        }
+    ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(40.dp).background(PrimaryOrange.copy(0.15f), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center) {
+                Icon(Icons.AutoMirrored.Filled.QueueMusic, null, tint = PrimaryOrange, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Text(stringResource(R.string.add_to_playlist), color = Color.White, fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge)
+        }
+        HorizontalDivider(color = Color.White.copy(0.08f), modifier = Modifier.padding(horizontal = 20.dp))
+        Spacer(Modifier.height(8.dp))
+
+        // Create new
+        Row(modifier = Modifier.fillMaxWidth().clickable(onClick = onCreateNew)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(40.dp).background(PrimaryOrange.copy(0.1f), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.Add, null, tint = PrimaryOrange, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.width(16.dp))
+            Text(stringResource(R.string.create_new_playlist), color = PrimaryOrange,
+                fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
+        }
+
+        if (playlists.isEmpty()) {
+            Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                Text(stringResource(R.string.no_playlists), color = Color.White.copy(0.4f))
+            }
+        } else {
+            LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
+                items(playlists) { playlist ->
+                    Row(modifier = Modifier.fillMaxWidth()
+                        .clickable { onPlaylistSelected(playlist.id.toString()) }
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(40.dp).background(Color.White.copy(0.07f), RoundedCornerShape(10.dp)),
+                            contentAlignment = Alignment.Center) {
+                            Icon(Icons.AutoMirrored.Filled.PlaylistPlay, null,
+                                tint = Color.White.copy(0.7f), modifier = Modifier.size(20.dp))
                         }
+                        Spacer(Modifier.width(16.dp))
+                        Text(playlist.name, color = Color.White.copy(0.9f), style = MaterialTheme.typography.bodyLarge)
                     }
                 }
-                TextButton(onClick = onCreateNew, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.create_new_playlist))
-                }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
-    )
+        Spacer(Modifier.height(24.dp))
+    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreatePlaylistDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.new_playlist)) },
-        text = {
-            TextField(
-                value = name,
-                onValueChange = { name = it },
-                placeholder = { Text(stringResource(R.string.playlist_name)) },
-                singleLine = true
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { if (name.isNotBlank()) onConfirm(name) }, enabled = name.isNotBlank()) {
-                Text(stringResource(R.string.create))
+        containerColor = Color(0xFF181818),
+        dragHandle = {
+            Box(modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp),
+                contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.width(40.dp).height(4.dp)
+                    .background(Color.White.copy(0.25f), RoundedCornerShape(2.dp)))
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
-    )
+    ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(40.dp).background(PrimaryOrange.copy(0.15f), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.Add, null, tint = PrimaryOrange, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Text(stringResource(R.string.new_playlist), color = Color.White, fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge)
+        }
+        HorizontalDivider(color = Color.White.copy(0.08f), modifier = Modifier.padding(horizontal = 20.dp))
+        Spacer(Modifier.height(20.dp))
+
+        OutlinedTextField(
+            value = name, onValueChange = { name = it },
+            placeholder = { Text(stringResource(R.string.playlist_name), color = Color.White.copy(0.35f)) },
+            singleLine = true, modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = PrimaryOrange, unfocusedBorderColor = Color.White.copy(0.2f),
+                focusedTextColor = Color.White, unfocusedTextColor = Color.White,
+                cursorColor = PrimaryOrange),
+            leadingIcon = { Icon(Icons.AutoMirrored.Filled.PlaylistPlay, null, tint = Color.White.copy(0.5f)) }
+        )
+        Spacer(Modifier.height(20.dp))
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f).height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(0.2f))) {
+                Text(stringResource(R.string.cancel), color = Color.White.copy(0.8f))
+            }
+            Button(onClick = { if (name.isNotBlank()) onConfirm(name) }, enabled = name.isNotBlank(),
+                modifier = Modifier.weight(1f).height(52.dp), shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange)) {
+                Text(stringResource(R.string.create), color = Color.Black, fontWeight = FontWeight.Bold)
+            }
+        }
+        Spacer(Modifier.height(32.dp))
+    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditTagsDialog(
     song: Song,
@@ -1577,68 +1780,96 @@ fun EditTagsDialog(
     var album by remember { mutableStateOf(song.album) }
     var genre by remember { mutableStateOf(song.genre) }
 
-    AlertDialog(
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
         onDismissRequest = { if (!isSaving) onDismiss() },
-        title = { Text(stringResource(R.string.edit_tags)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { if (!isSaving) title = it },
-                    label = { Text(stringResource(R.string.title)) },
-                    enabled = !isSaving,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = artist,
-                    onValueChange = { if (!isSaving) artist = it },
-                    label = { Text(stringResource(R.string.artist)) },
-                    enabled = !isSaving,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = album,
-                    onValueChange = { if (!isSaving) album = it },
-                    label = { Text(stringResource(R.string.album)) },
-                    enabled = !isSaving,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = genre,
-                    onValueChange = { if (!isSaving) genre = it },
-                    label = { Text(stringResource(R.string.genre)) },
-                    enabled = !isSaving,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onSave(title, artist, album, genre) },
-                enabled = !isSaving
-            ) {
-                if (isSaving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.tags_saving))
-                } else {
-                    Text(stringResource(R.string.save))
-                }
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                enabled = !isSaving
-            ) {
-                Text(stringResource(R.string.cancel))
+        sheetState = sheetState,
+        containerColor = Color(0xFF181818),
+        dragHandle = {
+            Box(modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp),
+                contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.width(40.dp).height(4.dp)
+                    .background(Color.White.copy(0.25f), RoundedCornerShape(2.dp)))
             }
         }
-    )
+    ) {
+        // Header
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(40.dp).background(PrimaryOrange.copy(0.15f), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.Edit, contentDescription = null, tint = PrimaryOrange, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Text(stringResource(R.string.edit_tags), color = Color.White, fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge)
+        }
+        HorizontalDivider(color = Color.White.copy(0.08f), modifier = Modifier.padding(horizontal = 20.dp))
+        Spacer(Modifier.height(16.dp))
+
+        // Fields
+        Column(modifier = Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            val fieldColors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = PrimaryOrange,
+                unfocusedBorderColor = Color.White.copy(0.2f),
+                focusedLabelColor = PrimaryOrange,
+                unfocusedLabelColor = Color.White.copy(0.5f),
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                cursorColor = PrimaryOrange
+            )
+            OutlinedTextField(value = title, onValueChange = { if (!isSaving) title = it },
+                label = { Text(stringResource(R.string.title)) }, enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(), colors = fieldColors,
+                shape = RoundedCornerShape(12.dp),
+                leadingIcon = { Icon(Icons.Default.MusicNote, null, tint = Color.White.copy(0.5f)) })
+            OutlinedTextField(value = artist, onValueChange = { if (!isSaving) artist = it },
+                label = { Text(stringResource(R.string.artist)) }, enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(), colors = fieldColors,
+                shape = RoundedCornerShape(12.dp),
+                leadingIcon = { Icon(Icons.Default.Person, null, tint = Color.White.copy(0.5f)) })
+            OutlinedTextField(value = album, onValueChange = { if (!isSaving) album = it },
+                label = { Text(stringResource(R.string.album)) }, enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(), colors = fieldColors,
+                shape = RoundedCornerShape(12.dp),
+                leadingIcon = { Icon(Icons.Default.Album, null, tint = Color.White.copy(0.5f)) })
+            OutlinedTextField(value = genre, onValueChange = { if (!isSaving) genre = it },
+                label = { Text(stringResource(R.string.genre)) }, enabled = !isSaving,
+                modifier = Modifier.fillMaxWidth(), colors = fieldColors,
+                shape = RoundedCornerShape(12.dp),
+                leadingIcon = { Icon(Icons.Default.Category, null, tint = Color.White.copy(0.5f)) })
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        // Buttons
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedButton(
+                onClick = onDismiss, enabled = !isSaving,
+                modifier = Modifier.weight(1f).height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(0.2f))
+            ) { Text(stringResource(R.string.cancel), color = Color.White.copy(0.8f)) }
+
+            Button(
+                onClick = { onSave(title, artist, album, genre) }, enabled = !isSaving,
+                modifier = Modifier.weight(1f).height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange)
+            ) {
+                if (isSaving) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.tags_saving), color = Color.White)
+                } else {
+                    Text(stringResource(R.string.save), color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        Spacer(Modifier.height(32.dp))
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1652,18 +1883,22 @@ fun ExcludedFoldersScreen(
 ) {
     val whatsappPaths = ExcludedFoldersRepository.buildDefaultExclusions()
     val allWhatsappExcluded = whatsappPaths.all { excludedFolders.contains(it) }
-    var showAddFolderDialog by remember { mutableStateOf(false) }
     var exclusionsChanged by remember { mutableStateOf(false) }
 
-    if (showAddFolderDialog) {
-        AddFolderDialog(
-            onDismiss = { showAddFolderDialog = false },
-            onConfirm = { path ->
-                onAddExcludedFolder(path)
+    // SAF: ACTION_OPEN_DOCUMENT_TREE abre el explorador nativo del sistema.
+    // El usuario navega y selecciona una carpeta; el resultado es un Uri tipo
+    // content://com.android.externalstorage.documents/tree/primary:Music/...
+    // que convertimos a ruta absoluta (/storage/emulated/0/Music/...).
+    val folderPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            val absolutePath = resolveTreeUriToPath(uri)
+            if (absolutePath != null) {
+                onAddExcludedFolder(absolutePath)
                 exclusionsChanged = true
-                showAddFolderDialog = false
             }
-        )
+        }
     }
 
     Scaffold(
@@ -1731,7 +1966,11 @@ fun ExcludedFoldersScreen(
 
             item {
                 ListItem(
-                    modifier = Modifier.clickable { showAddFolderDialog = true },
+                    modifier = Modifier.clickable {
+                        // Lanzar el explorador de archivos nativo del sistema.
+                        // null = sin URI inicial (el OS decide dónde empezar).
+                        folderPickerLauncher.launch(null)
+                    },
                     headlineContent = { Text(stringResource(R.string.add_excluded_folder)) },
                     leadingContent = {
                         Icon(Icons.Default.CreateNewFolder, contentDescription = null)
@@ -1839,49 +2078,45 @@ fun ExcludedFoldersScreen(
     }
 }
 
-@Composable
-fun AddFolderDialog(
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit
-) {
-    var path by remember { mutableStateOf("") }
-    val isValid = path.startsWith("/") && path.length > 1
+/**
+ * Convierte un Uri devuelto por ACTION_OPEN_DOCUMENT_TREE a ruta absoluta del filesystem.
+ *
+ * El SAF devuelve Uris con formato:
+ *   content://com.android.externalstorage.documents/tree/primary:<relative_path>
+ *   content://com.android.externalstorage.documents/tree/<volumeId>:<relative_path>
+ *
+ * Estrategia:
+ *  1. Extraer el treeDocumentId via DocumentsContract.
+ *  2. Parsear volumeId y relativePath del documentId.
+ *  3. Mapear "primary" → Environment.getExternalStorageDirectory().
+ *     Otros volumeIds → /storage/<volumeId> (tarjetas SD externas).
+ *
+ * Retorna null si el Uri no puede resolverse (proveedor de documentos de terceros,
+ * Google Drive, etc.) — casos donde no hay ruta filesystem real.
+ */
+private fun resolveTreeUriToPath(uri: Uri): String? {
+    return try {
+        val docId = DocumentsContract.getTreeDocumentId(uri)
+        // docId tiene forma "primary:Music/Podcasts" o "1A2B-3C4D:Folder"
+        val parts = docId.split(":", limit = 2)
+        if (parts.size < 2) return null
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.add_excluded_folder)) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = path,
-                    onValueChange = { path = it },
-                    label = { Text(stringResource(R.string.excluded_folder_hint)) },
-                    placeholder = { Text(stringResource(R.string.excluded_folder_hint)) },
-                    singleLine = true,
-                    isError = path.isNotBlank() && !isValid,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                if (path.isNotBlank() && !isValid) {
-                    Text(
-                        stringResource(R.string.excluded_folder_invalid),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onConfirm(path.trimEnd('/')) },
-                enabled = isValid
-            ) { Text(stringResource(R.string.save)) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        val volumeId = parts[0]
+        val relativePath = parts[1]
+
+        val root = when (volumeId.lowercase()) {
+            "primary" -> Environment.getExternalStorageDirectory().absolutePath
+            else -> "/storage/$volumeId"
         }
-    )
+
+        val result = if (relativePath.isEmpty()) root else "$root/$relativePath"
+        result.trimEnd('/')
+    } catch (_: Exception) {
+        null
+    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SleepTimerDialog(
     currentMinutes: Int,
@@ -1889,31 +2124,53 @@ fun SleepTimerDialog(
     onConfirm: (Int) -> Unit
 ) {
     val options = listOf(0, 5, 15, 30, 45, 60, 90, 120)
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.sleep_timer)) },
-        text = {
-            Column {
-                Text(stringResource(R.string.select_sleep_timer))
-                Spacer(modifier = Modifier.height(8.dp))
-                options.forEach { minutes ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().clickable { onConfirm(minutes) }.padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(selected = currentMinutes == minutes, onClick = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(if (minutes == 0) stringResource(R.string.disabled) else stringResource(R.string.minutes, minutes))
-                    }
+        containerColor = Color(0xFF181818),
+        dragHandle = {
+            Box(modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp),
+                contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.width(40.dp).height(4.dp)
+                    .background(Color.White.copy(0.25f), RoundedCornerShape(2.dp)))
+            }
+        }
+    ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(40.dp).background(PrimaryOrange.copy(0.15f), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.Timer, null, tint = PrimaryOrange, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Text(stringResource(R.string.sleep_timer), color = Color.White, fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge)
+        }
+        HorizontalDivider(color = Color.White.copy(0.08f), modifier = Modifier.padding(horizontal = 20.dp))
+        Spacer(Modifier.height(8.dp))
+
+        options.forEach { minutes ->
+            val isSelected = currentMinutes == minutes
+            Row(modifier = Modifier.fillMaxWidth()
+                .clickable { onConfirm(minutes); onDismiss() }
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(
+                    if (minutes == 0) stringResource(R.string.disabled) else stringResource(R.string.minutes, minutes),
+                    color = if (isSelected) PrimaryOrange else Color.White.copy(0.85f),
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                if (isSelected) {
+                    Icon(Icons.Default.Check, null, tint = PrimaryOrange, modifier = Modifier.size(20.dp))
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
-    )
+        Spacer(Modifier.height(24.dp))
+    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LanguageDialog(
     onDismiss: () -> Unit,
@@ -1940,21 +2197,40 @@ fun LanguageDialog(
         "uk" to "Українська",
         "sv" to "Svenska"
     )
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.language)) },
-        text = {
-            LazyColumn {
-                items(languages) { (code, name) ->
-                    ListItem(
-                        modifier = Modifier.clickable { onLanguageSelected(code) },
-                        headlineContent = { Text(name) }
-                    )
+        containerColor = Color(0xFF181818),
+        dragHandle = {
+            Box(modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 4.dp),
+                contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.width(40.dp).height(4.dp)
+                    .background(Color.White.copy(0.25f), RoundedCornerShape(2.dp)))
+            }
+        }
+    ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(40.dp).background(PrimaryOrange.copy(0.15f), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.Language, null, tint = PrimaryOrange, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Text(stringResource(R.string.language), color = Color.White, fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge)
+        }
+        HorizontalDivider(color = Color.White.copy(0.08f), modifier = Modifier.padding(horizontal = 20.dp))
+        Spacer(Modifier.height(8.dp))
+
+        LazyColumn(modifier = Modifier.heightIn(max = 460.dp)) {
+            items(languages) { (code, name) ->
+                Row(modifier = Modifier.fillMaxWidth()
+                    .clickable { onLanguageSelected(code); onDismiss() }
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text(name, color = Color.White.copy(0.9f), style = MaterialTheme.typography.bodyLarge)
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
         }
-    )
+        Spacer(Modifier.height(24.dp))
+    }
 }

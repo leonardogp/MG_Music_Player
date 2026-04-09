@@ -8,6 +8,7 @@
     <string name="sleep_timer">Temporizador de apagado</string>
     <string name="equalizer">Ecualizador</string>
     <string name="language">Idioma</string>
+    <string name="tab_for_you">Para Ti</string>
     <string name="tab_main">Principal</string>
     <string name="tab_songs">Canciones</string>
     <string name="tab_genres">Géneros</string>
@@ -114,12 +115,22 @@
 
     <!-- Equalizer -->
     <string name="eq_high_fidelity_mode">Modo Alta Fidelidad</string>
+    <string name="eq_save_preset">Guardar ajuste</string>
+    <string name="eq_preset_name">Nombre del ajuste</string>
+    <string name="eq_preset_name_hint">Mi ajuste…</string>
+    <string name="eq_preset_saved">¡Ajuste guardado!</string>
+    <string name="eq_preset_deleted">Ajuste eliminado</string>
+    <string name="eq_delete_preset">Eliminar ajuste</string>
+    <string name="eq_my_presets">Mis ajustes</string>
+    <string name="eq_built_in">Integrados</string>
 
-    <!-- Sort Order -->
-    <string name="sort_name">Nombre</string>
-    <string name="sort_artist">Artista</string>
-    <string name="sort_album">Álbum</string>
-    <string name="sort_date_added">Fecha de añadido</string>
+    <!-- Lyrics -->
+    <string name="lyrics_searching">Buscando letras…</string>
+    <string name="lyrics_not_found">No se encontraron letras</string>
+    <string name="lyrics_source_local">Local (.lrc)</string>
+    <string name="lyrics_source_online">En línea</string>
+    <string name="lyrics_tab">Letras</string>
+    <string name="queue_tab">Cola</string>
 
     <!-- Excluded Folders -->
     <string name="excluded_folders">Carpetas excluidas</string>
@@ -132,4 +143,57 @@
     <string name="excluded_folder_hint">/storage/emulated/0/Recordings</string>
     <string name="excluded_folder_invalid">Introduce una ruta absoluta válida que empiece por /</string>
     <string name="rescan_required">Se requiere volver a escanear la biblioteca para aplicar los cambios</string>
+
+    <!-- Smart Playlists -->
+    <string name="smart_daily_mix_title">Mix Diario</string>
+    <string name="smart_daily_mix_subtitle">Tus favoritas, recién clasificadas</string>
+    <string name="smart_rediscover_title">Redescubrir</string>
+    <string name="smart_rediscover_subtitle">Canciones que amaste y olvidaste</string>
+    <string name="smart_top_songs_title">Top Canciones</string>
+    <string name="smart_top_songs_subtitle">Tus más escuchadas de siempre</string>
+    <string name="smart_empty_title">No hay suficientes datos aún</string>
+    <string name="smart_empty_body">Escucha más canciones y tus playlists personalizadas aparecerán aquí</string>
+
+    <!-- Backup / Restore -->
+    <string name="backup_title">Copia de Seguridad y Restauración</string>
+    <string name="backup_menu_item">Copia de Seguridad</string>
+    <string name="backup_description">Exporta tus favoritos, playlists, ajustes de EQ y estadísticas a un archivo. Restáuralos en cualquier momento en cualquier dispositivo.</string>
+    <string name="backup_export_title">Exportar copia</string>
+    <string name="backup_export_subtitle">Guardar un archivo .monkeybackup en tu dispositivo</string>
+    <string name="backup_export_button">Exportar</string>
+    <string name="backup_export_ok">Copia de seguridad exportada con éxito</string>
+    <string name="backup_import_title">Restaurar copia</string>
+    <string name="backup_import_subtitle">Selecciona un archivo .monkeybackup para restaurar</string>
+    <string name="backup_import_button">Restaurar</string>
+    <string name="backup_import_ok">Copia de seguridad restaurada con éxito</string>
+    <string name="backup_import_summary">Restaurado: %1$d favoritos · %2$d playlists · %3$d ajustes EQ · %4$d estadísticas</string>
+    <string name="backup_info">Los archivos de audio no se incluyen en la copia — solo los datos de la app (favoritos, playlists, ajustes de EQ y estadísticas). Las canciones deben existir en el dispositivo para aparecer en las playlists restauradas.</string>
+
+    <!-- Stats Screen -->
+    <string name="stats_title">Tus Estadísticas</string>
+    <string name="stats_listened">Escuchado</string>
+    <string name="stats_plays">Reprod.</string>
+    <string name="stats_songs_played">Canciones</string>
+    <string name="stats_top_songs">Top Canciones</string>
+    <string name="stats_top_artists">Top Artistas</string>
+    <string name="stats_artist_songs">%d canciones</string>
+    <string name="stats_empty_title">Sin estadísticas aún</string>
+    <string name="stats_empty_body">Escucha algo de música y tu historial aparecerá aquí</string>
+    <string name="stats_menu_item">Mis Estadísticas</string>
+    <string name="stats_plays_count">%d reprod.</string>
+    <string name="stats_completed_percent">%d%% completado</string>
+
+    <!-- Time Units -->
+    <string name="time_unit_m">%dm</string>
+    <string name="time_unit_h_m">%dh %dm</string>
+    <string name="time_unit_d_h">%dd %dh</string>
+
+    <!-- Sort Order -->
+    <string name="sort_name">Nombre</string>
+    <string name="sort_artist">Artista</string>
+    <string name="sort_album">Álbum</string>
+    <string name="sort_date_added">Fecha de añadido</string>
+
+    <!-- Errors -->
+    <string name="error_unknown">Error desconocido</string>
 </resources>

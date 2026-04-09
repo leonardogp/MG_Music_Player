@@ -65,6 +65,11 @@ import java.util.Calendar
 import com.lg.monkeymusicplayer.util.TimeFormatter
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import com.lg.monkeymusicplayer.ui.components.LyricsView
+import com.lg.monkeymusicplayer.data.model.SmartPlaylist
+import com.lg.monkeymusicplayer.data.model.SmartPlaylistType
+import com.lg.monkeymusicplayer.data.repository.BackupRepository
+import com.lg.monkeymusicplayer.data.repository.StatsRepository
+import com.lg.monkeymusicplayer.ui.LibraryLoadState
 import com.lg.monkeymusicplayer.data.repository.ExcludedFoldersRepository
 import android.net.Uri
 import android.os.Environment
@@ -192,6 +197,18 @@ fun LibraryScreen(
                 onBack = { navController.popBackStack() }
             )
         }
+        composable("stats") {
+            StatsScreen(
+                statsRepository = viewModel.statsRepository,
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable("backup") {
+            BackupScreen(
+                backupRepository = viewModel.backupRepository,
+                onBack = { navController.popBackStack() }
+            )
+        }
     }
 }
 
@@ -252,25 +269,34 @@ fun SettingsScreen(
                 modifier = Modifier.clickable { onScanMusic() },
                 headlineContent = { Text(stringResource(R.string.scan_music)) },
                 leadingContent = {
-                    if (uiState.isScanning) {
+                    val scanning = uiState.loadState as? LibraryLoadState.Scanning
+                    if (scanning != null) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                     } else {
                         Icon(Icons.Default.Refresh, contentDescription = null)
                     }
                 },
                 supportingContent = {
-                    if (uiState.isScanning) {
-                        Column {
-                            val progress = if (uiState.scanTotal > 0) uiState.scanProgress.toFloat() / uiState.scanTotal else 0f
+                    val scanning = uiState.loadState as? LibraryLoadState.Scanning
+                    when {
+                        scanning != null -> Column {
                             LinearProgressIndicator(
-                                progress = { progress },
+                                progress = { scanning.fraction },
                                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                             )
-                            Text(
-                                stringResource(R.string.scanning_progress, uiState.scanProgress, uiState.scanTotal),
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                            if (!scanning.isIndeterminate) {
+                                Text(
+                                    stringResource(R.string.scanning_progress, scanning.progress, scanning.total),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
                         }
+                        uiState.loadState is LibraryLoadState.Error -> Text(
+                            (uiState.loadState as LibraryLoadState.Error).message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        else -> {}
                     }
                 }
             )
@@ -295,6 +321,18 @@ fun SettingsScreen(
                 modifier = Modifier.clickable { showLanguageDialog = true },
                 headlineContent = { Text(stringResource(R.string.language)) },
                 leadingContent = { Icon(Icons.Default.Language, contentDescription = null) }
+            )
+            ListItem(
+                modifier = Modifier.clickable { navController.navigate("stats") },
+                headlineContent = { Text(stringResource(R.string.stats_menu_item)) },
+                leadingContent = { Icon(Icons.Default.BarChart, contentDescription = null) },
+                trailingContent = { Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null) }
+            )
+            ListItem(
+                modifier = Modifier.clickable { navController.navigate("backup") },
+                headlineContent = { Text(stringResource(R.string.backup_menu_item)) },
+                leadingContent = { Icon(Icons.Default.CloudUpload, contentDescription = null) },
+                trailingContent = { Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null) }
             )
             ListItem(
                 modifier = Modifier.clickable { navController.navigate("excluded_folders") },
@@ -484,6 +522,7 @@ fun MobileLayout(
     onOpenEqualizer: () -> Unit
 ) {
     val tabs = listOf(
+        R.string.tab_for_you,
         R.string.tab_main,
         R.string.tab_songs,
         R.string.tab_genres,
@@ -516,11 +555,11 @@ fun MobileLayout(
                                     modifier = Modifier.fillMaxWidth(),
                                     placeholder = {
                                         val hintId = when (currentTab) {
-                                            2 -> R.string.search_genres
-                                            3 -> R.string.search_artists
-                                            4 -> R.string.search_albums
-                                            5 -> R.string.search_folders
-                                            6 -> R.string.search_playlists
+                                            3 -> R.string.search_genres
+                                            4 -> R.string.search_artists
+                                            5 -> R.string.search_albums
+                                            6 -> R.string.search_folders
+                                            7 -> R.string.search_playlists
                                             else -> R.string.search_songs
                                         }
                                         Text(stringResource(hintId))
@@ -540,9 +579,9 @@ fun MobileLayout(
                                     }
                                 )
                             } else {
-                                if (currentTab in 2..5 && selectedCategoryItem != null) {
+                                if (currentTab in 3..6 && selectedCategoryItem != null) {
                                     Text(text = selectedCategoryItem!!, fontWeight = FontWeight.Bold)
-                                } else if (currentTab == 6 && selectedPlaylistId != null) {
+                                } else if (currentTab == 7 && selectedPlaylistId != null) {
                                     val title = uiState.playlists.find { it.id.toString() == selectedPlaylistId }?.name ?: stringResource(R.string.playlist)
                                     Text(text = title, fontWeight = FontWeight.Bold)
                                 } else {
@@ -553,7 +592,7 @@ fun MobileLayout(
                     },
                     navigationIcon = {
                         val currentTab = pagerState.currentPage
-                        if (!isSearchActive && ((currentTab in 2..5 && selectedCategoryItem != null) || (currentTab == 6 && selectedPlaylistId != null))) {
+                        if (!isSearchActive && ((currentTab in 3..6 && selectedCategoryItem != null) || (currentTab == 7 && selectedPlaylistId != null))) {
                             IconButton(onClick = {
                                 selectedCategoryItem = null
                                 selectedPlaylistId = null
@@ -576,7 +615,7 @@ fun MobileLayout(
                             IconButton(onClick = { isSearchActive = true }) {
                                 Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
                             }
-                            if (pagerState.currentPage == 1 && selectedCategoryItem == null) {
+                            if (pagerState.currentPage == 2 && selectedCategoryItem == null) {
                                 IconButton(onClick = { showSortMenu = true }) {
                                     Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.sort))
                                 }
@@ -676,19 +715,27 @@ fun MobileLayout(
             userScrollEnabled = (selectedCategoryItem == null && selectedPlaylistId == null)
         ) { page ->
             when (page) {
-                0 -> {
+                0 -> ForYouTab(
+                    smartPlaylists = uiState.smartPlaylists,
+                    onPlay = onPlay,
+                    onAddToQueue = onAddToQueue,
+                    onAddSongToPlaylist = onAddSongToPlaylist,
+                    onEditSong = onEditSong,
+                    onToggleFavorite = onToggleFavorite
+                )
+                1 -> {
                     val songIndex = remember(uiState.songs) { uiState.songs.associateBy { it.id } }
                     val historySongs = remember(uiState.history, songIndex) {
                         uiState.history.mapNotNull { songIndex[it.songId] }.distinctBy { it.id }
                     }
                     MainTab(uiState.songs, historySongs, onPlay, onAddToQueue, onAddSongToPlaylist, onEditSong, onToggleFavorite)
                 }
-                1 -> SongList(uiState.songs, uiState.songs, onPlay, onAddToQueue, onAddSongToPlaylist, null, onEditSong, onToggleFavorite)
-                2 -> CategoryNavigation(uiState.genres, selectedCategoryItem, onPlay, onAddToQueue, { selectedCategoryItem = it }, Icons.Default.LibraryMusic, onAddSongToPlaylist, onEditSong, onToggleFavorite)
-                3 -> CategoryNavigation(uiState.artists, selectedCategoryItem, onPlay, onAddToQueue, { selectedCategoryItem = it }, Icons.Default.Person, onAddSongToPlaylist, onEditSong, onToggleFavorite)
-                4 -> CategoryNavigation(uiState.albums, selectedCategoryItem, onPlay, onAddToQueue, { selectedCategoryItem = it }, Icons.Default.Album, onAddSongToPlaylist, onEditSong, onToggleFavorite)
-                5 -> CategoryNavigation(uiState.folders, selectedCategoryItem, onPlay, onAddToQueue, { selectedCategoryItem = it }, Icons.Default.Folder, onAddSongToPlaylist, onEditSong, onToggleFavorite)
-                6 -> {
+                2 -> SongList(uiState.songs, uiState.songs, onPlay, onAddToQueue, onAddSongToPlaylist, null, onEditSong, onToggleFavorite)
+                3 -> CategoryNavigation(uiState.genres, selectedCategoryItem, onPlay, onAddToQueue, { selectedCategoryItem = it }, Icons.Default.LibraryMusic, onAddSongToPlaylist, onEditSong, onToggleFavorite)
+                4 -> CategoryNavigation(uiState.artists, selectedCategoryItem, onPlay, onAddToQueue, { selectedCategoryItem = it }, Icons.Default.Person, onAddSongToPlaylist, onEditSong, onToggleFavorite)
+                5 -> CategoryNavigation(uiState.albums, selectedCategoryItem, onPlay, onAddToQueue, { selectedCategoryItem = it }, Icons.Default.Album, onAddSongToPlaylist, onEditSong, onToggleFavorite)
+                6 -> CategoryNavigation(uiState.folders, selectedCategoryItem, onPlay, onAddToQueue, { selectedCategoryItem = it }, Icons.Default.Folder, onAddSongToPlaylist, onEditSong, onToggleFavorite)
+                7 -> {
                     if (selectedPlaylistId != null) {
                         LaunchedEffect(selectedPlaylistId) { onLoadPlaylistSongs(selectedPlaylistId!!) }
                         SongList(
@@ -705,7 +752,7 @@ fun MobileLayout(
                         PlaylistSummaryList(uiState.playlists, onItemClick = { selectedPlaylistId = it }, onCreatePlaylist, onDeletePlaylist)
                     }
                 }
-                7 -> {
+                8 -> {
                     val favSongs = remember(uiState.songs) { uiState.songs.filter { it.isFavorite } }
                     SongList(favSongs, favSongs, onPlay, onAddToQueue, onAddSongToPlaylist, null, onEditSong, onToggleFavorite)
                 }
@@ -713,6 +760,139 @@ fun MobileLayout(
         }
     }
 }
+
+@Composable
+fun ForYouTab(
+    smartPlaylists: List<SmartPlaylist>,
+    onPlay: (Song, List<Song>) -> Unit,
+    onAddToQueue: (Song) -> Unit,
+    onAddSongToPlaylist: (Song) -> Unit,
+    onEditSong: (Song) -> Unit,
+    onToggleFavorite: (Song) -> Unit
+) {
+    if (smartPlaylists.isEmpty()) {
+        // Estado vacío — el usuario aún no tiene suficientes reproducciones
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(Icons.Default.AutoAwesome, contentDescription = null,
+                    modifier = Modifier.size(64.dp), tint = PrimaryOrange.copy(0.5f))
+                Text(stringResource(R.string.smart_empty_title),
+                    style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold,
+                    color = Color.White, textAlign = TextAlign.Center)
+                Text(stringResource(R.string.smart_empty_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(0.55f), textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 40.dp))
+            }
+        }
+        return
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 24.dp)
+    ) {
+        smartPlaylists.forEach { playlist ->
+            if (playlist.isEmpty) return@forEach
+
+            item {
+                SmartPlaylistSection(
+                    playlist = playlist,
+                    onPlay = onPlay,
+                    onAddToQueue = onAddToQueue,
+                    onAddSongToPlaylist = onAddSongToPlaylist,
+                    onEditSong = onEditSong,
+                    onToggleFavorite = onToggleFavorite
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SmartPlaylistSection(
+    playlist: SmartPlaylist,
+    onPlay: (Song, List<Song>) -> Unit,
+    onAddToQueue: (Song) -> Unit,
+    onAddSongToPlaylist: (Song) -> Unit,
+    onEditSong: (Song) -> Unit,
+    onToggleFavorite: (Song) -> Unit
+) {
+    val (titleRes, subtitleRes, icon) = when (playlist.type) {
+        SmartPlaylistType.DAILY_MIX -> Triple(
+            R.string.smart_daily_mix_title,
+            R.string.smart_daily_mix_subtitle,
+            Icons.Default.AutoAwesome
+        )
+        SmartPlaylistType.REDISCOVER -> Triple(
+            R.string.smart_rediscover_title,
+            R.string.smart_rediscover_subtitle,
+            Icons.Default.History
+        )
+        SmartPlaylistType.TOP_SONGS -> Triple(
+            R.string.smart_top_songs_title,
+            R.string.smart_top_songs_subtitle,
+            Icons.Default.TrendingUp
+        )
+    }
+
+    Column {
+        // Header de sección
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(40.dp)
+                    .background(PrimaryOrange.copy(0.15f), RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, contentDescription = null, tint = PrimaryOrange, modifier = Modifier.size(22.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(stringResource(titleRes), color = Color.White,
+                    fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(subtitleRes), color = Color.White.copy(0.55f),
+                    style = MaterialTheme.typography.bodySmall)
+            }
+            // Botón play all
+            IconButton(
+                onClick = { if (playlist.songs.isNotEmpty()) onPlay(playlist.songs.first(), playlist.songs) }
+            ) {
+                Box(
+                    modifier = Modifier.size(36.dp)
+                        .background(PrimaryOrange, RoundedCornerShape(18.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.play_pause),
+                        tint = Color.Black, modifier = Modifier.size(20.dp))
+                }
+            }
+        }
+
+        HorizontalDivider(
+            color = Color.White.copy(0.06f),
+            modifier = Modifier.padding(horizontal = 20.dp)
+        )
+
+        // Lista de canciones (máx 10 visibles, sin scroll propio)
+        playlist.songs.take(10).forEach { song ->
+            SongItem(
+                song = song,
+                contextPlaylist = playlist.songs,
+                onPlay = onPlay,
+                onAddToQueue = onAddToQueue,
+                onAddSongToPlaylist = onAddSongToPlaylist,
+                onEditSong = onEditSong,
+                onToggleFavorite = onToggleFavorite
+            )
+        }
+    }
+}
+
 
 @Composable
 fun MainTab(

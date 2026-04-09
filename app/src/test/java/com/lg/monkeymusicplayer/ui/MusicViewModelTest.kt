@@ -10,6 +10,9 @@ import com.lg.monkeymusicplayer.data.database.PlaylistEntity
 import com.lg.monkeymusicplayer.data.model.Song
 import com.lg.monkeymusicplayer.data.repository.ExcludedFoldersRepository
 import com.lg.monkeymusicplayer.data.repository.MusicRepository
+import com.lg.monkeymusicplayer.data.repository.SmartRepository
+import com.lg.monkeymusicplayer.data.repository.StatsRepository
+import com.lg.monkeymusicplayer.data.repository.BackupRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +35,9 @@ class MusicViewModelTest {
     private val repository: MusicRepository = mock()
     private val playerManager: MusicPlayerManager = mock()
     private val excludedFoldersRepository: ExcludedFoldersRepository = mock()
+    private val smartRepository: SmartRepository = mock()
+    private val statsRepository: StatsRepository = mock()
+    private val backupRepository: BackupRepository = mock()
     private val application: Application = mock()
 
     private val testDispatcher = StandardTestDispatcher()
@@ -57,8 +63,17 @@ class MusicViewModelTest {
         whenever(playerManager.equalizerData).thenReturn(MutableStateFlow<Bundle?>(null))
 
         whenever(excludedFoldersRepository.excludedFolders).thenReturn(MutableStateFlow<List<String>>(emptyList()))
+        whenever(smartRepository.smartPlaylists).thenReturn(emptyFlow())
 
-        viewModel = MusicViewModel(application, repository, playerManager, excludedFoldersRepository)
+        viewModel = MusicViewModel(
+            application,
+            repository,
+            playerManager,
+            excludedFoldersRepository,
+            smartRepository,
+            statsRepository,
+            backupRepository
+        )
     }
 
     @After

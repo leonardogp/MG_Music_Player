@@ -14,13 +14,15 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         PlaylistEntity::class,
         PlaylistSongCrossRef::class,
         HistoryEntity::class,
-        EqPresetEntity::class
+        EqPresetEntity::class,
+        SongStatEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class MusicDatabase : RoomDatabase() {
     abstract fun musicDao(): MusicDao
+    abstract fun songStatDao(): SongStatDao
 
     companion object {
         @Volatile
@@ -69,6 +71,24 @@ abstract class MusicDatabase : RoomDatabase() {
             }
         }
 
+        // v3 → v4: tabla de estadísticas de reproducción por canción (Smart Engine)
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS song_stats (
+                        songId INTEGER PRIMARY KEY NOT NULL,
+                        playCount INTEGER NOT NULL DEFAULT 0,
+                        skipCount INTEGER NOT NULL DEFAULT 0,
+                        completeCount INTEGER NOT NULL DEFAULT 0,
+                        totalPlayTimeMs INTEGER NOT NULL DEFAULT 0,
+                        lastPlayedAt INTEGER NOT NULL DEFAULT 0
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
         fun getDatabase(context: Context): MusicDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -76,7 +96,7 @@ abstract class MusicDatabase : RoomDatabase() {
                     MusicDatabase::class.java,
                     "music_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .apply {
                         if (com.lg.monkeymusicplayer.BuildConfig.DEBUG) {
                             fallbackToDestructiveMigration()

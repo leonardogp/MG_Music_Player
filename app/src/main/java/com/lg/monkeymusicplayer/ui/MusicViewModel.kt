@@ -17,6 +17,7 @@ import androidx.palette.graphics.Palette
 import coil.ImageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
+import com.lg.monkeymusicplayer.R
 import com.lg.monkeymusicplayer.core.player.MusicPlayerManager
 import com.lg.monkeymusicplayer.core.result.Result
 import com.lg.monkeymusicplayer.data.database.EqPresetEntity
@@ -26,6 +27,9 @@ import com.lg.monkeymusicplayer.data.model.LyricLine
 import com.lg.monkeymusicplayer.data.model.Song
 import com.lg.monkeymusicplayer.data.repository.ExcludedFoldersRepository
 import com.lg.monkeymusicplayer.data.repository.MusicRepository
+import com.lg.monkeymusicplayer.data.repository.BackupRepository
+import com.lg.monkeymusicplayer.data.repository.SmartRepository
+import com.lg.monkeymusicplayer.data.repository.StatsRepository
 import com.lg.monkeymusicplayer.ui.theme.PrimaryOrange
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -42,6 +46,9 @@ class MusicViewModel @Inject constructor(
     private val repository: MusicRepository,
     private val playerManager: MusicPlayerManager,
     private val excludedFoldersRepository: ExcludedFoldersRepository,
+    private val smartRepository: SmartRepository,
+    val statsRepository: StatsRepository,
+    val backupRepository: BackupRepository,
 ) : ViewModel() {
 
     val context get() = applicationContext
@@ -52,10 +59,8 @@ class MusicViewModel @Inject constructor(
     fun addExcludedFolder(path: String) = excludedFoldersRepository.addFolder(path)
     fun removeExcludedFolder(path: String) = excludedFoldersRepository.removeFolder(path)
 
-    private val _isLoading = MutableStateFlow(true)
-    private val _isScanning = MutableStateFlow(false)
-    private val _scanProgress = MutableStateFlow(0)
-    private val _scanTotal = MutableStateFlow(0)
+    private val _loadState = MutableStateFlow<LibraryLoadState>(LibraryLoadState.Idle)
+    private val _isInitialLoad = MutableStateFlow(true)
     private val _searchQuery = MutableStateFlow("")
     private val _sortOrder = MutableStateFlow(SortOrder.NAME)
     private val _currentPlaylistSongs = MutableStateFlow<List<Song>>(emptyList())
@@ -284,16 +289,12 @@ class MusicViewModel @Inject constructor(
         filteredSongsFlow,
         libraryCatalogFlow,
         playerStateFlow,
-        _isLoading,
-        combine(_isScanning, _scanProgress, _scanTotal) { scanning, progress, total ->
-            Triple(scanning, progress, total)
-        }
-    ) { fs, catalog, playerState, isLoading, scanState ->
+        _loadState,
+        _isInitialLoad
+    ) { fs, catalog, playerState, loadState, isInitialLoad ->
         LibraryUiState(
-            isLoading            = isLoading,
-            isScanning           = scanState.first,
-            scanProgress         = scanState.second,
-            scanTotal            = scanState.third,
+            loadState            = loadState,
+            isInitialLoad        = isInitialLoad,
             songs                = fs.filtered,
             genres               = catalog.genres,
             artists              = catalog.artists,
@@ -306,7 +307,13 @@ class MusicViewModel @Inject constructor(
             sortOrder            = _sortOrder.value,
             playerState          = playerState
         )
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, LibraryUiState())
+    }
+    // Encadenar smartPlaylists como 6ª fuente (combine() está limitado a 5 parámetros
+    // en la sobrecarga tipada; .combine() encadenado es el patrón recomendado).
+    .combine(smartRepository.smartPlaylists) { state, smart ->
+        state.copy(smartPlaylists = smart)
+    }
+    .stateIn(viewModelScope, SharingStarted.Lazily, LibraryUiState())
 
     init {
         viewModelScope.launch {
@@ -315,20 +322,11 @@ class MusicViewModel @Inject constructor(
             // Si ya tiene canciones → solo quitar el loading, no re-escanear.
             repository.allSongsFlow.take(1).collect { songs ->
                 if (songs.isEmpty()) {
-                    // El isLoading se mantiene true hasta que el scan termine:
-                    // AppRoot seguirá mostrando LoadingScreen con el progreso.
+                    // Primera instalación o DB vacía: escanear.
+                    // isInitialLoad se apaga cuando el scan termina (en scanMusic).
                     scanMusic()
                 } else {
-                    _isLoading.value = false
-                }
-            }
-        }
-        viewModelScope.launch {
-            // Cuando el scan automático termine (isScanning pasa a false),
-            // apagar el loading independientemente de cuántas canciones haya.
-            _isScanning.drop(1).collect { scanning ->
-                if (!scanning && _isLoading.value) {
-                    _isLoading.value = false
+                    _isInitialLoad.value = false
                 }
             }
         }
@@ -453,18 +451,18 @@ class MusicViewModel @Inject constructor(
     fun setSortOrder(order: SortOrder) { _sortOrder.value = order }
 
     fun scanMusic() = viewModelScope.launch {
-        if (_isScanning.value) return@launch
-        _isScanning.value = true
-        _scanProgress.value = 0
-        _scanTotal.value = 0
+        if (_loadState.value is LibraryLoadState.Scanning) return@launch
+        _loadState.value = LibraryLoadState.Scanning()
         try {
             repository.refreshMusicDatabase { current, total ->
-                _scanProgress.value = current
-                _scanTotal.value = total
+                _loadState.value = LibraryLoadState.Scanning(current, total)
             }
+            _loadState.value = LibraryLoadState.Idle
+        } catch (e: Exception) {
+            _loadState.value = LibraryLoadState.Error(e.message ?: context.getString(R.string.error_unknown))
         } finally {
-            // Garantiza que el indicador de progreso desaparece aunque el scan falle
-            _isScanning.value = false
+            // Apagar initial load en cualquier caso (scan completado o fallido)
+            _isInitialLoad.value = false
         }
     }
 

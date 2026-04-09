@@ -8,6 +8,7 @@
     <string name="sleep_timer">Sleep timer</string>
     <string name="equalizer">Equalizer</string>
     <string name="language">Language</string>
+    <string name="tab_for_you">For You</string>
     <string name="tab_main">Main</string>
     <string name="tab_songs">Songs</string>
     <string name="tab_genres">Genres</string>
@@ -143,9 +144,56 @@
     <string name="excluded_folder_invalid">Enter a valid absolute path starting with /</string>
     <string name="rescan_required">Rescan library to apply changes</string>
 
+    <!-- Smart Playlists -->
+    <string name="smart_daily_mix_title">Daily Mix</string>
+    <string name="smart_daily_mix_subtitle">Your top picks, freshly ranked</string>
+    <string name="smart_rediscover_title">Rediscover</string>
+    <string name="smart_rediscover_subtitle">Songs you loved and forgot</string>
+    <string name="smart_top_songs_title">Top Songs</string>
+    <string name="smart_top_songs_subtitle">Your most played of all time</string>
+    <string name="smart_empty_title">Not enough data yet</string>
+    <string name="smart_empty_body">Play more songs and your personalized playlists will appear here</string>
+
+    <!-- Backup / Restore -->
+    <string name="backup_title">Backup &amp; Restore</string>
+    <string name="backup_menu_item">Backup &amp; Restore</string>
+    <string name="backup_description">Export your favorites, playlists, EQ presets and listening stats to a file. Restore them anytime on any device.</string>
+    <string name="backup_export_title">Export backup</string>
+    <string name="backup_export_subtitle">Save a .monkeybackup file to your device</string>
+    <string name="backup_export_button">Export</string>
+    <string name="backup_export_ok">Backup exported successfully</string>
+    <string name="backup_import_title">Restore backup</string>
+    <string name="backup_import_subtitle">Select a .monkeybackup file to restore</string>
+    <string name="backup_import_button">Restore</string>
+    <string name="backup_import_ok">Backup restored successfully</string>
+    <string name="backup_import_summary">Restored: %1$d favorites · %2$d playlists · %3$d EQ presets · %4$d song stats</string>
+    <string name="backup_info">Audio files are not included in the backup — only your app data (favorites, playlists, EQ presets and stats). Songs must exist on the device to appear in restored playlists.</string>
+
+    <!-- Stats Screen -->
+    <string name="stats_title">Your Stats</string>
+    <string name="stats_listened">Listened</string>
+    <string name="stats_plays">Plays</string>
+    <string name="stats_songs_played">Songs</string>
+    <string name="stats_top_songs">Top Songs</string>
+    <string name="stats_top_artists">Top Artists</string>
+    <string name="stats_artist_songs">%d songs</string>
+    <string name="stats_empty_title">No stats yet</string>
+    <string name="stats_empty_body">Play some music and your listening history will appear here</string>
+    <string name="stats_menu_item">My Stats</string>
+    <string name="stats_plays_count">%d plays</string>
+    <string name="stats_completed_percent">%d%% completed</string>
+
+    <!-- Time Units -->
+    <string name="time_unit_m">%dm</string>
+    <string name="time_unit_h_m">%dh %dm</string>
+    <string name="time_unit_d_h">%dd %dh</string>
+
     <!-- Sort Order -->
     <string name="sort_name">Name</string>
     <string name="sort_artist">Artist</string>
     <string name="sort_album">Album</string>
     <string name="sort_date_added">Date added</string>
+
+    <!-- Errors -->
+    <string name="error_unknown">Unknown error</string>
 </resources>

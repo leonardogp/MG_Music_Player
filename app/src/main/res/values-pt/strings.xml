@@ -5,9 +5,10 @@
     <string name="scan_music">Escanear música</string>
     <string name="scanning_progress">Escaneando: %1$d / %2$d</string>
     <string name="timer_active">Temporizador (%s)</string>
-    <string name="sleep_timer">Temporizador de suspensão</string>
+    <string name="sleep_timer">Temporizador de desligamento</string>
     <string name="equalizer">Equalizador</string>
     <string name="language">Idioma</string>
+    <string name="tab_for_you">Para Você</string>
     <string name="tab_main">Principal</string>
     <string name="tab_songs">Músicas</string>
     <string name="tab_genres">Gêneros</string>
@@ -17,21 +18,21 @@
     <string name="tab_playlists">Playlists</string>
     <string name="tab_favorites">Favoritos</string>
     <string name="tab_history">Histórico</string>
-    <string name="search_genres">Buscar gêneros…</string>
-    <string name="search_artists">Buscar artistas…</string>
-    <string name="search_albums">Buscar álbuns…</string>
-    <string name="search_folders">Buscar pastas…</string>
-    <string name="search_playlists">Buscar playlists…</string>
-    <string name="search_songs">Buscar músicas…</string>
+    <string name="search_genres">Buscar gêneros...</string>
+    <string name="search_artists">Buscar artistas...</string>
+    <string name="search_albums">Buscar álbuns...</string>
+    <string name="search_folders">Buscar pastas...</string>
+    <string name="search_playlists">Buscar playlists...</string>
+    <string name="search_songs">Buscar músicas...</string>
     <string name="close_search">Fechar busca</string>
     <string name="playlist">Playlist</string>
     <string name="search">Buscar</string>
     <string name="sort">Ordenar</string>
     <string name="no_favorites_yet">Você ainda não tem favoritos</string>
     <string name="favorites">Favoritos</string>
-    <string name="recent">Recientes</string>
+    <string name="recent">Recentes</string>
     <string name="previous">Anterior</string>
-    <string name="play_pause">Play/Pause</string>
+    <string name="play_pause">Reproduzir/Pausar</string>
     <string name="next">Próxima</string>
     <string name="next_in_queue">Próxima na fila</string>
     <string name="close">Fechar</string>
@@ -41,15 +42,15 @@
     <string name="add_to_playlist">Adicionar à playlist</string>
     <string name="seek_back_10">Voltar 10s</string>
     <string name="seek_forward_10">Avançar 10s</string>
-    <string name="skip_next">Próxima</string>
+    <string name="skip_next">Pular próxima</string>
     <string name="options">Opções</string>
     <string name="remove_from_favorites">Remover dos favoritos</string>
     <string name="add_to_favorites">Adicionar aos favoritos</string>
     <string name="add_to_queue">Adicionar à fila</string>
     <string name="remove_from_playlist">Remover da playlist</string>
     <string name="edit_tags">Editar etiquetas</string>
-    <string name="no_songs">Nenhuma música encontrada</string>
-    <string name="no_items">Nenhum item encontrado</string>
+    <string name="no_songs">Nenhuma música</string>
+    <string name="no_items">Nenhum item</string>
     <string name="songs_count">%d músicas</string>
     <string name="create_new_playlist">Criar nova playlist</string>
     <string name="no_playlists">Nenhuma playlist criada</string>
@@ -64,14 +65,14 @@
     <string name="album">Álbum</string>
     <string name="genre">Gênero</string>
     <string name="save">Salvar</string>
-    <string name="select_sleep_timer">Selecione em quantos minutos a música deve parar:</string>
-    <string name="disabled">Desactivado</string>
+    <string name="select_sleep_timer">Selecione em quantos minutos a música parará:</string>
+    <string name="disabled">Desativado</string>
     <string name="minutes">%d minutos</string>
     <string name="unknown">Desconhecido</string>
     <string name="unknown_artist">Artista Desconhecido</string>
-    <string name="unknown_album">Álbum Desconocido</string>
+    <string name="unknown_album">Álbum Desconhecido</string>
     <string name="no_genre">Sem gênero</string>
-    <string name="root">Raíz</string>
+    <string name="root">Raiz</string>
     <string name="system_default">Padrão do sistema</string>
 
     <!-- Greetings -->
@@ -80,12 +81,12 @@
     <string name="greeting_evening">Boa noite</string>
 
     <!-- Player states -->
-    <string name="player_idle_title">Nenhuma música sendo reproduzida</string>
+    <string name="player_idle_title">Nenhuma música tocando</string>
     <string name="player_idle_subtitle">Selecione uma música para começar</string>
 
     <!-- Tag editor feedback -->
     <string name="tags_saved_ok">Etiquetas salvas com sucesso!</string>
-    <string name="tags_save_error">Erro ao salvar etiquetas: %s</string>
+    <string name="tags_save_error">Erro ao salvar: %s</string>
     <string name="tags_permission_needed">Permissão de armazenamento necessária para editar etiquetas.</string>
     <string name="tags_permission_grant">Conceder</string>
     <string name="tags_saving">Salvando\u2026</string>
@@ -93,16 +94,16 @@
 
     <!-- Storage permission -->
     <string name="manage_storage_permission_title">Acesso ao armazenamento necessário</string>
-    <string name="manage_storage_permission_body">Para editar as etiquetas das músicas, permita que este aplicativo gerencie todos os arquivos nas Configurações.</string>
+    <string name="manage_storage_permission_body">Para editar etiquetas, permita que este app gerencie todos os arquivos nas Configurações.</string>
     <string name="manage_storage_open_settings">Abrir configurações</string>
 
     <!-- Permission screens -->
     <string name="permission_rationale_title">Acesso Necessário</string>
-    <string name="permission_rationale_body">Para que o aplicativo funcione corretamente, por favor aceite as seguintes permissões:</string>
+    <string name="permission_rationale_body">Para que o app funcione corretamente, aceite as seguintes permissões:</string>
     <string name="permission_denied_title">Permissões Desativadas</string>
-    <string name="permission_denied_body">Você desativou permissões críticas. Por favor, ative-as nas configurações para continuar:</string>
+    <string name="permission_denied_body">Você desativou permissões críticas. Por favor, habilite-as nas configurações para continuar:</string>
     <string name="permission_retry">Entendido, tentar novamente</string>
-    <string name="permission_open_settings">Abrir Configurasões</string>
+    <string name="permission_open_settings">Abrir Configurações</string>
     <string name="exit_app">Sair do aplicativo</string>
     <string name="permission_label_audio">Acesso a Música e Áudio</string>
     <string name="permission_label_notifications">Notificações de Reprodução</string>
@@ -113,7 +114,79 @@
     <string name="permission_denied_item_desc">Permissão negada</string>
 
     <!-- Equalizer -->
-    <string name="eq_high_fidelity_mode">Modo de Alta Fidelidade</string>
+    <string name="eq_high_fidelity_mode">Modo Alta Fidelidade</string>
+    <string name="eq_save_preset">Salvar ajuste</string>
+    <string name="eq_preset_name">Nome do ajuste</string>
+    <string name="eq_preset_name_hint">Meu ajuste…</string>
+    <string name="eq_preset_saved">Ajuste salvo!</string>
+    <string name="eq_preset_deleted">Ajuste excluído</string>
+    <string name="eq_delete_preset">Excluir ajuste</string>
+    <string name="eq_my_presets">Meus ajustes</string>
+    <string name="eq_built_in">Integrados</string>
+
+    <!-- Lyrics -->
+    <string name="lyrics_searching">Buscando letras…</string>
+    <string name="lyrics_not_found">Nenhuma letra encontrada</string>
+    <string name="lyrics_source_local">Local (.lrc)</string>
+    <string name="lyrics_source_online">Online</string>
+    <string name="lyrics_tab">Letras</string>
+    <string name="queue_tab">Fila</string>
+
+    <!-- Excluded Folders -->
+    <string name="excluded_folders">Pastas excluídas</string>
+    <string name="excluded_folders_subtitle">Ignoradas durante a varredura</string>
+    <string name="excluded_folders_desc">As pastas listadas aqui são ignoradas ao escanear sua biblioteca. As alterações entram em vigor na próxima varredura.</string>
+    <string name="excluded_folders_empty">Nenhuma pasta excluída</string>
+    <string name="exclude_whatsapp">Excluir áudio do WhatsApp</string>
+    <string name="exclude_whatsapp_desc">Ignorar arquivos de áudio do WhatsApp e WhatsApp Business</string>
+    <string name="add_excluded_folder">Adicionar caminho da pasta…</string>
+    <string name="excluded_folder_hint">/storage/emulated/0/Recordings</string>
+    <string name="excluded_folder_invalid">Insira un caminho absoluto válido começando com /</string>
+    <string name="rescan_required">É necessário reescanear a biblioteca para aplicar as mudanças</string>
+
+    <!-- Smart Playlists -->
+    <string name="smart_daily_mix_title">Mix Diário</string>
+    <string name="smart_daily_mix_subtitle">Suas favoritas, recém-classificadas</string>
+    <string name="smart_rediscover_title">Redescobrir</string>
+    <string name="smart_rediscover_subtitle">Músicas que você amou e esqueceu</string>
+    <string name="smart_top_songs_title">Top Músicas</string>
+    <string name="smart_top_songs_subtitle">Suas mais tocadas de sempre</string>
+    <string name="smart_empty_title">Dados insuficientes</string>
+    <string name="smart_empty_body">Toque mais músicas e suas playlists personalizadas aparecerão aqui</string>
+
+    <!-- Backup / Restore -->
+    <string name="backup_title">Backup e Restauração</string>
+    <string name="backup_menu_item">Backup e Restauração</string>
+    <string name="backup_description">Exporte seus favoritos, playlists, ajustes de EQ e estatísticas para um arquivo. Restaure-os a qualquer momento em qualquer dispositivo.</string>
+    <string name="backup_export_title">Exportar backup</string>
+    <string name="backup_export_subtitle">Salvar um arquivo .monkeybackup no seu dispositivo</string>
+    <string name="backup_export_button">Exportar</string>
+    <string name="backup_export_ok">Backup exportado com sucesso</string>
+    <string name="backup_import_title">Restaurar backup</string>
+    <string name="backup_import_subtitle">Selecione um arquivo .monkeybackup para restaurar</string>
+    <string name="backup_import_button">Restaurar</string>
+    <string name="backup_import_ok">Backup restaurado com sucesso</string>
+    <string name="backup_import_summary">Restaurado: %1$d favoritos · %2$d playlists · %3$d ajustes EQ · %4$d estatísticas</string>
+    <string name="backup_info">Arquivos de áudio não são incluídos — apenas dados do app (favoritos, playlists, ajustes de EQ e estatísticas). Músicas devem existir no dispositivo para aparecer em playlists restauradas.</string>
+
+    <!-- Stats Screen -->
+    <string name="stats_title">Suas Estatísticas</string>
+    <string name="stats_listened">Ouvido</string>
+    <string name="stats_plays">Reprod.</string>
+    <string name="stats_songs_played">Músicas</string>
+    <string name="stats_top_songs">Top Músicas</string>
+    <string name="stats_top_artists">Top Artistas</string>
+    <string name="stats_artist_songs">%d músicas</string>
+    <string name="stats_empty_title">Sem estatísticas</string>
+    <string name="stats_empty_body">Ouça música e seu histórico aparecerá aqui</string>
+    <string name="stats_menu_item">Minhas Estatísticas</string>
+    <string name="stats_plays_count">%d reprod.</string>
+    <string name="stats_completed_percent">%d%% concluído</string>
+
+    <!-- Time Units -->
+    <string name="time_unit_m">%dm</string>
+    <string name="time_unit_h_m">%dh %dm</string>
+    <string name="time_unit_d_h">%dd %dh</string>
 
     <!-- Sort Order -->
     <string name="sort_name">Nome</string>
@@ -121,15 +194,6 @@
     <string name="sort_album">Álbum</string>
     <string name="sort_date_added">Data de adição</string>
 
-    <!-- Excluded Folders -->
-    <string name="excluded_folders">Pastas excluídas</string>
-    <string name="excluded_folders_subtitle">Ignoradas durante a varredura</string>
-    <string name="excluded_folders_desc">As pastas listadas aqui são ignoradas ao escanear sua biblioteca de músicas. As alterações entram em vigor na próxima varredura.</string>
-    <string name="excluded_folders_empty">Nenhuma pasta excluída</string>
-    <string name="exclude_whatsapp">Excluir áudio do WhatsApp</string>
-    <string name="exclude_whatsapp_desc">Ignorar arquivos de áudio do WhatsApp e WhatsApp Business</string>
-    <string name="add_excluded_folder">Adicionar caminho da pasta…</string>
-    <string name="excluded_folder_hint">/storage/emulated/0/Recordings</string>
-    <string name="excluded_folder_invalid">Insira um caminho absoluto válido começando com /</string>
-    <string name="rescan_required">É necessário escanear novamente a biblioteca para aplicar as alterações</string>
+    <!-- Errors -->
+    <string name="error_unknown">Erro desconhecido</string>
 </resources>

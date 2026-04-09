@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lg.monkeymusicplayer.R
+import com.lg.monkeymusicplayer.ui.LibraryLoadState
 import com.lg.monkeymusicplayer.ui.screens.LibraryScreen
 import kotlinx.coroutines.delay
 
@@ -37,15 +38,16 @@ fun AppRoot(viewModel: MusicViewModel, windowSizeClass: WindowSizeClass) {
         showSplashTimeout = false
     }
 
-    val showLoading = uiState.isLoading ||
-            (uiState.isScanning && uiState.songs.isEmpty()) ||
+    val scanning = uiState.loadState as? LibraryLoadState.Scanning
+    val showLoading = uiState.isInitialLoad ||
+            (scanning != null && uiState.songs.isEmpty()) ||
             showSplashTimeout
 
     if (showLoading) {
         UltraProSplashScreen(
-            isScanning   = uiState.isScanning,
-            scanProgress = uiState.scanProgress,
-            scanTotal    = uiState.scanTotal
+            isScanning   = scanning != null,
+            scanProgress = scanning?.progress ?: 0,
+            scanTotal    = scanning?.total ?: 0
         )
     } else {
         LibraryScreen(

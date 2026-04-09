@@ -11,6 +11,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import androidx.media3.session.SessionToken
+import com.lg.monkeymusicplayer.core.tracker.StatTracker
 import com.lg.monkeymusicplayer.data.model.Song
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
@@ -19,7 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 @UnstableApi
-class MusicPlayerManager(context: Context) {
+class MusicPlayerManager(context: Context, private val statTracker: StatTracker) {
 
     private val appContext = context.applicationContext
     private var controllerFuture: ListenableFuture<MediaController>? = null
@@ -104,19 +105,49 @@ class MusicPlayerManager(context: Context) {
 
                 playerListener = object : Player.Listener {
                     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                        val prevSong = _currentSong.value
+                        val posMs = mediaController.currentPosition
+                        val durMs = mediaController.duration.coerceAtLeast(0L)
+
+                        // Registrar evento de la canción que acaba de terminar/saltarse
+                        if (prevSong != null && durMs > 0L) {
+                            val isUserSkip = reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
+                            if (isUserSkip) {
+                                statTracker.onSkip(prevSong.id, posMs, durMs)
+                            } else if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
+                                // Auto-advance: la canción anterior se completó
+                                statTracker.onSongComplete(prevSong.id, durMs)
+                            }
+                        }
+
                         updateCurrentSong(mediaItem)
                         _duration.value = mediaController.duration.coerceAtLeast(0L)
                         fetchAudioSessionId()
+
+                        // Registrar inicio de la nueva canción
+                        val newSong = mediaItem?.localConfiguration?.tag as? Song
+                        if (newSong != null && mediaController.isPlaying) {
+                            statTracker.onPlayStarted(newSong.id)
+                        }
                     }
 
                     override fun onIsPlayingChanged(isPlaying: Boolean) {
-                        _isPlaying.value = isPlaying
+                        val song = _currentSong.value
                         if (isPlaying) {
                             startProgressUpdate()
                             fetchAudioSessionId()
+                            // Registrar inicio solo si no venía de una transición (que ya lo registra)
+                            if (song != null && mediaController.currentPosition < 1000L) {
+                                statTracker.onPlayStarted(song.id)
+                            }
                         } else {
                             stopProgressUpdate()
+                            // Registrar pausa para acumular tiempo de sesión
+                            if (song != null) {
+                                statTracker.onPause(song.id, mediaController.currentPosition)
+                            }
                         }
+                        _isPlaying.value = isPlaying
                     }
 
                     override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
@@ -128,11 +159,18 @@ class MusicPlayerManager(context: Context) {
                     }
 
                     override fun onPlaybackStateChanged(playbackState: Int) {
-                        _playbackState.value = playbackState
                         if (playbackState == Player.STATE_READY) {
                             _duration.value = mediaController.duration.coerceAtLeast(0L)
                             fetchAudioSessionId()
+                        } else if (playbackState == Player.STATE_ENDED) {
+                            // Reproducción finalizada (última canción de la cola)
+                            val song = _currentSong.value
+                            val dur = mediaController.duration.coerceAtLeast(0L)
+                            if (song != null && dur > 0L) {
+                                statTracker.onSongComplete(song.id, dur)
+                            }
                         }
+                        _playbackState.value = playbackState
                     }
 
                     override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {

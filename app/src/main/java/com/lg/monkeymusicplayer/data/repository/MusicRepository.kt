@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.media.MediaScannerConnection
 import android.provider.MediaStore
+import com.lg.monkeymusicplayer.R
 import com.lg.monkeymusicplayer.core.lyrics.LrcLibService
 import com.lg.monkeymusicplayer.core.result.Result
 import timber.log.Timber
@@ -166,11 +167,11 @@ class MusicRepository(
     ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val filePath = getFilePathFromId(song.id)
-                ?: return@withContext Result.Error("No se encontró la ruta del archivo")
+                ?: return@withContext Result.Error(context.getString(R.string.no_items))
 
             val originalFile = File(filePath)
             if (!originalFile.exists()) {
-                return@withContext Result.Error("El archivo no existe: $filePath")
+                return@withContext Result.Error(context.getString(R.string.no_items))
             }
 
             val tempFile = File(context.cacheDir, "tag_edit_${System.currentTimeMillis()}.mp3")
@@ -243,7 +244,7 @@ class MusicRepository(
 
         } catch (e: Exception) {
             Timber.e(e, "updateSongTags failed")
-            Result.Error("Error al guardar los tags: ${e.message ?: "error desconocido"}")
+            Result.Error(context.getString(R.string.tags_save_error, e.message ?: context.getString(R.string.error_unknown)))
         }
     }
 
@@ -328,4 +329,3 @@ class MusicRepository(
         LrcLibService.fetchLyrics(title = song.title, artist = song.artist)
     }
 }
-

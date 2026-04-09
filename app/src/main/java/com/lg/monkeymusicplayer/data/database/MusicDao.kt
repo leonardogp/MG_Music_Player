@@ -86,6 +86,26 @@ interface MusicDao {
     @Query("SELECT * FROM history ORDER BY timestamp DESC LIMIT 50")
     fun getHistory(): Flow<List<HistoryEntity>>
 
+    // ── Backup / Restore ──────────────────────────────────────────────────────
+
+    @Query("SELECT songId FROM favorites")
+    suspend fun getAllFavoriteIds(): List<Long>
+
+    @Query("SELECT * FROM playlists")
+    suspend fun getAllPlaylists(): List<PlaylistEntity>
+
+    @Query("SELECT * FROM playlist_songs")
+    suspend fun getAllPlaylistSongs(): List<PlaylistSongCrossRef>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertPlaylists(playlists: List<PlaylistEntity>): List<Long>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertPlaylistSongs(crossRefs: List<PlaylistSongCrossRef>)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertFavorites(favorites: List<FavoriteEntity>)
+
     // ── EQ Presets ──
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEqPreset(preset: EqPresetEntity): Long
@@ -95,4 +115,7 @@ interface MusicDao {
 
     @Query("SELECT * FROM eq_presets ORDER BY name ASC")
     fun getEqPresets(): Flow<List<EqPresetEntity>>
+
+    @Query("SELECT * FROM eq_presets ORDER BY name ASC")
+    suspend fun getEqPresetsSnapshot(): List<EqPresetEntity>
 }

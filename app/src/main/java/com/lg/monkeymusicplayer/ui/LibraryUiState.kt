@@ -2,6 +2,7 @@ package com.lg.monkeymusicplayer.ui
 
 import com.lg.monkeymusicplayer.data.database.HistoryEntity
 import com.lg.monkeymusicplayer.data.database.PlaylistEntity
+import com.lg.monkeymusicplayer.data.model.SmartPlaylist
 import com.lg.monkeymusicplayer.data.model.Song
 
 // ── CORRECCIÓN: LayoutMode eliminado ──
@@ -10,10 +11,10 @@ import com.lg.monkeymusicplayer.data.model.Song
 // Si se implementa vista de grilla en el futuro, añadir aquí con su lógica completa.
 
 data class LibraryUiState(
-    val isLoading: Boolean = true,
-    val isScanning: Boolean = false,
-    val scanProgress: Int = 0,
-    val scanTotal: Int = 0,
+    /** Estado de carga unificado — reemplaza isLoading/isScanning/scanProgress/scanTotal. */
+    val loadState: LibraryLoadState = LibraryLoadState.Idle,
+    /** True mientras el splash inicial está activo (primera carga desde DB). */
+    val isInitialLoad: Boolean = true,
     val songs: List<Song> = emptyList(),
     val genres: Map<String, List<Song>> = emptyMap(),
     val artists: Map<String, List<Song>> = emptyMap(),
@@ -24,5 +25,6 @@ data class LibraryUiState(
     val currentPlaylistSongs: List<Song> = emptyList(),
     val searchQuery: String = "",
     val sortOrder: SortOrder = SortOrder.NAME,
-    val playerState: PlayerState = PlayerState()
+    val playerState: PlayerState = PlayerState(),
+    val smartPlaylists: List<SmartPlaylist> = emptyList()
 )

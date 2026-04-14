@@ -48,6 +48,18 @@
 -keep class com.lg.monkeymusicplayer.data.model.** { *; }
 -keep class com.lg.monkeymusicplayer.data.database.** { *; }
 
-# ── Preservar stack traces en crash reports (opcional pero recomendado) ──
+# ── Firebase Crashlytics ──
+# Crashlytics necesita los stack traces sin ofuscar para mostrarlos correctamente.
+# Las reglas de desofuscación (mapping.txt) se suben automáticamente al build si
+# el plugin de Crashlytics está activo — estas reglas protegen la integración en runtime.
+-keepattributes *Annotation*
+-keep class com.google.firebase.** { *; }
+-keep class com.crashlytics.** { *; }
+-dontwarn com.google.firebase.**
+-dontwarn com.crashlytics.**
+# Mantener los nombres de las clases de excepción propias para legibilidad en el dashboard
+-keep class com.lg.monkeymusicplayer.core.exception.** { *; }
+
+# ── Preservar stack traces en crash reports (obligatorio con Crashlytics) ──
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile

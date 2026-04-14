@@ -81,6 +81,9 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.border
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,9 +94,12 @@ fun LibraryScreen(
     val uiState by viewModel.uiState.collectAsState()
     val navController = rememberNavController()
 
+    SharedTransitionLayout {
     NavHost(navController = navController, startDestination = "library") {
         composable("library") {
             LibraryMainContent(
+                sharedTransitionScope = this@SharedTransitionLayout,
+                animatedVisibilityScope = this@composable,
                 uiState = uiState,
                 viewModel = viewModel,
                 onSearchQueryChanged = viewModel::onSearchQueryChanged,
@@ -134,6 +140,8 @@ fun LibraryScreen(
         composable("player") {
             if (uiState.playerState.currentSong != null) {
                 FullPlayerScreen(
+                    sharedTransitionScope = this@SharedTransitionLayout,
+                    animatedVisibilityScope = this@composable,
                     song = uiState.playerState.currentSong!!,
                     queue = uiState.playerState.currentQueue,
                     lyrics = uiState.playerState.lyrics,
@@ -210,6 +218,7 @@ fun LibraryScreen(
             )
         }
     }
+    } // SharedTransitionLayout
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -345,8 +354,11 @@ fun SettingsScreen(
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun LibraryMainContent(
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope,
     uiState: LibraryUiState,
     viewModel: MusicViewModel,
     onSearchQueryChanged: (String) -> Unit,
@@ -482,6 +494,8 @@ fun LibraryMainContent(
         onSkipPrevious = onSkipPrevious,
         onToggleShuffle = onToggleShuffle,
         onLoadPlaylistSongs = onLoadPlaylistSongs,
+        sharedTransitionScope = sharedTransitionScope,
+        animatedVisibilityScope = animatedVisibilityScope,
         onPlayerClick = onPlayerClick,
         onMenuClick = onMenuClick,
         onAddSongToPlaylist = { songsToAddToPlaylist = listOf(it) },
@@ -495,9 +509,11 @@ fun LibraryMainContent(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun MobileLayout(
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope,
     uiState: LibraryUiState,
     snackbarHostState: SnackbarHostState,
     onSearchQueryChanged: (String) -> Unit,
@@ -689,6 +705,8 @@ fun MobileLayout(
         },
         bottomBar = {
             PlayerBottomBar(
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = animatedVisibilityScope,
                 currentSong = uiState.playerState.currentSong,
                 lastPlayedSong = uiState.playerState.lastPlayedSong,
                 isPlaying = uiState.playerState.isPlaying,
@@ -1080,8 +1098,11 @@ fun getGreeting(): Int {
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun PlayerBottomBar(
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope,
     currentSong: Song?,
     lastPlayedSong: Song?,
     isPlaying: Boolean,
@@ -1114,11 +1135,22 @@ fun PlayerBottomBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (displaySong != null) {
+                    with(sharedTransitionScope) {
                     AsyncImage(
                         model = displaySong.albumArtUri,
                         contentDescription = null,
                         error = painterResource(R.drawable.ic_monkey_head),
                         modifier = Modifier
+                            .sharedElement(
+                                state = rememberSharedContentState(key = "album_art"),
+                                animatedVisibilityScope = animatedVisibilityScope,
+                                boundsTransform = { _, _ ->
+                                    androidx.compose.animation.core.spring(
+                                        dampingRatio = 0.8f,
+                                        stiffness = 380f
+                                    )
+                                }
+                            )
                             .size(44.dp)
                             .clip(RoundedCornerShape(6.dp))
                             .then(
@@ -1126,6 +1158,7 @@ fun PlayerBottomBar(
                             ),
                         contentScale = ContentScale.Crop
                     )
+                    } // with(sharedTransitionScope)
                 } else {
                     Box(
                         modifier = Modifier
@@ -1226,8 +1259,11 @@ fun PlayerBottomBar(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun FullPlayerScreen(
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: androidx.compose.animation.AnimatedVisibilityScope,
     song: Song,
     queue: List<Song>,
     lyrics: List<com.lg.monkeymusicplayer.data.model.LyricLine>,
@@ -1328,24 +1364,31 @@ fun FullPlayerScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        Card(
+                        with(sharedTransitionScope) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(song.albumArtUri).crossfade(false).build(),
+                            contentDescription = null,
+                            error = painterResource(R.drawable.ic_monkey_head),
                             modifier = Modifier
+                                .sharedElement(
+                                    state = rememberSharedContentState(key = "album_art"),
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                    boundsTransform = { _, _ ->
+                                        androidx.compose.animation.core.spring(
+                                            dampingRatio = 0.8f,
+                                            stiffness = 380f
+                                        )
+                                    }
+                                )
                                 .fillMaxWidth()
                                 .aspectRatio(1f)
                                 .padding(8.dp)
-                                .shadow(20.dp, RoundedCornerShape(12.dp)),
-                            shape = RoundedCornerShape(12.dp),
-                            elevation = CardDefaults.cardElevation(0.dp)
-                        ) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(song.albumArtUri).crossfade(true).build(),
-                                contentDescription = null,
-                                error = painterResource(R.drawable.ic_monkey_head),
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
+                                .shadow(20.dp, RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(12.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                        } // with(sharedTransitionScope)
 
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),

@@ -104,30 +104,57 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
                 reconnectAttempts = 0
 
                 playerListener = object : Player.Listener {
+                    // Duración de la canción activa capturada en STATE_READY.
+                    // onMediaItemTransition lee currentPosition/duration DESPUÉS de que
+                    // Media3 ya actualizó el cursor a la nueva canción, por lo que no
+                    // son fiables para describir la canción ANTERIOR. Guardamos la duración
+                    // confirmada cuando el player está en STATE_READY para usarla al
+                    // decidir skip vs complete en la transición.
+                    private var confirmedDurationMs: Long = 0L
+                    // Flag para evitar doble onPlayStarted (transición + onIsPlayingChanged)
+                    private var transitionHandled = false
+
                     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                         val prevSong = _currentSong.value
-                        val posMs = mediaController.currentPosition
-                        val durMs = mediaController.duration.coerceAtLeast(0L)
+                        val prevDurMs = confirmedDurationMs
 
-                        // Registrar evento de la canción que acaba de terminar/saltarse
-                        if (prevSong != null && durMs > 0L) {
-                            val isUserSkip = reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
-                            if (isUserSkip) {
-                                statTracker.onSkip(prevSong.id, posMs, durMs)
-                            } else if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
-                                // Auto-advance: la canción anterior se completó
-                                statTracker.onSongComplete(prevSong.id, durMs)
+                        // Clasificar el evento de la canción anterior usando la duración
+                        // confirmada (no la del nuevo item) y la posición actual.
+                        // Para AUTO (auto-advance), la canción terminó → complete.
+                        // Para SEEK (skip manual), verificar ratio contra el umbral.
+                        if (prevSong != null && prevDurMs > 0L) {
+                            when (reason) {
+                                Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> {
+                                    // La canción terminó sola: siempre es complete
+                                    statTracker.onSongComplete(prevSong.id, prevDurMs)
+                                }
+                                Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> {
+                                    // Skip manual: posMs viene del nuevo item (puede ser 0),
+                                    // pero sabemos que fue skip porque el usuario lo forzó.
+                                    // Usamos currentPosition solo si es razonablemente alto;
+                                    // de lo contrario asumimos 0 (inicio de la siguiente).
+                                    val posMs = mediaController.currentPosition
+                                        .takeIf { it > 0L && it < prevDurMs } ?: 0L
+                                    statTracker.onSkip(prevSong.id, posMs, prevDurMs)
+                                }
+                                // REPEAT y PLAYLIST_CHANGED no generan evento de stats
                             }
                         }
+
+                        confirmedDurationMs = 0L
+                        transitionHandled = false
 
                         updateCurrentSong(mediaItem)
                         _duration.value = mediaController.duration.coerceAtLeast(0L)
                         fetchAudioSessionId()
 
-                        // Registrar inicio de la nueva canción
+                        // Registrar inicio de la nueva canción.
+                        // No condicionamos a isPlaying porque en auto-advance el player
+                        // puede estar en STATE_BUFFERING en este instante.
                         val newSong = mediaItem?.localConfiguration?.tag as? Song
-                        if (newSong != null && mediaController.isPlaying) {
+                        if (newSong != null) {
                             statTracker.onPlayStarted(newSong.id)
+                            transitionHandled = true
                         }
                     }
 
@@ -136,13 +163,14 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
                         if (isPlaying) {
                             startProgressUpdate()
                             fetchAudioSessionId()
-                            // Registrar inicio solo si no venía de una transición (que ya lo registra)
-                            if (song != null && mediaController.currentPosition < 1000L) {
+                            // onPlayStarted solo si NO vino de una transición reciente.
+                            // Evita doble conteo cuando auto-advance ya lo registró arriba.
+                            if (song != null && !transitionHandled) {
                                 statTracker.onPlayStarted(song.id)
                             }
+                            transitionHandled = false
                         } else {
                             stopProgressUpdate()
-                            // Registrar pausa para acumular tiempo de sesión
                             if (song != null) {
                                 statTracker.onPause(song.id, mediaController.currentPosition)
                             }
@@ -160,14 +188,20 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
 
                     override fun onPlaybackStateChanged(playbackState: Int) {
                         if (playbackState == Player.STATE_READY) {
-                            _duration.value = mediaController.duration.coerceAtLeast(0L)
+                            val dur = mediaController.duration.coerceAtLeast(0L)
+                            _duration.value = dur
+                            // Guardar duración confirmada para usarla en onMediaItemTransition.
+                            // STATE_READY garantiza que duration es válida (no C.TIME_UNSET).
+                            if (dur > 0L) confirmedDurationMs = dur
                             fetchAudioSessionId()
                         } else if (playbackState == Player.STATE_ENDED) {
-                            // Reproducción finalizada (última canción de la cola)
+                            // Última canción de la cola terminó sin auto-advance
                             val song = _currentSong.value
-                            val dur = mediaController.duration.coerceAtLeast(0L)
+                            val dur = confirmedDurationMs.takeIf { it > 0L }
+                                ?: mediaController.duration.coerceAtLeast(0L)
                             if (song != null && dur > 0L) {
                                 statTracker.onSongComplete(song.id, dur)
+                                confirmedDurationMs = 0L
                             }
                         }
                         _playbackState.value = playbackState
@@ -386,6 +420,18 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
 
     fun pause() {
         controller?.pause()
+    }
+
+    /**
+     * Fade out de [MusicService.SLEEP_FADE_DURATION_MS] ms y luego pausa.
+     * Usado por el sleep timer para no cortar la música de golpe.
+     */
+    fun fadeAndPause() {
+        val player = controller ?: run { pause(); return }
+        val args = Bundle.EMPTY
+        player.sendCustomCommand(
+            SessionCommand(MusicService.COMMAND_FADE_AND_PAUSE, Bundle.EMPTY), args
+        )
     }
 
     fun skipNext() { controller?.seekToNext() }

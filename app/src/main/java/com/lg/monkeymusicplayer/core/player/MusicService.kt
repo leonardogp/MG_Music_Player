@@ -63,6 +63,9 @@ class MusicService : MediaSessionService() {
         const val COMMAND_SET_CROSSFADE_DURATION = "COMMAND_SET_CROSSFADE_DURATION"
         const val COMMAND_SET_EQUALIZER_BAND = "COMMAND_SET_EQUALIZER_BAND"
         const val COMMAND_GET_EQUALIZER_DATA = "COMMAND_GET_EQUALIZER_DATA"
+        const val COMMAND_FADE_AND_PAUSE = "COMMAND_FADE_AND_PAUSE"
+        /** Duración del fade out del sleep timer en ms. */
+        const val SLEEP_FADE_DURATION_MS = 30_000L
 
         const val ACTION_WIDGET_PLAY_PAUSE = "com.lg.monkeymusicplayer.ACTION_WIDGET_PLAY_PAUSE"
         const val ACTION_WIDGET_NEXT = "com.lg.monkeymusicplayer.ACTION_WIDGET_NEXT"
@@ -337,6 +340,29 @@ class MusicService : MediaSessionService() {
         }
     }
 
+    /**
+     * Fade out dedicado al sleep timer: baja el volumen durante [SLEEP_FADE_DURATION_MS]
+     * y luego pausa la reproducción y restaura el volumen a 1.0f.
+     * Es independiente del crossfade entre canciones.
+     */
+    private fun performSleepFadeOut() {
+        val startVolume = player.volume
+        val steps = 60  // 1 paso cada 500ms → 30 segundos total
+        val interval = SLEEP_FADE_DURATION_MS / steps
+
+        for (i in 0..steps) {
+            handler.postDelayed({
+                val newVolume = startVolume * (1.0f - i.toFloat() / steps)
+                player.volume = newVolume.coerceAtLeast(0f)
+                if (i == steps) {
+                    player.pause()
+                    // Restaurar volumen para que la próxima reproducción no empiece en silencio
+                    handler.postDelayed({ player.volume = 1.0f }, 500)
+                }
+            }, i * interval)
+        }
+    }
+
     private fun performFadeIn() {
         isFading = true
         player.volume = 0f
@@ -362,6 +388,7 @@ class MusicService : MediaSessionService() {
             availableSessionCommands.add(SessionCommand(COMMAND_SET_CROSSFADE_DURATION, Bundle.EMPTY))
             availableSessionCommands.add(SessionCommand(COMMAND_SET_EQUALIZER_BAND, Bundle.EMPTY))
             availableSessionCommands.add(SessionCommand(COMMAND_GET_EQUALIZER_DATA, Bundle.EMPTY))
+            availableSessionCommands.add(SessionCommand(COMMAND_FADE_AND_PAUSE, Bundle.EMPTY))
             return MediaSession.ConnectionResult.accept(
                 availableSessionCommands.build(),
                 connectionResult.availablePlayerCommands
@@ -391,6 +418,11 @@ class MusicService : MediaSessionService() {
                     val band = args.getShort("band", -1)
                     val level = args.getShort("level", 0)
                     if (band >= 0) equalizer?.setBandLevel(band, level)
+                    return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                }
+                COMMAND_FADE_AND_PAUSE -> {
+                    if (player.isPlaying) performSleepFadeOut()
+                    else player.pause()
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
                 COMMAND_GET_EQUALIZER_DATA -> {

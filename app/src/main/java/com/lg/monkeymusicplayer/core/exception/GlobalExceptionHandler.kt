@@ -3,6 +3,7 @@ package com.lg.monkeymusicplayer.core.exception
 import android.content.Context
 import android.content.Intent
 import com.lg.monkeymusicplayer.core.player.MusicService
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import timber.log.Timber
 
 class GlobalExceptionHandler(
@@ -29,11 +30,24 @@ class GlobalExceptionHandler(
     }
 
     override fun uncaughtException(thread: Thread, throwable: Throwable) {
-        Timber.tag(TAG).e(throwable, "Uncaught exception in thread ${thread.name}")
+        Timber.tag(TAG).e(throwable, "Uncaught exception in thread \${thread.name}")
+
+        // Enriquecer el crash report con contexto antes de que el proceso muera.
+        // Crashlytics envía estos datos junto al stack trace al dashboard.
+        try {
+            val crashlytics = FirebaseCrashlytics.getInstance()
+            crashlytics.setCustomKey("crash_thread", thread.name)
+            crashlytics.setCustomKey("crash_thread_id", thread.id)
+            crashlytics.log("Fatal crash in thread: \${thread.name} — \${throwable.message}")
+            // Forzar flush antes de que el proceso muera para no perder el evento
+            crashlytics.recordException(throwable)
+        } catch (e: Exception) {
+            // No propagar — si Crashlytics falla, continuar con el flujo normal de crash
+            Timber.tag(TAG).e(e, "Failed to record crash in Crashlytics")
+        }
 
         // Intentar detener el servicio de música para liberar recursos de audio
-        // antes de que el proceso muera. Se hace en try/catch porque si el crash
-        // ocurrió en el propio servicio, stopService() podría fallar también.
+        // antes de que el proceso muera.
         try {
             context.stopService(Intent(context, MusicService::class.java))
         } catch (e: Exception) {
@@ -41,13 +55,9 @@ class GlobalExceptionHandler(
         }
 
         // Delegar en el handler original del sistema.
-        // Esto permite que Android maneje el crash report (logcat, Play Console,
-        // Firebase Crashlytics si está configurado) y limpie el proceso correctamente.
-        // Si no hay handler original (caso raro), forzar salida limpia.
         if (defaultHandler != null) {
             defaultHandler.uncaughtException(thread, throwable)
         } else {
-            // Fallback: imprimir stack trace y salir
             throwable.printStackTrace()
             android.os.Process.killProcess(android.os.Process.myPid())
         }

@@ -85,7 +85,7 @@ import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun LibraryScreen(
     viewModel: MusicViewModel,
@@ -95,65 +95,19 @@ fun LibraryScreen(
     val navController = rememberNavController()
 
     SharedTransitionLayout {
-    NavHost(navController = navController, startDestination = "library") {
-        composable("library") {
-            LibraryMainContent(
-                sharedTransitionScope = this@SharedTransitionLayout,
-                animatedVisibilityScope = this@composable,
-                uiState = uiState,
-                viewModel = viewModel,
-                onSearchQueryChanged = viewModel::onSearchQueryChanged,
-                onSortOrderChanged = viewModel::setSortOrder,
-                onPlayPause = viewModel::togglePlayPause,
-                onPlay = { song, playlist -> viewModel.playSong(song, playlist) },
-                onAddToQueue = viewModel::addToQueue,
-                onScanMusic = { viewModel.scanMusic() },
-                onSkipNext = viewModel::skipNext,
-                onSkipPrevious = viewModel::skipPrevious,
-                onSeekTo = viewModel::seekTo,
-                onSeekForward = viewModel::seekForward,
-                onSeekBack = viewModel::seekBack,
-                onToggleShuffle = viewModel::toggleShuffle,
-                onCycleRepeatMode = viewModel::cycleRepeatMode,
-                onToggleFavorite = viewModel::toggleFavorite,
-                onCreatePlaylist = viewModel::createPlaylist,
-                onDeletePlaylist = viewModel::deletePlaylist,
-                onAddSongToPlaylist = viewModel::addSongToPlaylist,
-                onAddSongsToPlaylist = viewModel::addSongsToPlaylist,
-                onRemoveSongFromPlaylist = viewModel::removeSongFromPlaylist,
-                onLoadPlaylistSongs = viewModel::loadPlaylistSongs,
-                onUpdateSongTags = { song, t, a, al, g -> viewModel.updateSongTags(song, t, a, al, g) },
-                onOpenEqualizer = { viewModel.openEqualizer(viewModel.context) },
-                onSetSleepTimer = viewModel::setSleepTimer,
-                onChangeLanguage = { lang ->
-                    val appLocale: LocaleListCompat = if (lang.isEmpty()) {
-                        LocaleListCompat.getEmptyLocaleList()
-                    } else {
-                        LocaleListCompat.forLanguageTags(lang)
-                    }
-                    AppCompatDelegate.setApplicationLocales(appLocale)
-                },
-                onPlayerClick = { navController.navigate("player") },
-                onMenuClick = { navController.navigate("settings") }
-            )
-        }
-        composable("player") {
-            if (uiState.playerState.currentSong != null) {
-                FullPlayerScreen(
+        NavHost(navController = navController, startDestination = "library") {
+            composable("library") {
+                LibraryMainContent(
                     sharedTransitionScope = this@SharedTransitionLayout,
                     animatedVisibilityScope = this@composable,
-                    song = uiState.playerState.currentSong!!,
-                    queue = uiState.playerState.currentQueue,
-                    lyrics = uiState.playerState.lyrics,
-                    isLoadingLyrics = viewModel.isLoadingLyrics.collectAsState().value,
-                    isPlaying = uiState.playerState.isPlaying,
-                    isShuffleMode = uiState.playerState.isShuffleMode,
-                    repeatMode = uiState.playerState.repeatMode,
-                    currentPosition = uiState.playerState.currentPosition,
-                    duration = uiState.playerState.duration,
-                    audioSessionId = uiState.playerState.audioSessionId,
-                    onClose = { navController.popBackStack() },
+                    uiState = uiState,
+                    viewModel = viewModel,
+                    onSearchQueryChanged = viewModel::onSearchQueryChanged,
+                    onSortOrderChanged = viewModel::setSortOrder,
                     onPlayPause = viewModel::togglePlayPause,
+                    onPlay = { song, playlist -> viewModel.playSong(song, playlist) },
+                    onAddToQueue = viewModel::addToQueue,
+                    onScanMusic = { viewModel.scanMusic() },
                     onSkipNext = viewModel::skipNext,
                     onSkipPrevious = viewModel::skipPrevious,
                     onSeekTo = viewModel::seekTo,
@@ -161,63 +115,109 @@ fun LibraryScreen(
                     onSeekBack = viewModel::seekBack,
                     onToggleShuffle = viewModel::toggleShuffle,
                     onCycleRepeatMode = viewModel::cycleRepeatMode,
-                    onToggleFavorite = { viewModel.toggleFavorite(uiState.playerState.currentSong!!) },
-                    onAddToPlaylist = { /* handle */ },
-                    onEditSong = { song ->
-                        navController.popBackStack()
-                        viewModel.requestEditSong(song)
+                    onToggleFavorite = viewModel::toggleFavorite,
+                    onCreatePlaylist = viewModel::createPlaylist,
+                    onDeletePlaylist = viewModel::deletePlaylist,
+                    onAddSongToPlaylist = viewModel::addSongToPlaylist,
+                    onAddSongsToPlaylist = viewModel::addSongsToPlaylist,
+                    onRemoveSongFromPlaylist = viewModel::removeSongFromPlaylist,
+                    onLoadPlaylistSongs = viewModel::loadPlaylistSongs,
+                    onUpdateSongTags = { song, t, a, al, g -> viewModel.updateSongTags(song, t, a, al, g) },
+                    onOpenEqualizer = { viewModel.openEqualizer(viewModel.context) },
+                    onSetSleepTimer = viewModel::setSleepTimer,
+                    onChangeLanguage = { lang ->
+                        val appLocale: LocaleListCompat = if (lang.isEmpty()) {
+                            LocaleListCompat.getEmptyLocaleList()
+                        } else {
+                            LocaleListCompat.forLanguageTags(lang)
+                        }
+                        AppCompatDelegate.setApplicationLocales(appLocale)
                     },
-                    onPlayFromQueue = { viewModel.playSong(it, uiState.playerState.currentQueue) }
+                    onPlayerClick = { navController.navigate("player") },
+                    onMenuClick = { navController.navigate("settings") }
+                )
+            }
+            composable("player") {
+                if (uiState.playerState.currentSong != null) {
+                    FullPlayerScreen(
+                        sharedTransitionScope = this@SharedTransitionLayout,
+                        animatedVisibilityScope = this@composable,
+                        song = uiState.playerState.currentSong!!,
+                        queue = uiState.playerState.currentQueue,
+                        lyrics = uiState.playerState.lyrics,
+                        isLoadingLyrics = viewModel.isLoadingLyrics.collectAsState().value,
+                        isPlaying = uiState.playerState.isPlaying,
+                        isShuffleMode = uiState.playerState.isShuffleMode,
+                        repeatMode = uiState.playerState.repeatMode,
+                        currentPosition = uiState.playerState.currentPosition,
+                        duration = uiState.playerState.duration,
+                        audioSessionId = uiState.playerState.audioSessionId,
+                        onClose = { navController.popBackStack() },
+                        onPlayPause = viewModel::togglePlayPause,
+                        onSkipNext = viewModel::skipNext,
+                        onSkipPrevious = viewModel::skipPrevious,
+                        onSeekTo = viewModel::seekTo,
+                        onSeekForward = viewModel::seekForward,
+                        onSeekBack = viewModel::seekBack,
+                        onToggleShuffle = viewModel::toggleShuffle,
+                        onCycleRepeatMode = viewModel::cycleRepeatMode,
+                        onToggleFavorite = { viewModel.toggleFavorite(uiState.playerState.currentSong!!) },
+                        onAddToPlaylist = { /* handle */ },
+                        onEditSong = { song ->
+                            navController.popBackStack()
+                            viewModel.requestEditSong(song)
+                        },
+                        onPlayFromQueue = { viewModel.playSong(it, uiState.playerState.currentQueue) }
+                    )
+                }
+            }
+            composable("settings") {
+                SettingsScreen(
+                    uiState = uiState,
+                    navController = navController,
+                    onBack = { navController.popBackStack() },
+                    onScanMusic = { viewModel.scanMusic() },
+                    onOpenEqualizer = { viewModel.openEqualizer(viewModel.context) },
+                    onSetSleepTimer = viewModel::setSleepTimer,
+                    onChangeLanguage = { lang ->
+                        val appLocale: LocaleListCompat = if (lang.isEmpty()) {
+                            LocaleListCompat.getEmptyLocaleList()
+                        } else {
+                            LocaleListCompat.forLanguageTags(lang)
+                        }
+                        AppCompatDelegate.setApplicationLocales(appLocale)
+                    }
+                )
+            }
+            composable("excluded_folders") {
+                val excludedFolders by viewModel.excludedFolders.collectAsState()
+                ExcludedFoldersScreen(
+                    excludedFolders = excludedFolders,
+                    onBack = { navController.popBackStack() },
+                    onScanMusic = { viewModel.scanMusic() },
+                    onAddExcludedFolder = viewModel::addExcludedFolder,
+                    onRemoveExcludedFolder = viewModel::removeExcludedFolder
+                )
+            }
+            composable("equalizer") {
+                EqualizerScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable("stats") {
+                StatsScreen(
+                    statsRepository = viewModel.statsRepository,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable("backup") {
+                BackupScreen(
+                    backupRepository = viewModel.backupRepository,
+                    onBack = { navController.popBackStack() }
                 )
             }
         }
-        composable("settings") {
-            SettingsScreen(
-                uiState = uiState,
-                navController = navController,
-                onBack = { navController.popBackStack() },
-                onScanMusic = { viewModel.scanMusic() },
-                onOpenEqualizer = { viewModel.openEqualizer(viewModel.context) },
-                onSetSleepTimer = viewModel::setSleepTimer,
-                onChangeLanguage = { lang ->
-                    val appLocale: LocaleListCompat = if (lang.isEmpty()) {
-                        LocaleListCompat.getEmptyLocaleList()
-                    } else {
-                        LocaleListCompat.forLanguageTags(lang)
-                    }
-                    AppCompatDelegate.setApplicationLocales(appLocale)
-                }
-            )
-        }
-        composable("excluded_folders") {
-            val excludedFolders by viewModel.excludedFolders.collectAsState()
-            ExcludedFoldersScreen(
-                excludedFolders = excludedFolders,
-                onBack = { navController.popBackStack() },
-                onScanMusic = { viewModel.scanMusic() },
-                onAddExcludedFolder = viewModel::addExcludedFolder,
-                onRemoveExcludedFolder = viewModel::removeExcludedFolder
-            )
-        }
-        composable("equalizer") {
-            EqualizerScreen(
-                viewModel = viewModel,
-                onBack = { navController.popBackStack() }
-            )
-        }
-        composable("stats") {
-            StatsScreen(
-                statsRepository = viewModel.statsRepository,
-                onBack = { navController.popBackStack() }
-            )
-        }
-        composable("backup") {
-            BackupScreen(
-                backupRepository = viewModel.backupRepository,
-                onBack = { navController.popBackStack() }
-            )
-        }
-    }
     } // SharedTransitionLayout
 }
 
@@ -354,7 +354,7 @@ fun SettingsScreen(
     }
 }
 
-@OptIn(ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun LibraryMainContent(
     sharedTransitionScope: SharedTransitionScope,
@@ -1136,28 +1136,28 @@ fun PlayerBottomBar(
             ) {
                 if (displaySong != null) {
                     with(sharedTransitionScope) {
-                    AsyncImage(
-                        model = displaySong.albumArtUri,
-                        contentDescription = null,
-                        error = painterResource(R.drawable.ic_monkey_head),
-                        modifier = Modifier
-                            .sharedElement(
-                                state = rememberSharedContentState(key = "album_art"),
-                                animatedVisibilityScope = animatedVisibilityScope,
-                                boundsTransform = { _, _ ->
-                                    androidx.compose.animation.core.spring(
-                                        dampingRatio = 0.8f,
-                                        stiffness = 380f
-                                    )
-                                }
-                            )
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .then(
-                                if (isIdle) Modifier.alpha(0.45f) else Modifier
-                            ),
-                        contentScale = ContentScale.Crop
-                    )
+                        AsyncImage(
+                            model = displaySong.albumArtUri,
+                            contentDescription = null,
+                            error = painterResource(R.drawable.ic_monkey_head),
+                            modifier = Modifier
+                                .sharedElement(
+                                    state = rememberSharedContentState(key = "album_art"),
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                    boundsTransform = { _, _ ->
+                                        androidx.compose.animation.core.spring(
+                                            dampingRatio = 0.8f,
+                                            stiffness = 380f
+                                        )
+                                    }
+                                )
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .then(
+                                    if (isIdle) Modifier.alpha(0.45f) else Modifier
+                                ),
+                            contentScale = ContentScale.Crop
+                        )
                     } // with(sharedTransitionScope)
                 } else {
                     Box(
@@ -1229,7 +1229,7 @@ fun PlayerBottomBar(
                             contentDescription = stringResource(R.string.play_pause),
                             modifier = Modifier.size(36.dp),
                             tint = if (isActive) PrimaryOrange
-                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
                         )
                     }
                     IconButton(onClick = onSkipNext, enabled = isActive) {
@@ -1258,8 +1258,7 @@ fun PlayerBottomBar(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@OptIn(ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun FullPlayerScreen(
     sharedTransitionScope: SharedTransitionScope,
@@ -1365,29 +1364,29 @@ fun FullPlayerScreen(
                         verticalArrangement = Arrangement.SpaceEvenly
                     ) {
                         with(sharedTransitionScope) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(song.albumArtUri).crossfade(false).build(),
-                            contentDescription = null,
-                            error = painterResource(R.drawable.ic_monkey_head),
-                            modifier = Modifier
-                                .sharedElement(
-                                    state = rememberSharedContentState(key = "album_art"),
-                                    animatedVisibilityScope = animatedVisibilityScope,
-                                    boundsTransform = { _, _ ->
-                                        androidx.compose.animation.core.spring(
-                                            dampingRatio = 0.8f,
-                                            stiffness = 380f
-                                        )
-                                    }
-                                )
-                                .fillMaxWidth()
-                                .aspectRatio(1f)
-                                .padding(8.dp)
-                                .shadow(20.dp, RoundedCornerShape(12.dp))
-                                .clip(RoundedCornerShape(12.dp)),
-                            contentScale = ContentScale.Crop
-                        )
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(song.albumArtUri).crossfade(false).build(),
+                                contentDescription = null,
+                                error = painterResource(R.drawable.ic_monkey_head),
+                                modifier = Modifier
+                                    .sharedElement(
+                                        state = rememberSharedContentState(key = "album_art"),
+                                        animatedVisibilityScope = animatedVisibilityScope,
+                                        boundsTransform = { _, _ ->
+                                            androidx.compose.animation.core.spring(
+                                                dampingRatio = 0.8f,
+                                                stiffness = 380f
+                                            )
+                                        }
+                                    )
+                                    .fillMaxWidth()
+                                    .aspectRatio(1f)
+                                    .padding(8.dp)
+                                    .shadow(20.dp, RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(12.dp)),
+                                contentScale = ContentScale.Crop
+                            )
                         } // with(sharedTransitionScope)
 
                         Row(
@@ -2170,7 +2169,7 @@ fun ExcludedFoldersScreen(
                             if (allWhatsappExcluded) Icons.Default.Block else Icons.AutoMirrored.Filled.Chat,
                             contentDescription = null,
                             tint = if (allWhatsappExcluded) MaterialTheme.colorScheme.error
-                                   else MaterialTheme.colorScheme.onSurface
+                            else MaterialTheme.colorScheme.onSurface
                         )
                     },
                     trailingContent = {

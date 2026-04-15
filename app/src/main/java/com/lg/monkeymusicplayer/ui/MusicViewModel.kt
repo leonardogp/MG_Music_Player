@@ -19,7 +19,6 @@ import coil.request.ImageRequest
 import coil.request.SuccessResult
 import com.lg.monkeymusicplayer.R
 import com.lg.monkeymusicplayer.core.player.MusicPlayerManager
-import com.lg.monkeymusicplayer.core.player.MusicService
 import com.lg.monkeymusicplayer.core.result.Result
 import com.lg.monkeymusicplayer.data.database.EqPresetEntity
 import com.lg.monkeymusicplayer.data.database.HistoryEntity
@@ -392,20 +391,11 @@ class MusicViewModel @Inject constructor(
         if (minutes > 0) {
             _sleepTimerRemaining.value = minutes * 60 * 1000L
             sleepTimerJob = viewModelScope.launch {
-                // Iniciar fade out 30s antes del fin del timer.
-                // Si el timer es ≤ 30s, el fade empieza inmediatamente.
-                val fadeStartThreshold = MusicService.SLEEP_FADE_DURATION_MS
-                var fadeTriggered = false
-
                 while (_sleepTimerRemaining.value > 0) {
                     delay(1000)
                     _sleepTimerRemaining.value -= 1000
-
-                    if (!fadeTriggered && _sleepTimerRemaining.value <= fadeStartThreshold) {
-                        fadeTriggered = true
-                        playerManager.fadeAndPause()
-                    }
                 }
+                playerManager.pause()
                 _sleepTimerMinutes.value = 0
             }
         } else {

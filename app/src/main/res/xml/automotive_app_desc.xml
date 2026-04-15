@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Archivo de descripción de app para Android Auto.
+    Declara que esta app provee contenido de audio (media) compatible con Auto.
+    Requerido en el Manifest via meta-data "com.google.android.gms.car.application".
+-->
+<automotiveApp>
+    <uses name="media" />
+</automotiveApp>

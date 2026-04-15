@@ -22,10 +22,8 @@ object AppLogger {
     fun initialize() {
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
-        } else {
-            // En release: reportar errores a Firebase Crashlytics.
-            // CrashlyticsTree filtra WARNING+ para no saturar el dashboard.
-            Timber.plant(CrashlyticsTree())
         }
+        // En release podrías plantar un árbol que reporte a Crashlytics:
+        // else { Timber.plant(CrashlyticsTree()) }
     }
 }

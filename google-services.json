@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "769811030720",
+    "project_id": "com-lg-monkeymusicplayer",
+    "storage_bucket": "com-lg-monkeymusicplayer.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:769811030720:android:fe2a11e7b7aed35bc24325",
+        "android_client_info": {
+          "package_name": "com.lg.monkeymusicplayer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDg_QA6Kh_RFmRpYymASrCBqj0LOw2iNt8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

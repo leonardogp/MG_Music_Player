@@ -13,8 +13,13 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.common.MediaMetadata
+import com.google.common.collect.ImmutableList
+import androidx.media3.session.LibraryResult
+import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.MediaLibraryService.MediaLibrarySession
 import androidx.media3.session.MediaSession
-import androidx.media3.session.MediaSessionService
+import androidx.media3.session.MediaSession.ControllerInfo
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.google.common.util.concurrent.Futures
@@ -31,12 +36,12 @@ import javax.inject.Inject
 
 @UnstableApi
 @AndroidEntryPoint
-class MusicService : MediaSessionService() {
+class MusicService : MediaLibraryService() {
 
     @Inject
     lateinit var musicDao: MusicDao
 
-    private var mediaSession: MediaSession? = null
+    private var mediaSession: MediaLibrarySession? = null
     private lateinit var player: ExoPlayer
     private var equalizer: Equalizer? = null
 
@@ -63,9 +68,6 @@ class MusicService : MediaSessionService() {
         const val COMMAND_SET_CROSSFADE_DURATION = "COMMAND_SET_CROSSFADE_DURATION"
         const val COMMAND_SET_EQUALIZER_BAND = "COMMAND_SET_EQUALIZER_BAND"
         const val COMMAND_GET_EQUALIZER_DATA = "COMMAND_GET_EQUALIZER_DATA"
-        const val COMMAND_FADE_AND_PAUSE = "COMMAND_FADE_AND_PAUSE"
-        /** Duración del fade out del sleep timer en ms. */
-        const val SLEEP_FADE_DURATION_MS = 30_000L
 
         const val ACTION_WIDGET_PLAY_PAUSE = "com.lg.monkeymusicplayer.ACTION_WIDGET_PLAY_PAUSE"
         const val ACTION_WIDGET_NEXT = "com.lg.monkeymusicplayer.ACTION_WIDGET_NEXT"
@@ -74,6 +76,13 @@ class MusicService : MediaSessionService() {
         const val ACTION_WIDGET_FAVORITE = "com.lg.monkeymusicplayer.ACTION_WIDGET_FAVORITE"
         const val ACTION_WIDGET_SHUFFLE  = "com.lg.monkeymusicplayer.ACTION_WIDGET_SHUFFLE"
         const val ACTION_WIDGET_REPEAT   = "com.lg.monkeymusicplayer.ACTION_WIDGET_REPEAT"
+
+        // IDs de los nodos raíz del árbol
+        const val ROOT_ID       = "ROOT"
+        const val SONGS_ID      = "SONGS"
+        const val FAVORITES_ID  = "FAVORITES"
+        const val PLAYLISTS_ID  = "PLAYLISTS"
+        const val PLAYLIST_PREFIX = "playlist_"
     }
 
     override fun onCreate() {
@@ -130,24 +139,13 @@ class MusicService : MediaSessionService() {
             this, 0, intent, PendingIntent.FLAG_IMMUTABLE
         )
 
-        mediaSession = MediaSession.Builder(this, player)
+        mediaSession = MediaLibrarySession.Builder(this, player, AutoMediaLibraryCallback())
             .setSessionActivity(pendingIntent)
-            .setCallback(CustomMediaSessionCallback())
             .build()
 
-        // Restaurar la última sesión al arrancar el servicio.
-        // Esto garantiza que el reproductor tenga los MediaItems cargados
-        // desde el primer momento — el PlayerBottomBar mostrará la última
-        // canción incluso antes de que el usuario toque algo.
-        // No llamamos player.play() — solo preparamos la cola sin reproducir.
         restoreLastSession()
     }
 
-    /**
-     * Carga los MediaItems del historial en el player sin iniciar reproducción.
-     * Permite que el controller sincronice el estado (canción, cola) en cuanto
-     * se conecta, sin necesidad de que el usuario interactúe primero.
-     */
     private fun restoreLastSession() {
         serviceScope.launch {
             val history = withContext(Dispatchers.IO) {
@@ -164,30 +162,17 @@ class MusicService : MediaSessionService() {
             }
             if (songs.isEmpty()) return@launch
 
-            // Solo cargar si el player no tiene ya items (evitar sobreescribir
-            // una sesión activa si el servicio no fue destruido entre sesiones)
             if (player.mediaItemCount == 0) {
-                val mediaItems = songs.map { song ->
-                    MediaItem.Builder()
-                        .setMediaId(song.id.toString())
-                        .setUri(song.path)
-                        .setTag(song)
-                        .build()
-                }
+                val mediaItems = songs.map { it.toMediaItem() }
                 player.setMediaItems(mediaItems)
                 player.prepare()
-                // No llamar player.play() — estado inicial es pausado
             }
         }
     }
 
     private fun updateWidget() {
-        // Capturar la canción actual en Main antes de lanzar la corrutina.
         val song = player.currentMediaItem?.localConfiguration?.tag as? Song
 
-        // Cancelar cualquier update pendiente — evita que un evento anterior
-        // (e.g. onIsPlayingChanged disparado justo antes de onMediaItemTransition)
-        // sobreescriba al widget con datos de la canción ya abandonada.
         widgetUpdateJob?.cancel()
         widgetUpdateJob = serviceScope.launch {
             if (song != null) {
@@ -195,8 +180,6 @@ class MusicService : MediaSessionService() {
                     musicDao.getFavorites().firstOrNull()?.contains(song.id) ?: false
                 }
 
-                // Guard post-IO: si la canción cambió mientras esperábamos el DAO,
-                // descartar este update para no pintar información stale.
                 val stillCurrent = player.currentMediaItem?.localConfiguration?.tag as? Song
                 if (stillCurrent?.id != song.id) return@launch
 
@@ -211,10 +194,9 @@ class MusicService : MediaSessionService() {
                     durationMs     = player.duration.coerceAtLeast(0L),
                     isFavorite     = isFav,
                     isShuffleOn    = player.shuffleModeEnabled,
-                    isRepeatOn     = player.repeatMode != androidx.media3.common.Player.REPEAT_MODE_OFF
+                    isRepeatOn     = player.repeatMode != Player.REPEAT_MODE_OFF
                 )
             } else {
-                // Sin canción activa: mostrar último registro del historial (idle state)
                 val lastEntity = withContext(Dispatchers.IO) {
                     musicDao.getHistory().firstOrNull()?.firstOrNull()
                         ?.let { hist -> musicDao.getSongsByIds(listOf(hist.songId)).firstOrNull() }
@@ -248,16 +230,14 @@ class MusicService : MediaSessionService() {
                 updateWidget()
             }
             ACTION_WIDGET_REPEAT -> {
-                // Ciclar: OFF → ALL → ONE → OFF
                 player.repeatMode = when (player.repeatMode) {
-                    androidx.media3.common.Player.REPEAT_MODE_OFF -> androidx.media3.common.Player.REPEAT_MODE_ALL
-                    androidx.media3.common.Player.REPEAT_MODE_ALL -> androidx.media3.common.Player.REPEAT_MODE_ONE
-                    else -> androidx.media3.common.Player.REPEAT_MODE_OFF
+                    Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                    Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                    else -> Player.REPEAT_MODE_OFF
                 }
                 updateWidget()
             }
             ACTION_WIDGET_FAVORITE -> {
-                // Toggle favorito de la canción actual a través del DAO en IO
                 val song = player.currentMediaItem?.localConfiguration?.tag as? Song
                 if (song != null) {
                     serviceScope.launch {
@@ -282,9 +262,6 @@ class MusicService : MediaSessionService() {
 
     private fun restoreLastSessionAndPlay() {
         serviceScope.launch {
-            // restoreLastSession() es una función regular que lanza su propia corrutina.
-            // Esperamos a que el player tenga items antes de reproducir usando un delay
-            // corto y verificando el estado, o reutilizando la lógica inline.
             if (player.mediaItemCount == 0) {
                 val history = withContext(Dispatchers.IO) {
                     musicDao.getHistory().firstOrNull() ?: emptyList()
@@ -298,13 +275,7 @@ class MusicService : MediaSessionService() {
                         songEntities.find { it.id == id }?.toDomainModel()
                     }
                     if (songs.isNotEmpty()) {
-                        val mediaItems = songs.map { song ->
-                            MediaItem.Builder()
-                                .setMediaId(song.id.toString())
-                                .setUri(song.path)
-                                .setTag(song)
-                                .build()
-                        }
+                        val mediaItems = songs.map { it.toMediaItem() }
                         player.setMediaItems(mediaItems)
                         player.prepare()
                     }
@@ -340,29 +311,6 @@ class MusicService : MediaSessionService() {
         }
     }
 
-    /**
-     * Fade out dedicado al sleep timer: baja el volumen durante [SLEEP_FADE_DURATION_MS]
-     * y luego pausa la reproducción y restaura el volumen a 1.0f.
-     * Es independiente del crossfade entre canciones.
-     */
-    private fun performSleepFadeOut() {
-        val startVolume = player.volume
-        val steps = 60  // 1 paso cada 500ms → 30 segundos total
-        val interval = SLEEP_FADE_DURATION_MS / steps
-
-        for (i in 0..steps) {
-            handler.postDelayed({
-                val newVolume = startVolume * (1.0f - i.toFloat() / steps)
-                player.volume = newVolume.coerceAtLeast(0f)
-                if (i == steps) {
-                    player.pause()
-                    // Restaurar volumen para que la próxima reproducción no empiece en silencio
-                    handler.postDelayed({ player.volume = 1.0f }, 500)
-                }
-            }, i * interval)
-        }
-    }
-
     private fun performFadeIn() {
         isFading = true
         player.volume = 0f
@@ -377,10 +325,121 @@ class MusicService : MediaSessionService() {
         }
     }
 
-    private inner class CustomMediaSessionCallback : MediaSession.Callback {
+    private inner class AutoMediaLibraryCallback : MediaLibrarySession.Callback {
+
+        override fun onGetLibraryRoot(
+            session: MediaLibrarySession,
+            browser: ControllerInfo,
+            params: MediaLibraryService.LibraryParams?
+        ): ListenableFuture<LibraryResult<MediaItem>> {
+            val rootItem = MediaItem.Builder()
+                .setMediaId(ROOT_ID)
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setTitle("Monkey Music")
+                        .setIsBrowsable(true)
+                        .setIsPlayable(false)
+                        .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_MIXED)
+                        .build()
+                )
+                .build()
+            return Futures.immediateFuture(LibraryResult.ofItem(rootItem, params))
+        }
+
+        override fun onGetChildren(
+            session: MediaLibrarySession,
+            browser: ControllerInfo,
+            parentId: String,
+            page: Int,
+            pageSize: Int,
+            params: MediaLibraryService.LibraryParams?
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
+            val items = when {
+                parentId == ROOT_ID -> buildRootChildren()
+                parentId == SONGS_ID -> buildSongsChildren()
+                parentId == FAVORITES_ID -> buildFavoritesChildren()
+                parentId == PLAYLISTS_ID -> buildPlaylistsChildren()
+                parentId.startsWith(PLAYLIST_PREFIX) -> {
+                    val playlistId = parentId.removePrefix(PLAYLIST_PREFIX).toLongOrNull()
+                    if (playlistId != null) buildPlaylistSongsChildren(playlistId)
+                    else emptyList()
+                }
+                else -> emptyList()
+            }
+            return Futures.immediateFuture(LibraryResult.ofItemList(items, params))
+        }
+
+        override fun onGetItem(
+            session: MediaLibrarySession,
+            browser: ControllerInfo,
+            mediaId: String
+        ): ListenableFuture<LibraryResult<MediaItem>> {
+            val song = runCatching {
+                runBlocking(Dispatchers.IO) {
+                    musicDao.getSongsByIds(listOf(mediaId.toLong())).firstOrNull()?.toDomainModel()
+                }
+            }.getOrNull()
+
+            return if (song != null) {
+                Futures.immediateFuture(LibraryResult.ofItem(song.toMediaItem(), null))
+            } else {
+                Futures.immediateFuture(LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE))
+            }
+        }
+
+        private fun buildRootChildren(): List<MediaItem> = listOf(
+            buildBrowsableItem(SONGS_ID, "Canciones", MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS),
+            buildBrowsableItem(FAVORITES_ID, "Favoritos", MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS),
+            buildBrowsableItem(PLAYLISTS_ID, "Playlists", MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS)
+        )
+
+        private fun buildSongsChildren(): List<MediaItem> =
+            runBlocking(Dispatchers.IO) {
+                musicDao.getAllSongs().map { it.toDomainModel().toMediaItem() }
+            }
+
+        private fun buildFavoritesChildren(): List<MediaItem> =
+            runBlocking(Dispatchers.IO) {
+                val favIds = musicDao.getAllFavoriteIds().toSet()
+                musicDao.getAllSongs()
+                    .filter { it.id in favIds }
+                    .map { it.toDomainModel().toMediaItem() }
+            }
+
+        private fun buildPlaylistsChildren(): List<MediaItem> =
+            runBlocking(Dispatchers.IO) {
+                musicDao.getAllPlaylists().map { playlist ->
+                    buildBrowsableItem(
+                        "$PLAYLIST_PREFIX${playlist.id}",
+                        playlist.name,
+                        MediaMetadata.MEDIA_TYPE_PLAYLIST
+                    )
+                }
+            }
+
+        private fun buildPlaylistSongsChildren(playlistId: Long): List<MediaItem> =
+            runBlocking(Dispatchers.IO) {
+                val songIds = musicDao.getSongsInPlaylist(playlistId)
+                if (songIds.isEmpty()) return@runBlocking emptyList<MediaItem>()
+                musicDao.getSongsByIds(songIds).map { it.toDomainModel().toMediaItem() }
+            }
+
+        private fun buildBrowsableItem(id: String, title: String, mediaType: Int): MediaItem =
+            MediaItem.Builder()
+                .setMediaId(id)
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setTitle(title)
+                        .setIsBrowsable(true)
+                        .setIsPlayable(false)
+                        .setMediaType(mediaType)
+                        .build()
+                )
+                .build()
+
         override fun onConnect(
             session: MediaSession,
-            controller: MediaSession.ControllerInfo
+            controller: ControllerInfo
         ): MediaSession.ConnectionResult {
             val connectionResult = super.onConnect(session, controller)
             val availableSessionCommands = connectionResult.availableSessionCommands.buildUpon()
@@ -388,7 +447,6 @@ class MusicService : MediaSessionService() {
             availableSessionCommands.add(SessionCommand(COMMAND_SET_CROSSFADE_DURATION, Bundle.EMPTY))
             availableSessionCommands.add(SessionCommand(COMMAND_SET_EQUALIZER_BAND, Bundle.EMPTY))
             availableSessionCommands.add(SessionCommand(COMMAND_GET_EQUALIZER_DATA, Bundle.EMPTY))
-            availableSessionCommands.add(SessionCommand(COMMAND_FADE_AND_PAUSE, Bundle.EMPTY))
             return MediaSession.ConnectionResult.accept(
                 availableSessionCommands.build(),
                 connectionResult.availablePlayerCommands
@@ -397,7 +455,7 @@ class MusicService : MediaSessionService() {
 
         override fun onCustomCommand(
             session: MediaSession,
-            controller: MediaSession.ControllerInfo,
+            controller: ControllerInfo,
             customCommand: SessionCommand,
             args: Bundle
         ): ListenableFuture<SessionResult> {
@@ -418,11 +476,6 @@ class MusicService : MediaSessionService() {
                     val band = args.getShort("band", -1)
                     val level = args.getShort("level", 0)
                     if (band >= 0) equalizer?.setBandLevel(band, level)
-                    return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
-                }
-                COMMAND_FADE_AND_PAUSE -> {
-                    if (player.isPlaying) performSleepFadeOut()
-                    else player.pause()
                     return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                 }
                 COMMAND_GET_EQUALIZER_DATA -> {
@@ -454,7 +507,7 @@ class MusicService : MediaSessionService() {
         }
     }
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {
+    override fun onGetSession(controllerInfo: ControllerInfo): MediaLibrarySession? {
         return mediaSession
     }
 
@@ -478,6 +531,23 @@ class MusicService : MediaSessionService() {
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
+
+    private fun Song.toMediaItem(): MediaItem = MediaItem.Builder()
+        .setMediaId(id.toString())
+        .setUri(path)
+        .setTag(this)
+        .setMediaMetadata(
+            MediaMetadata.Builder()
+                .setTitle(title)
+                .setArtist(artist)
+                .setAlbumTitle(album)
+                .setArtworkUri(android.net.Uri.parse(albumArtUri))
+                .setIsBrowsable(false)
+                .setIsPlayable(true)
+                .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+                .build()
+        )
+        .build()
 
     private fun SongEntity.toDomainModel() = Song(
         id = id,

@@ -6,7 +6,7 @@ plugins {
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.google.services)
-    alias(libs.plugins.firebase.crashlytics)
+    alias(libs.plugins.crashlytics)
 }
 
 android {
@@ -100,11 +100,6 @@ dependencies {
     
     implementation("com.jakewharton.timber:timber:5.0.1")
 
-    // Firebase — BOM gestiona versiones de todas las librerías Firebase
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.crashlytics)
-    implementation(libs.firebase.analytics)
-
     testImplementation(libs.junit)
     testImplementation("org.mockito.kotlin:mockito-kotlin:3.2.0")
     testImplementation("org.mockito:mockito-core:3.9.0")
@@ -127,4 +122,9 @@ dependencies {
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.kotlinx.serialization.json)
+
+    // Firebase
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.analytics)
 }

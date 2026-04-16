@@ -4,6 +4,8 @@ import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.windowsizeclass.WindowSizeClass
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -45,6 +47,7 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun monkeymusicplayerTheme(
+    windowSizeClass: WindowSizeClass? = null,
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
@@ -67,9 +70,17 @@ fun monkeymusicplayerTheme(
         }
     }
 
+    // Elegir tipografía según el tamaño de ventana.
+    // Si no se provee windowSizeClass (previews, tests), usar Compact.
+    val typography = if (windowSizeClass != null) {
+        adaptiveTypography(windowSizeClass)
+    } else {
+        CompactTypography
+    }
+
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = typography,
         content = content
     )
 }

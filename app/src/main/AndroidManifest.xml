@@ -48,11 +48,19 @@
             android:name=".ui.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.MonkeyPlayer.Splash">
+            android:theme="@style/Theme.MonkeyPlayer.Splash"
+            android:resizeableActivity="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Tamaño mínimo recomendado para Android Automotive OS nativo -->
+            <layout
+                android:defaultWidth="840dp"
+                android:defaultHeight="480dp"
+                android:minWidth="400dp"
+                android:minHeight="300dp" />
         </activity>
 
         <!-- Home Screen Widgets -->

@@ -85,7 +85,7 @@ class MainActivity : AppCompatActivity(), ImageLoaderFactory {
             // Liberar el splash del sistema en el primer frame de Compose
             SideEffect { splashDone = true }
 
-            monkeymusicplayerTheme {
+            monkeymusicplayerTheme(windowSizeClass = windowSizeClass) {
                 PermissionHandler(
                     requiredPermissions = permissions,
                     onExit = { finish() },

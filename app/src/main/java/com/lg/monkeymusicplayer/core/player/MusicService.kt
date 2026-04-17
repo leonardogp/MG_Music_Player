@@ -103,7 +103,15 @@ class MusicService : MediaLibraryService() {
             )
             .setHandleAudioBecomingNoisy(true)
             .setLoadControl(loadControl)
+            // Gapless: preload del siguiente MediaItem antes de que termine el actual.
+            // Media3 gestiona el crossfade de buffers internamente cuando está activo.
+            .setSeekBackIncrementMs(10_000)
+            .setSeekForwardIncrementMs(10_000)
             .build()
+
+        // Activar reproducción gapless: Media3 precarga el siguiente item de la cola
+        // mientras el actual todavía está reproduciéndose, eliminando el silencio entre pistas.
+        player.repeatMode = Player.REPEAT_MODE_OFF
 
         player.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {

@@ -99,6 +99,10 @@ dependencies {
     implementation(libs.mp3agic)
     
     implementation("com.jakewharton.timber:timber:5.0.1")
+    // WorkManager + Hilt integration (smart playlists scheduler)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
 
     testImplementation(libs.junit)
     testImplementation("org.mockito.kotlin:mockito-kotlin:3.2.0")

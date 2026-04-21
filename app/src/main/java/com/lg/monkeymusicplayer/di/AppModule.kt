@@ -11,6 +11,13 @@ import com.lg.monkeymusicplayer.core.smart.SmartEngine
 import com.lg.monkeymusicplayer.data.repository.BackupRepository
 import com.lg.monkeymusicplayer.data.repository.MusicRepository
 import com.lg.monkeymusicplayer.data.repository.SmartRepository
+import com.lg.monkeymusicplayer.core.billing.BillingManager
+import com.lg.monkeymusicplayer.core.cast.CastManager
+import com.lg.monkeymusicplayer.data.repository.CloudSyncRepository
+import com.lg.monkeymusicplayer.data.repository.CloudBackend
+import com.lg.monkeymusicplayer.data.repository.LocalFileBackend
+import com.lg.monkeymusicplayer.core.feature.FeatureGate
+import com.lg.monkeymusicplayer.core.queue.QueueManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -69,5 +76,42 @@ object AppModule {
     @Singleton
     fun provideExcludedFoldersRepository(@ApplicationContext context: Context): ExcludedFoldersRepository {
         return ExcludedFoldersRepository(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideCastManager(@ApplicationContext context: Context): CastManager {
+        return CastManager(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideFeatureGate(@ApplicationContext context: Context): FeatureGate {
+        return FeatureGate(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideQueueManager(): QueueManager {
+        return QueueManager()
+    }
+
+    @Provides
+    @Singleton
+    fun provideBillingManager(
+        @ApplicationContext context: Context,
+        featureGate: com.lg.monkeymusicplayer.core.feature.FeatureGate
+    ): BillingManager {
+        return BillingManager(context, featureGate)
+    }
+
+    /**
+     * Backend de nube activo. Cambiar [LocalFileBackend] por Firebase/Drive
+     * sin tocar [CloudSyncRepository].
+     */
+    @Provides
+    @Singleton
+    fun provideCloudBackend(localFileBackend: LocalFileBackend): CloudBackend {
+        return localFileBackend
     }
 }

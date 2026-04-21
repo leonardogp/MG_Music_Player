@@ -181,4 +181,43 @@
     <string name="sort_artist">कलाकार</string>
     <string name="sort_date_added">जोड़ने की तिथि</string>
     <string name="sort_name">नाम</string>
+
+    <!-- Cast, Cloud Sync & Queues -->
+    <string name="cast_button_desc">डिवाइस पर कास्ट करें</string>
+    <string name="cast_connecting">कनेक्ट हो रहा है…</string>
+    <string name="cast_connected">%s पर कास्ट हो रहा है</string>
+    <string name="cast_disconnected">कास्ट समाप्त</string>
+    <string name="cloud_sync_menu_item">क्लाउड सिंक</string>
+    <string name="cloud_sync_upload">बैकअप अपलोड करें</string>
+    <string name="cloud_sync_download">क्लाउड से पुनर्स्थापित करें</string>
+    <string name="cloud_sync_upload_ok">बैकअप सफलतापूर्वक अपलोड हुआ</string>
+    <string name="cloud_sync_download_ok">क्लाउड से बैकअप पुनर्स्थापित हुआ</string>
+    <string name="cloud_sync_no_backup">कोई क्लाउड बैकअप नहीं मिला</string>
+    <string name="cloud_sync_subtitle">हर 12 घंटे में स्वचालित सिंक</string>
+    <string name="queues_title">मेरी कतारें</string>
+    <string name="queues_menu_item">कतारें</string>
+    <string name="queue_new">नई कतार</string>
+    <string name="queue_name_hint">कतार का नाम…</string>
+    <string name="queue_delete">कतार हटाएँ</string>
+    <string name="queue_switch">इस कतार पर जाएँ</string>
+    <string name="queue_empty">कतार खाली करें</string>
+    <string name="queue_songs_count">%d गाने</string>
+    <string name="queue_active_badge">सक्रिय</string>
+
+    <!-- PRO / Billing -->
+    <string name="pro_already_pro">आपके पास पहले से PRO है</string>
+    <string name="pro_billing_unavailable">Google Play उपलब्ध नहीं है</string>
+    <string name="pro_feature_backup">बैकअप और पुनर्स्थापना</string>
+    <string name="pro_feature_crossfade">क्रॉसफेड</string>
+    <string name="pro_feature_eq_presets">EQ प्रीसेट</string>
+    <string name="pro_feature_replay_gain">ReplayGain</string>
+    <string name="pro_feature_smart_playlists">स्मार्ट प्लेलिस्ट</string>
+    <string name="pro_feature_stats">सुनने के आँकड़े</string>
+    <string name="pro_feature_visualizer">ऑडियो विज़ुअलाइज़र</string>
+    <string name="pro_menu_item">PRO में अपग्रेड करें</string>
+    <string name="pro_upgrade_cta">PRO प्राप्त करें</string>
+    <string name="pro_upgrade_loading">लोड हो रहा है…</string>
+    <string name="pro_upgrade_subtitle">पूरा अनुभव अनलॉक करें</string>
+    <string name="pro_upgrade_success">PRO में आपका स्वागत है!</string>
+    <string name="pro_upgrade_title">Monkey Music PRO</string>
 </resources>

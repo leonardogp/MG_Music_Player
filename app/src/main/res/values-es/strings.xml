@@ -196,4 +196,43 @@
 
     <!-- Errors -->
     <string name="error_unknown">Error desconocido</string>
+
+    <!-- Cast, Cloud Sync & Queues -->
+    <string name="cast_button_desc">Transmitir a dispositivo</string>
+    <string name="cast_connecting">Conectando…</string>
+    <string name="cast_connected">Transmitiendo en %s</string>
+    <string name="cast_disconnected">Transmisión finalizada</string>
+    <string name="cloud_sync_menu_item">Sincronización en la nube</string>
+    <string name="cloud_sync_upload">Subir copia de seguridad</string>
+    <string name="cloud_sync_download">Restaurar desde la nube</string>
+    <string name="cloud_sync_upload_ok">Copia de seguridad subida correctamente</string>
+    <string name="cloud_sync_download_ok">Copia de seguridad restaurada desde la nube</string>
+    <string name="cloud_sync_no_backup">No se encontró copia en la nube</string>
+    <string name="cloud_sync_subtitle">Sincronización automática cada 12 horas</string>
+    <string name="queues_title">Mis colas</string>
+    <string name="queues_menu_item">Colas</string>
+    <string name="queue_new">Nueva cola</string>
+    <string name="queue_name_hint">Nombre de la cola…</string>
+    <string name="queue_delete">Eliminar cola</string>
+    <string name="queue_switch">Cambiar a esta cola</string>
+    <string name="queue_empty">Vaciar cola</string>
+    <string name="queue_songs_count">%d canciones</string>
+    <string name="queue_active_badge">Activa</string>
+
+    <!-- PRO / Billing -->
+    <string name="pro_already_pro">Ya tienes PRO</string>
+    <string name="pro_billing_unavailable">Google Play no disponible</string>
+    <string name="pro_feature_backup">Copia de seguridad</string>
+    <string name="pro_feature_crossfade">Crossfade</string>
+    <string name="pro_feature_eq_presets">Presets de EQ</string>
+    <string name="pro_feature_replay_gain">ReplayGain</string>
+    <string name="pro_feature_smart_playlists">Listas inteligentes</string>
+    <string name="pro_feature_stats">Estadísticas</string>
+    <string name="pro_feature_visualizer">Visualizador de audio</string>
+    <string name="pro_menu_item">Actualizar a PRO</string>
+    <string name="pro_upgrade_cta">Obtener PRO</string>
+    <string name="pro_upgrade_loading">Cargando…</string>
+    <string name="pro_upgrade_subtitle">Desbloquea la experiencia completa</string>
+    <string name="pro_upgrade_success">¡Bienvenido a PRO!</string>
+    <string name="pro_upgrade_title">Monkey Music PRO</string>
 </resources>

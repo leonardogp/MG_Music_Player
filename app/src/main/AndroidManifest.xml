@@ -77,6 +77,11 @@
         </activity>
 
         <!-- Home Screen Widgets -->
+        <!-- Google Cast SDK: CastOptionsProvider configura el App ID y notificaciones -->
+        <meta-data
+            android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
+            android:value="com.lg.monkeymusicplayer.core.cast.CastOptionsProvider" />
+
         <receiver android:name=".ui.widget.MusicWidget2x1" android:exported="false" android:label="Monkey Player (2x1)">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/music_widget_2x1_info" />

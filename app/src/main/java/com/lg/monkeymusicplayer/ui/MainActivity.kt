@@ -22,6 +22,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.media3.common.util.UnstableApi
 import coil.ImageLoader
 import coil.ImageLoaderFactory
+import com.lg.monkeymusicplayer.core.billing.BillingManager
+import com.lg.monkeymusicplayer.core.cast.CastManager
 import com.lg.monkeymusicplayer.core.player.MusicPlayerManager
 import com.lg.monkeymusicplayer.core.utils.SongCoverFetcher
 import com.lg.monkeymusicplayer.data.database.MusicDatabase
@@ -36,6 +38,12 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : AppCompatActivity(), ImageLoaderFactory {
 
     private val viewModel: MusicViewModel by viewModels()
+
+    @javax.inject.Inject
+    lateinit var castManager: CastManager
+
+    @javax.inject.Inject
+    lateinit var billingManager: BillingManager
 
     // ── PUNTO 5: launcher para la pantalla de Settings de MANAGE_EXTERNAL_STORAGE ──
     // No se puede pedir con requestPermissions() normal — Android exige abrir
@@ -70,6 +78,9 @@ class MainActivity : AppCompatActivity(), ImageLoaderFactory {
         // startService() garantiza que el servicio esté activo ANTES de que
         // MusicPlayerManager (inyectado en el ViewModel) intente conectarse.
         startService(Intent(this, com.lg.monkeymusicplayer.core.player.MusicService::class.java))
+        // Inicializar Cast SDK — requiere hilo principal y contexto Activity
+        castManager.initialize()
+        billingManager.connect()
 
         // Informar al ViewModel del estado actual del permiso al arrancar
         viewModel.onManageStoragePermissionResult(hasManageStoragePermission())
@@ -126,5 +137,11 @@ class MainActivity : AppCompatActivity(), ImageLoaderFactory {
             }
             manageStorageLauncher.launch(intent)
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        castManager.release()
+        billingManager.disconnect()
     }
 }

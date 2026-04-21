@@ -1,152 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Monkey Music Player</string>
-    <string name="settings_title">Einstellungen</string>
-    <string name="back">Zurück</string>
-    <string name="scan_music">Musik scannen</string>
-    <string name="scanning_progress">Scannen: %1$d / %2$d</string>
-    <string name="timer_active">Timer (%s)</string>
-    <string name="sleep_timer">Sleep-Timer</string>
-    <string name="equalizer">Equalizer</string>
-    <string name="language">Sprache</string>
-    <string name="tab_main">Start</string>
-    <string name="tab_songs">Titel</string>
-    <string name="tab_genres">Genres</string>
-    <string name="tab_artists">Künstler</string>
-    <string name="tab_albums">Alben</string>
-    <string name="tab_folders">Ordner</string>
-    <string name="tab_playlists">Playlists</string>
-    <string name="tab_favorites">Favoriten</string>
-    <string name="tab_history">Verlauf</string>
-    <string name="search_genres">Genres suchen…</string>
-    <string name="search_artists">Künstler suchen…</string>
-    <string name="search_albums">Alben suchen…</string>
-    <string name="search_folders">Ordner suchen…</string>
-    <string name="search_playlists">Playlists suchen…</string>
-    <string name="search_songs">Titel suchen…</string>
-    <string name="close_search">Suche schließen</string>
-    <string name="playlist">Playlist</string>
-    <string name="search">Suche</string>
-    <string name="sort">Sortieren</string>
-    <string name="no_favorites_yet">Noch keine Favoriten vorhanden</string>
+    <string name="app_slogan">Dein Musik-Erlebnis, verfeinert</string>
+
+    <string name="action_add_to_playlist">Zu Playlist hinzufügen</string>
+    <string name="action_add_to_queue">In Warteschlange einreihen</string>
+    <string name="action_clear_queue">Warteschlange leeren</string>
+    <string name="action_delete">Löschen</string>
+    <string name="action_details">Details</string>
+    <string name="action_edit">Bearbeiten</string>
+    <string name="action_play_next">Als nächstes spielen</string>
+    <string name="action_remove_from_playlist">Aus Playlist entfernen</string>
+    <string name="action_rename">Umbenennen</string>
+    <string name="action_share">Teilen</string>
+    <string name="action_sort">Sortieren</string>
+
+    <string name="album_art_desc">Album-Cover</string>
+    <string name="albums">Alben</string>
+    <string name="all_songs">Alle Songs</string>
+    <string name="artists">Künstler</string>
+    <string name="categories">Kategorien</string>
     <string name="favorites">Favoriten</string>
-    <string name="recent">Zuletzt gehört</string>
-    <string name="previous">Vorheriger</string>
-    <string name="play_pause">Wiedergabe/Pause</string>
-    <string name="next">Nächster</string>
-    <string name="next_in_queue">Nächster in der Warteschlange</string>
-    <string name="close">Schließen</string>
-    <string name="view_queue">Warteschlange anzeigen</string>
-    <string name="shuffle">Zufallswiedergabe</string>
-    <string name="repeat">Wiederholen</string>
-    <string name="add_to_playlist">Zur Playlist hinzufügen</string>
-    <string name="seek_back_10">10s zurück</string>
-    <string name="seek_forward_10">10s vor</string>
-    <string name="skip_next">Nächster Titel</string>
-    <string name="options">Optionen</string>
-    <string name="remove_from_favorites">Aus Favoriten entfernen</string>
-    <string name="add_to_favorites">Zu Favoriten hinzufügen</string>
-    <string name="add_to_queue">Zur Warteschlange hinzufügen</string>
-    <string name="remove_from_playlist">Aus Playlist entfernen</string>
-    <string name="edit_tags">Tags bearbeiten</string>
-    <string name="no_songs">Keine Titel</string>
-    <string name="no_items">Keine Elemente</string>
-    <string name="songs_count">%d Titel</string>
-    <string name="create_new_playlist">Neue Playlist erstellen</string>
-    <string name="no_playlists">Keine Playlists erstellt</string>
-    <string name="delete_playlist">Playlist löschen</string>
-    <string name="playlist_options">Playlist-Optionen</string>
-    <string name="new_playlist">Neue Playlist</string>
-    <string name="playlist_name">Playlist-Name</string>
-    <string name="create">Erstellen</string>
-    <string name="cancel">Abbrechen</string>
-    <string name="title">Titel</string>
-    <string name="artist">Künstler</string>
-    <string name="album">Album</string>
-    <string name="genre">Genre</string>
-    <string name="save">Speichern</string>
-    <string name="select_sleep_timer">Wähle die Minuten bis zum Stopp:</string>
-    <string name="disabled">Deaktiviert</string>
-    <string name="minutes">%d Minuten</string>
-    <string name="unknown">Unbekannt</string>
-    <string name="unknown_artist">Unbekannter Künstler</string>
-    <string name="unknown_album">Unbekanntes Album</string>
-    <string name="no_genre">Kein Genre</string>
-    <string name="root">Root</string>
-    <string name="system_default">Systemstandard</string>
+    <string name="folders">Ordner</string>
+    <string name="genres">Genres</string>
+    <string name="playlists">Wiedergabelisten</string>
+    <string name="recent">Zuletzt gespielt</string>
+    <string name="search_hint">Suchen nach Songs, Alben…</string>
+    <string name="songs">Songs</string>
 
-    <!-- Greetings -->
-    <string name="greeting_morning">Guten Morgen</string>
-    <string name="greeting_afternoon">Guten Tag</string>
-    <string name="greeting_evening">Guten Abend</string>
+    <string name="dialog_cancel">Abbrechen</string>
+    <string name="dialog_confirm_delete">Möchtest du \u0027%s\u0027 wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.</string>
+    <string name="dialog_delete_title">Element löschen</string>
+    <string name="dialog_ok">OK</string>
+    <string name="dialog_save">Speichern</string>
 
-    <!-- Player states -->
-    <string name="player_idle_title">Keine Wiedergabe</string>
-    <string name="player_idle_subtitle">Wählen Sie einen Titel aus</string>
+    <string name="empty_albums">Keine Alben gefunden</string>
+    <string name="empty_artists">Keine Künstler gefunden</string>
+    <string name="empty_favorites">Noch keine Favoriten. Tippe auf das Herz bei einem Song!</string>
+    <string name="empty_folder">Dieser Ordner ist leer</string>
+    <string name="empty_genres">Keine Genres gefunden</string>
+    <string name="empty_playlist">Diese Playlist ist leer</string>
+    <string name="empty_recent">Kein aktueller Verlauf</string>
+    <string name="empty_search">Keine Ergebnisse für \u0027%s\u0027</string>
+    <string name="empty_songs">Keine Musik auf dem Gerät gefunden</string>
 
-    <!-- Tag editor feedback -->
-    <string name="tags_saved_ok">Tags erfolgreich gespeichert!</string>
-    <string name="tags_save_error">Fehler beim Speichern der Tags: %s</string>
-    <string name="tags_permission_needed">Speicherberechtigung zum Bearbeiten von Tags erforderlich.</string>
-    <string name="tags_permission_grant">Gewähren</string>
-    <string name="tags_saving">Speichern\u2026</string>
-    <string name="tags_edit_current_song">Tags bearbeiten</string>
+    <string name="eq_bands">%d Hz</string>
+    <string name="eq_bass_boost">Bass Boost</string>
+    <string name="eq_custom">Benutzerdefiniert</string>
+    <string name="eq_enabled">Equalizer aktiviert</string>
+    <string name="eq_flat">Neutral</string>
+    <string name="eq_loudness">Loudness</string>
+    <string name="eq_preset_dance">Dance</string>
+    <string name="eq_preset_folk">Folk</string>
+    <string name="eq_preset_heavy_metal">Heavy Metal</string>
+    <string name="eq_preset_hip_hop">Hip Hop</string>
+    <string name="eq_preset_jazz">Jazz</string>
+    <string name="eq_preset_pop">Pop</string>
+    <string name="eq_preset_rock">Rock</string>
+    <string name="eq_title">Equalizer</string>
+    <string name="eq_virtualizer">Virtualizer</string>
 
-    <!-- Storage permission -->
-    <string name="manage_storage_permission_title">Speicherzugriff erforderlich</string>
-    <string name="manage_storage_permission_body">Um Song-Tags zu bearbeiten, erlauben Sie dieser App in den Einstellungen, alle Dateien zu verwalten.</string>
-    <string name="manage_storage_open_settings">Einstellungen öffnen</string>
+    <string name="library_title">Mediathek</string>
+    <string name="menu_equalizer">Equalizer</string>
+    <string name="menu_settings">Einstellungen</string>
+    <string name="menu_sleep_timer">Sleep Timer</string>
+    <string name="menu_theme">Erscheinungsbild</string>
 
-    <!-- Permission screens -->
-    <string name="permission_rationale_title">Zugriff erforderlich</string>
-    <string name="permission_rationale_body">Damit die App korrekt funktioniert, akzeptieren Sie bitte die folgenden Berechtigungen:</string>
-    <string name="permission_denied_title">Berechtigungen deaktiviert</string>
-    <string name="permission_denied_body">Sie haben wichtige Berechtigungen deaktiviert. Bitte aktivieren Sie diese in den Einstellungen, um fortzufahren:</string>
-    <string name="permission_retry">Verstanden, erneut versuchen</string>
-    <string name="permission_open_settings">Einstellungen öffnen</string>
-    <string name="exit_app">App beenden</string>
-    <string name="permission_label_audio">Musik- und Audiozugriff</string>
-    <string name="permission_label_notifications">Wiedergabebenachrichtigungen</string>
-    <string name="permission_label_storage">Speicherzugriff</string>
-    <string name="permission_info_desc">Berechtigungsinformationen</string>
-    <string name="permission_required_desc">Berechtigung erforderlich</string>
-    <string name="permission_denied_desc">Berechtigungsfehler</string>
-    <string name="permission_denied_item_desc">Berechtigung verweigert</string>
+    <string name="now_playing">Aktuelle Wiedergabe</string>
+    <string name="playback_error">Fehler bei der Wiedergabe</string>
+    <string name="playing_from">Wiedergabe von: %s</string>
 
-    <!-- Equalizer -->
-    <string name="eq_high_fidelity_mode">High-Fidelity-Modus</string>
-    <string name="eq_save_preset">Voreinstellung speichern</string>
-    <string name="eq_preset_name">Name der Voreinstellung</string>
-    <string name="eq_preset_name_hint">Meine Voreinstellung…</string>
-    <string name="eq_preset_saved">Voreinstellung gespeichert!</string>
-    <string name="eq_preset_deleted">Voreinstellung gelöscht</string>
-    <string name="eq_delete_preset">Voreinstellung löschen</string>
-    <string name="eq_my_presets">Meine Voreinstellungen</string>
-    <string name="eq_built_in">Integriert</string>
+    <string name="playlist_create">Neue Playlist erstellen</string>
+    <string name="playlist_delete">Playlist löschen</string>
+    <string name="playlist_exists">Eine Playlist mit diesem Namen existiert bereits</string>
+    <string name="playlist_name_hint">Name der Playlist</string>
+    <string name="playlist_rename">Playlist umbenennen</string>
+    <string name="playlist_songs_count">%d Songs</string>
+    <string name="playlist_updated">Playlist aktualisiert</string>
 
-    <!-- Lyrics -->
-    <string name="lyrics_searching">Suche nach Songtexten…</string>
-    <string name="lyrics_not_found">Keine Songtexte gefunden</string>
-    <string name="lyrics_source_local">Lokal (.lrc)</string>
-    <string name="lyrics_source_online">Online</string>
-    <string name="lyrics_tab">Songtexte</string>
-    <string name="queue_tab">Warteschlange</string>
+    <string name="settings_accent_color">Akzentfarbe</string>
+    <string name="settings_appearance_title">Erscheinungsbild</string>
+    <string name="settings_audio_title">Audio</string>
+    <string name="settings_crossfade">Crossfade (Sekunden)</string>
+    <string name="settings_crossfade_desc">Sanfter Übergang zwischen Songs</string>
+    <string name="settings_dark_mode">Dunkles Design</string>
+    <string name="settings_dynamic_colors">Dynamische Farben</string>
+    <string name="settings_dynamic_colors_desc">Systemfarben verwenden (Android 12+)</string>
+    <string name="settings_exclude_folders">Ordner ausschließen</string>
+    <string name="settings_exclude_folders_desc">Wähle Ordner aus, die nicht gescannt werden sollen</string>
+    <string name="settings_language">Sprache</string>
+    <string name="settings_library_title">Mediathek</string>
+    <string name="settings_replay_gain">ReplayGain</string>
+    <string name="settings_replay_gain_desc">Lautstärke über alle Songs normalisieren</string>
+    <string name="settings_rescan">Mediathek neu scannen</string>
+    <string name="settings_version">Version %s</string>
 
-    <!-- Excluded Folders -->
-    <string name="excluded_folders">Ausgeschlossene Ordner</string>
-    <string name="excluded_folders_subtitle">Beim Scannen übersprungen</string>
-    <string name="excluded_folders_desc">Die hier aufgeführten Ordner werden beim Scannen Ihrer Musikbibliothek übersprungen. Änderungen werden beim nächsten Scan wirksam.</string>
-    <string name="excluded_folders_empty">Keine Ordner ausgeschlossen</string>
-    <string name="exclude_whatsapp">WhatsApp-Audio ausschließen</string>
-    <string name="exclude_whatsapp_desc">WhatsApp- und WhatsApp Business-Audiodateien überspringen</string>
-    <string name="add_excluded_folder">Ordnerpfad hinzufügen…</string>
-    <string name="excluded_folder_hint">/storage/emulated/0/Recordings</string>
-    <string name="excluded_folder_invalid">Geben Sie einen gültigen absoluten Pfad ein, der mit / beginnt</string>
-    <string name="rescan_required">Bibliothek neu scannen, um Änderungen zu übernehmen</string>
+    <string name="sleep_timer_off">Aus</string>
+    <string name="sleep_timer_set">Sleep Timer eingestellt auf %d Minuten</string>
+    <string name="sleep_timer_title">Sleep Timer</string>
 
-    <!-- Sort Order -->
-    <string name="sort_name">Name</string>
-    <string name="sort_artist">Künstler</string>
     <string name="sort_album">Album</string>
+    <string name="sort_artist">Künstler</string>
+    <string name="sort_duration">Dauer</string>
+    <string name="sort_title">Titel</string>
+    <string name="sort_year">Jahr</string>
     <string name="sort_date_added">Hinzufügedatum</string>
 
     <string name="backup_description">Exportiere deine Favoriten, Wiedergabelisten, EQ-Presets und Hörstats in eine Datei. Stelle sie jederzeit auf jedem Gerät wieder her.</string>
@@ -187,4 +144,43 @@
     <string name="time_unit_d_h">%dT %dh</string>
     <string name="time_unit_h_m">%dh %dMin</string>
     <string name="time_unit_m">%dMin</string>
+
+    <!-- Cast, Cloud Sync &amp; Queues -->
+    <string name="cast_button_desc">Auf Gerät streamen</string>
+    <string name="cast_connecting">Verbindung wird hergestellt…</string>
+    <string name="cast_connected">Wird auf %s gestreamt</string>
+    <string name="cast_disconnected">Streaming beendet</string>
+    <string name="cloud_sync_menu_item">Cloud-Sync</string>
+    <string name="cloud_sync_upload">Backup hochladen</string>
+    <string name="cloud_sync_download">Aus Cloud wiederherstellen</string>
+    <string name="cloud_sync_upload_ok">Backup erfolgreich hochgeladen</string>
+    <string name="cloud_sync_download_ok">Backup aus Cloud wiederhergestellt</string>
+    <string name="cloud_sync_no_backup">Kein Cloud-Backup gefunden</string>
+    <string name="cloud_sync_subtitle">Automatische Synchronisierung alle 12 Stunden</string>
+    <string name="queues_title">Meine Warteschlangen</string>
+    <string name="queues_menu_item">Warteschlangen</string>
+    <string name="queue_new">Neue Warteschlange</string>
+    <string name="queue_name_hint">Name der Warteschlange…</string>
+    <string name="queue_delete">Warteschlange löschen</string>
+    <string name="queue_switch">Zu Warteschlange wechseln</string>
+    <string name="queue_empty">Warteschlange leeren</string>
+    <string name="queue_songs_count">%d Songs</string>
+    <string name="queue_active_badge">Aktiv</string>
+
+    <!-- PRO / Billing -->
+    <string name="pro_already_pro">Du hast bereits PRO</string>
+    <string name="pro_billing_unavailable">Google Play nicht verfügbar</string>
+    <string name="pro_feature_backup">Backup &amp; Wiederherstellen</string>
+    <string name="pro_feature_crossfade">Crossfade</string>
+    <string name="pro_feature_eq_presets">EQ-Presets</string>
+    <string name="pro_feature_replay_gain">ReplayGain</string>
+    <string name="pro_feature_smart_playlists">Smart-Playlists</string>
+    <string name="pro_feature_stats">Hörstatistiken</string>
+    <string name="pro_feature_visualizer">Audio-Visualisierer</string>
+    <string name="pro_menu_item">Auf PRO upgraden</string>
+    <string name="pro_upgrade_cta">PRO holen</string>
+    <string name="pro_upgrade_loading">Wird geladen…</string>
+    <string name="pro_upgrade_subtitle">Schalte das volle Erlebnis frei</string>
+    <string name="pro_upgrade_success">Willkommen bei PRO!</string>
+    <string name="pro_upgrade_title">Monkey Music PRO</string>
 </resources>

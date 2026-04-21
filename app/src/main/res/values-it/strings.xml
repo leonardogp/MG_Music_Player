@@ -102,7 +102,7 @@
     <string name="permission_denied_title">Permessi disabilitati</string>
     <string name="permission_denied_body">Hai disabilitato permessi critici. Per favore, abilitali nelle impostazioni per continuare:</string>
     <string name="permission_retry">Ho capito, riprova</string>
-    <string name="permission_open_settings">Apri impostazioni</string>
+    <string name="permission_open_settings">Opzioni</string>
     <string name="exit_app">Esci dall\'app</string>
     <string name="permission_label_audio">Accesso a musica e audio</string>
     <string name="permission_label_notifications">Notifiche di riproduzione</string>
@@ -187,4 +187,43 @@
     <string name="time_unit_d_h">%dg %dh</string>
     <string name="time_unit_h_m">%dh %dmin</string>
     <string name="time_unit_m">%dmin</string>
+
+    <!-- Cast, Cloud Sync & Queues -->
+    <string name="cast_button_desc">Trasmetti su dispositivo</string>
+    <string name="cast_connecting">Connessione in corso…</string>
+    <string name="cast_connected">Trasmissione su %s</string>
+    <string name="cast_disconnected">Trasmissione interrotta</string>
+    <string name="cloud_sync_menu_item">Sync cloud</string>
+    <string name="cloud_sync_upload">Carica backup</string>
+    <string name="cloud_sync_download">Ripristina dal cloud</string>
+    <string name="cloud_sync_upload_ok">Backup caricato con successo</string>
+    <string name="cloud_sync_download_ok">Backup ripristinato dal cloud</string>
+    <string name="cloud_sync_no_backup">Nessun backup cloud trovato</string>
+    <string name="cloud_sync_subtitle">Sincronizzazione automatica ogni 12 ore</string>
+    <string name="queues_title">Le mie code</string>
+    <string name="queues_menu_item">Code</string>
+    <string name="queue_new">Nuova coda</string>
+    <string name="queue_name_hint">Nome della coda…</string>
+    <string name="queue_delete">Elimina coda</string>
+    <string name="queue_switch">Passa a questa coda</string>
+    <string name="queue_empty">Svuota coda</string>
+    <string name="queue_songs_count">%d canzoni</string>
+    <string name="queue_active_badge">Attiva</string>
+
+    <!-- PRO / Billing -->
+    <string name="pro_already_pro">Hai già PRO</string>
+    <string name="pro_billing_unavailable">Google Play non disponibile</string>
+    <string name="pro_feature_backup">Backup &amp; Ripristino</string>
+    <string name="pro_feature_crossfade">Crossfade</string>
+    <string name="pro_feature_eq_presets">Preset EQ</string>
+    <string name="pro_feature_replay_gain">ReplayGain</string>
+    <string name="pro_feature_smart_playlists">Playlist intelligenti</string>
+    <string name="pro_feature_stats">Statistiche di ascolto</string>
+    <string name="pro_feature_visualizer">Visualizzatore audio</string>
+    <string name="pro_menu_item">Aggiorna a PRO</string>
+    <string name="pro_upgrade_cta">Ottieni PRO</string>
+    <string name="pro_upgrade_loading">Caricamento…</string>
+    <string name="pro_upgrade_subtitle">Sblocca l\'esperienza completa</string>
+    <string name="pro_upgrade_success">Benvenuto in PRO!</string>
+    <string name="pro_upgrade_title">Monkey Music PRO</string>
 </resources>

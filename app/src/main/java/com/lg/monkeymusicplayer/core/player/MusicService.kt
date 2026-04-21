@@ -27,6 +27,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.lg.monkeymusicplayer.data.database.MusicDao
 import com.lg.monkeymusicplayer.data.database.SongEntity
 import com.lg.monkeymusicplayer.data.model.Song
+import com.lg.monkeymusicplayer.R
 import com.lg.monkeymusicplayer.ui.MainActivity
 import com.lg.monkeymusicplayer.ui.widget.MusicWidget
 import dagger.hilt.android.AndroidEntryPoint
@@ -396,9 +397,9 @@ class MusicService : MediaLibraryService() {
         }
 
         private fun buildRootChildren(): List<MediaItem> = listOf(
-            buildBrowsableItem(SONGS_ID, "Canciones", MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS),
-            buildBrowsableItem(FAVORITES_ID, "Favoritos", MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS),
-            buildBrowsableItem(PLAYLISTS_ID, "Playlists", MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS)
+            buildBrowsableItem(SONGS_ID, getString(R.string.tab_songs), MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS),
+            buildBrowsableItem(FAVORITES_ID, getString(R.string.tab_favorites), MediaMetadata.MEDIA_TYPE_FOLDER_ALBUMS),
+            buildBrowsableItem(PLAYLISTS_ID, getString(R.string.tab_playlists), MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS)
         )
 
         private fun buildSongsChildren(): List<MediaItem> =

@@ -181,4 +181,43 @@
     <string name="sort_artist">فنان</string>
     <string name="sort_date_added">تاريخ الإضافة</string>
     <string name="sort_name">الاسم</string>
+
+    <!-- Cast, Cloud Sync & Queues -->
+    <string name="cast_button_desc">البث إلى جهاز</string>
+    <string name="cast_connecting">جارٍ الاتصال…</string>
+    <string name="cast_connected">جارٍ البث إلى %s</string>
+    <string name="cast_disconnected">انتهى البث</string>
+    <string name="cloud_sync_menu_item">مزامنة السحابة</string>
+    <string name="cloud_sync_upload">رفع النسخة الاحتياطية</string>
+    <string name="cloud_sync_download">الاستعادة من السحابة</string>
+    <string name="cloud_sync_upload_ok">تم رفع النسخة الاحتياطية بنجاح</string>
+    <string name="cloud_sync_download_ok">تمت استعادة النسخة الاحتياطية من السحابة</string>
+    <string name="cloud_sync_no_backup">لم يتم العثور على نسخة احتياطية في السحابة</string>
+    <string name="cloud_sync_subtitle">مزامنة تلقائية كل 12 ساعة</string>
+    <string name="queues_title">قوائمي</string>
+    <string name="queues_menu_item">قوائم التشغيل</string>
+    <string name="queue_new">قائمة جديدة</string>
+    <string name="queue_name_hint">اسم القائمة…</string>
+    <string name="queue_delete">حذف القائمة</string>
+    <string name="queue_switch">التبديل إلى هذه القائمة</string>
+    <string name="queue_empty">تفريغ القائمة</string>
+    <string name="queue_songs_count">%d أغنية</string>
+    <string name="queue_active_badge">نشطة</string>
+
+    <!-- PRO / Billing -->
+    <string name="pro_already_pro">لديك بالفعل PRO</string>
+    <string name="pro_billing_unavailable">Google Play غير متاح</string>
+    <string name="pro_feature_backup">النسخ الاحتياطي والاستعادة</string>
+    <string name="pro_feature_crossfade">تلاشٍ متقاطع</string>
+    <string name="pro_feature_eq_presets">إعدادات EQ المسبقة</string>
+    <string name="pro_feature_replay_gain">ReplayGain</string>
+    <string name="pro_feature_smart_playlists">قوائم التشغيل الذكية</string>
+    <string name="pro_feature_stats">إحصائيات الاستماع</string>
+    <string name="pro_feature_visualizer">مُرئي الصوت</string>
+    <string name="pro_menu_item">الترقية إلى PRO</string>
+    <string name="pro_upgrade_cta">احصل على PRO</string>
+    <string name="pro_upgrade_loading">جارٍ التحميل…</string>
+    <string name="pro_upgrade_subtitle">افتح التجربة الكاملة</string>
+    <string name="pro_upgrade_success">مرحباً بك في PRO!</string>
+    <string name="pro_upgrade_title">Monkey Music PRO</string>
 </resources>

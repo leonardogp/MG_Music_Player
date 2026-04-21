@@ -134,7 +134,7 @@
     <string name="smart_top_songs_subtitle">Tüm zamanların en çok çalınan şarkıları</string>
     <string name="smart_top_songs_title">En İyi Şarkılar</string>
     <string name="stats_artist_songs">%d şarkı</string>
-    <string name="stats_completed_percent">%%d tamamlandı</string>
+    <string name="stats_completed_percent">%d%% tamamlandı</string>
     <string name="stats_empty_body">Biraz müzik çalın ve dinleme geçmişiniz burada görünecek</string>
     <string name="stats_empty_title">Henüz istatistik yok</string>
     <string name="stats_listened">Dinlendi</string>
@@ -179,4 +179,43 @@
     <string name="sort_name">Ad</string>
     <string name="player_idle_subtitle">Başlamak için bir şarkı seçin</string>
     <string name="player_idle_title">Çalan şarkı yok</string>
+
+    <!-- Cast, Cloud Sync & Queues -->
+    <string name="cast_button_desc">Cihaza yayınla</string>
+    <string name="cast_connecting">Bağlanıyor…</string>
+    <string name="cast_connected">%s cihazına yayınlanıyor</string>
+    <string name="cast_disconnected">Yayın durduruldu</string>
+    <string name="cloud_sync_menu_item">Bulut senkronizasyonu</string>
+    <string name="cloud_sync_upload">Yedeklemeyi yükle</string>
+    <string name="cloud_sync_download">Buluttan geri yükle</string>
+    <string name="cloud_sync_upload_ok">Yedekleme başarıyla yüklendi</string>
+    <string name="cloud_sync_download_ok">Yedekleme buluttan geri yüklendi</string>
+    <string name="cloud_sync_no_backup">Bulutta yedekleme bulunamadı</string>
+    <string name="cloud_sync_subtitle">Her 12 saatte bir otomatik eşitleme</string>
+    <string name="queues_title">Sıralarım</string>
+    <string name="queues_menu_item">Sıralar</string>
+    <string name="queue_new">Yeni sıra</string>
+    <string name="queue_name_hint">Sıra adı…</string>
+    <string name="queue_delete">Sırayı sil</string>
+    <string name="queue_switch">Bu sıraya geç</string>
+    <string name="queue_empty">Sırayı temizle</string>
+    <string name="queue_songs_count">%d şarkı</string>
+    <string name="queue_active_badge">Etkin</string>
+
+    <!-- PRO / Billing -->
+    <string name="pro_already_pro">Zaten PRO\'sunuz</string>
+    <string name="pro_billing_unavailable">Google Play kullanılamıyor</string>
+    <string name="pro_feature_backup">Yedekleme ve Geri Yükleme</string>
+    <string name="pro_feature_crossfade">Crossfade</string>
+    <string name="pro_feature_eq_presets">EQ ön ayarları</string>
+    <string name="pro_feature_replay_gain">ReplayGain</string>
+    <string name="pro_feature_smart_playlists">Akıllı oynatma listeleri</string>
+    <string name="pro_feature_stats">Dinleme istatistikleri</string>
+    <string name="pro_feature_visualizer">Ses görselleştirici</string>
+    <string name="pro_menu_item">PRO\'ya yükselt</string>
+    <string name="pro_upgrade_cta">PRO\'yu edin</string>
+    <string name="pro_upgrade_loading">Yükleniyor…</string>
+    <string name="pro_upgrade_subtitle">Tam deneyimin kilidini açın</string>
+    <string name="pro_upgrade_success">PRO\'ya hoş geldiniz!</string>
+    <string name="pro_upgrade_title">Monkey Music PRO</string>
 </resources>

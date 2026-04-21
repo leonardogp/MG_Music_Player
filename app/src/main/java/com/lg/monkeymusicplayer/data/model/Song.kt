@@ -11,7 +11,9 @@ data class Song(
     val path: String,
     val albumArtUri: String,
     val isFavorite: Boolean = false,
-    val lyricsPath: String? = null
+    val lyricsPath: String? = null,
+    /** ReplayGain track gain en dB. Null si el archivo no tiene el tag. */
+    val replayGain: Float? = null
 )
 
 data class LyricLine(

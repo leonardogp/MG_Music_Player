@@ -179,4 +179,43 @@
     <string name="sort_name">이름</string>
     <string name="player_idle_subtitle">곡을 선택하여 시작</string>
     <string name="player_idle_title">재생 중인 곡 없음</string>
+
+    <!-- Cast, Cloud Sync &amp; Queues -->
+    <string name="cast_button_desc">기기에 캐스트</string>
+    <string name="cast_connecting">연결 중…</string>
+    <string name="cast_connected">%s에 캐스팅 중</string>
+    <string name="cast_disconnected">캐스트 종료</string>
+    <string name="cloud_sync_menu_item">클라우드 동기화</string>
+    <string name="cloud_sync_upload">백업 업로드</string>
+    <string name="cloud_sync_download">클라우드에서 복원</string>
+    <string name="cloud_sync_upload_ok">백업이 성공적으로 업로드되었습니다</string>
+    <string name="cloud_sync_download_ok">클라우드에서 백업을 복원했습니다</string>
+    <string name="cloud_sync_no_backup">클라우드 백업을 찾을 수 없습니다</string>
+    <string name="cloud_sync_subtitle">12시간마다 자동 동기화</string>
+    <string name="queues_title">내 대기열</string>
+    <string name="queues_menu_item">대기열</string>
+    <string name="queue_new">새 대기열</string>
+    <string name="queue_name_hint">대기열 이름…</string>
+    <string name="queue_delete">대기열 삭제</string>
+    <string name="queue_switch">이 대기열로 전환</string>
+    <string name="queue_empty">대기열 비우기</string>
+    <string name="queue_songs_count">%d곡</string>
+    <string name="queue_active_badge">활성</string>
+
+    <!-- PRO / Billing -->
+    <string name="pro_already_pro">이미 PRO를 보유하고 있습니다</string>
+    <string name="pro_billing_unavailable">Google Play를 사용할 수 없습니다</string>
+    <string name="pro_feature_backup">백업 &amp; 복원</string>
+    <string name="pro_feature_crossfade">크로스페이드</string>
+    <string name="pro_feature_eq_presets">EQ 프리셋</string>
+    <string name="pro_feature_replay_gain">ReplayGain</string>
+    <string name="pro_feature_smart_playlists">스마트 재생목록</string>
+    <string name="pro_feature_stats">청취 통계</string>
+    <string name="pro_feature_visualizer">오디오 시각화</string>
+    <string name="pro_menu_item">PRO로 업그레이드</string>
+    <string name="pro_upgrade_cta">PRO 구매</string>
+    <string name="pro_upgrade_loading">로딩 중…</string>
+    <string name="pro_upgrade_subtitle">전체 기능 잠금 해제</string>
+    <string name="pro_upgrade_success">PRO에 오신 것을 환영합니다!</string>
+    <string name="pro_upgrade_title">Monkey Music PRO</string>
 </resources>

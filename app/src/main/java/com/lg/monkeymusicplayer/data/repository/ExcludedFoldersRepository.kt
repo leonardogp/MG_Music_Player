@@ -99,6 +99,7 @@ class ExcludedFoldersRepository(context: Context) {
          * Construye las rutas absolutas de exclusión por defecto combinando
          * las rutas de almacenamiento externo conocidas con los segmentos de WhatsApp.
          */
+        @Suppress("DEPRECATION")
         fun buildDefaultExclusions(): List<String> {
             val root = Environment.getExternalStorageDirectory().absolutePath
             return WHATSAPP_PATHS.map { "$root/$it" }

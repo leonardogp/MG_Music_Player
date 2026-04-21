@@ -181,4 +181,43 @@
     <string name="sort_artist">Artis</string>
     <string name="sort_date_added">Tanggal ditambahkan</string>
     <string name="sort_name">Nama</string>
+
+    <!-- Cast, Cloud Sync &amp; Queues -->
+    <string name="cast_button_desc">Putar ke perangkat</string>
+    <string name="cast_connecting">Menghubungkan…</string>
+    <string name="cast_connected">Memutar di %s</string>
+    <string name="cast_disconnected">Pemutaran dihentikan</string>
+    <string name="cloud_sync_menu_item">Sinkronisasi cloud</string>
+    <string name="cloud_sync_upload">Unggah cadangan</string>
+    <string name="cloud_sync_download">Pulihkan dari cloud</string>
+    <string name="cloud_sync_upload_ok">Cadangan berhasil diunggah</string>
+    <string name="cloud_sync_download_ok">Cadangan dipulihkan dari cloud</string>
+    <string name="cloud_sync_no_backup">Tidak ada cadangan cloud</string>
+    <string name="cloud_sync_subtitle">Sinkronisasi otomatis setiap 12 jam</string>
+    <string name="queues_title">Antrean saya</string>
+    <string name="queues_menu_item">Antrean</string>
+    <string name="queue_new">Antrean baru</string>
+    <string name="queue_name_hint">Nama antrean…</string>
+    <string name="queue_delete">Hapus antrean</string>
+    <string name="queue_switch">Beralih ke antrean ini</string>
+    <string name="queue_empty">Kosongkan antrean</string>
+    <string name="queue_songs_count">%d lagu</string>
+    <string name="queue_active_badge">Aktif</string>
+
+    <!-- PRO / Billing -->
+    <string name="pro_already_pro">Anda sudah memiliki PRO</string>
+    <string name="pro_billing_unavailable">Google Play tidak tersedia</string>
+    <string name="pro_feature_backup">Cadangan &amp; Pemulihan</string>
+    <string name="pro_feature_crossfade">Crossfade</string>
+    <string name="pro_feature_eq_presets">Preset EQ</string>
+    <string name="pro_feature_replay_gain">ReplayGain</string>
+    <string name="pro_feature_smart_playlists">Daftar putar cerdas</string>
+    <string name="pro_feature_stats">Statistik mendengarkan</string>
+    <string name="pro_feature_visualizer">Visualisasi audio</string>
+    <string name="pro_menu_item">Upgrade ke PRO</string>
+    <string name="pro_upgrade_cta">Dapatkan PRO</string>
+    <string name="pro_upgrade_loading">Memuat…</string>
+    <string name="pro_upgrade_subtitle">Buka pengalaman penuh</string>
+    <string name="pro_upgrade_success">Selamat datang di PRO!</string>
+    <string name="pro_upgrade_title">Monkey Music PRO</string>
 </resources>

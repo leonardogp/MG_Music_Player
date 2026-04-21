@@ -1,44 +1,41 @@
-# Testing Guide for Monkey Music Player
+Testing Guide for Monkey Music Player
 
-## How to Run Tests
+This document provides quick-start instructions to run unit tests and instrumented tests for the project, plus guidance on how to add tests and verify performance improvements.
 
-1. **Setup Your Environment**: Ensure that you have all the necessary dependencies installed. You can use the provided Dockerfile for a consistent environment.
-   ```bash
-   docker build -t monkeymusicplayer:test .
-   ```
-2. **Run Tests Using Docker**: After building the Docker image, run the tests with:
-   ```bash
-   docker run --rm monkeymusicplayer:test
-   ```
+1) Prerequisitos
+- JDK and Android SDKs installed
+- Git repo checked out
+- Gradle wrapper (gradlew) present in repo root
 
-3. **Run Tests Locally**: If you prefer running tests locally, you can use the following command:
-   ```bash
-   npm test
-   ```
+2) Eject unit tests (local JVM tests)
+- Comando típico: `gradlew test` (Windows: `gradlew.bat test`)
+- Para ejecutar solo una clase de prueba: `gradlew testDebugUnitTest --tests com.example.MyTest` (ajusta el paquete y clase a lo que necesites)
+- Ubicación típica de tests unitarios: app/src/test/java/
 
-## Structure of Tests
+3) Eject instrumented tests (Android unit tests)
+- Comando: `gradlew connectedDebugAndroidTest` para conectar a un dispositivo/emulador
+- Para correr pruebas instrumentadas en un módulo específico: `gradlew :app:connectedDebugAndroidTest`
+- Ubicación típica de tests instrumentados: app/src/androidTest/java/
 
-- **Unit Tests**: Found in the `__tests__` directory, these tests verify individual components in isolation.
-- **Integration Tests**: These are located in the `integration` folder and ensure that different modules and components work cohesively.
-- **End-to-End Tests**: The `e2e` directory contains tests that simulate real user scenarios. Use tools like Selenium or Cypress for these tests.
+4) Estructura de tests existente (referencia rápida)
+- Pruebas de unidad en: app/src/test/java/com/lg/monkeymusicplayer/
+- Pruebas de integración/UI en: app/src/androidTest/java/com/lg/monkeymusicplayer/
+- Ejemplos ya presentes: MusicPlayerManagerTest.kt, MusicRepositoryTest.kt, MusicViewModelTest.kt, etc.
 
-## Maintaining Tests
+5) Consejos para nuevos tests
+- Mantén los tests lo más independientes posible de Android framework cuando puedas; usa Mockito para mocks de dependencias.
+- Usa @get:Rule val instantTaskExecutorRule = InstantTaskExecutorRule() para pruebas de LiveData/StateFlow donde corresponda.
+- Para pruebas de corrutinas, emplea StandardTestDispatcher o Unconfined/TestCoroutineDispatcher y reset al terminar.
+- Añade pruebas para casos límite (errores, estados de carga, límites de tamaño de datos) y para el flujo de eventos de UI/estado.
 
-- **Regular Updates**: Ensure that tests are updated in conjunction with code changes. If a feature is modified, revisit the relevant tests.
-- **Code Coverage**: Use tools like `nyc` or `jest --coverage` to maintain code coverage metrics. Aim for at least 80% code coverage.
-- **Review and Refactor**: Regularly review tests for any redundancies or potential improvements. Refactor when necessary to maintain clarity and efficiency.
+6) Añadir pruebas y observar rendimiento
+- Las pruebas unitarias deben cubrir la lógica de negocio sin depender fuertemente de IO.
+- Para evaluar rendimiento, puedes añadir pruebas de tiempo de ejecución con asserts simples o usar herramientas de profiling (no cubierto por este guide).
+- Si agregas código de alto costo, considera memoización con remember/derivedStateOf en Compose, o mover lógica costosa fuera del composable hacia el ViewModel o repositorios.
 
-## Best Practices
+7) Notas sobre CI
+- Asegúrate de que el proyecto compile en CI y que las pruebas se ejecuten en el pipeline.
+- Considera ejecutar pruebas en modo paralelo si el CI las soporta para acelerar el pipeline.
 
-- **Clear Naming Conventions**: Follow clear and consistent naming conventions for your test files and cases. This helps in understanding what functionality is being tested.
-- **Isolation**: Tests should be isolated from each other. Use mocking frameworks to avoid dependencies on external systems or data.
-- **Run Tests Frequently**: Incorporate tests into your CI pipeline to ensure they are run frequently, catching issues early in the development lifecycle.
-- **Documentation**: Document your test cases and the rationale behind them, so future maintainers can understand the testing strategies used. 
-
-## Conventions
-
-- Test file naming should follow the convention `*.test.js` for JavaScript files.
-- Group test cases using `describe` blocks in your test files for better organization.
-- Use assertions that clearly define expected outcomes to ensure tests are understandable and maintainable.
-
----
+8) Cambios futuros
+- Si amplías el dominio de pruebas, actualiza este documento con ejemplos de ejecución y ejemplos de fixtures.

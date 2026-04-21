@@ -187,4 +187,43 @@
     <string name="time_unit_d_h">%dд %dч</string>
     <string name="time_unit_h_m">%dч %dмин</string>
     <string name="time_unit_m">%dмин</string>
+
+    <!-- Cast, Cloud Sync & Queues -->
+    <string name="cast_button_desc">Трансляция на устройство</string>
+    <string name="cast_connecting">Подключение…</string>
+    <string name="cast_connected">Трансляция на %s</string>
+    <string name="cast_disconnected">Трансляция завершена</string>
+    <string name="cloud_sync_menu_item">Синхронизация с облаком</string>
+    <string name="cloud_sync_upload">Загрузить резервную копию</string>
+    <string name="cloud_sync_download">Восстановить из облака</string>
+    <string name="cloud_sync_upload_ok">Резервная копия успешно загружена</string>
+    <string name="cloud_sync_download_ok">Резервная копия восстановлена из облака</string>
+    <string name="cloud_sync_no_backup">Резервная копия в облаке не найдена</string>
+    <string name="cloud_sync_subtitle">Автоматическая синхронизация каждые 12 часов</string>
+    <string name="queues_title">Мои очереди</string>
+    <string name="queues_menu_item">Очереди</string>
+    <string name="queue_new">Новая очередь</string>
+    <string name="queue_name_hint">Название очереди…</string>
+    <string name="queue_delete">Удалить очередь</string>
+    <string name="queue_switch">Переключиться на очередь</string>
+    <string name="queue_empty">Очистить очередь</string>
+    <string name="queue_songs_count">%d треков</string>
+    <string name="queue_active_badge">Активна</string>
+
+    <!-- PRO / Billing -->
+    <string name="pro_already_pro">У вас уже есть PRO</string>
+    <string name="pro_billing_unavailable">Google Play недоступен</string>
+    <string name="pro_feature_backup">Резервная копия</string>
+    <string name="pro_feature_crossfade">Кроссфейд</string>
+    <string name="pro_feature_eq_presets">Пресеты EQ</string>
+    <string name="pro_feature_replay_gain">ReplayGain</string>
+    <string name="pro_feature_smart_playlists">Умные плейлисты</string>
+    <string name="pro_feature_stats">Статистика прослушивания</string>
+    <string name="pro_feature_visualizer">Аудио-визуализатор</string>
+    <string name="pro_menu_item">Перейти на PRO</string>
+    <string name="pro_upgrade_cta">Купить PRO</string>
+    <string name="pro_upgrade_loading">Загрузка…</string>
+    <string name="pro_upgrade_subtitle">Откройте полный функционал</string>
+    <string name="pro_upgrade_success">Добро пожаловать в PRO!</string>
+    <string name="pro_upgrade_title">Monkey Music PRO</string>
 </resources>

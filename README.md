@@ -99,30 +99,65 @@ MonkeyMusicPlayer/
 
 | Área | Detalle |
 |---|---|
-| Arquitectura base | MVVM + Clean Architecture + Use Cases + `UiState<T>` unificado |
+| Arquitectura base | MVVM + Clean Architecture + `UiState<T>` unificado |
+| Use Cases | `GetSongs`, `GetSmartPlaylists`, `GetUserStats`, `RefreshMusicLibrary`, `ToggleFavorite`, `PlaySong`, `UpdateSongTags` — ViewModel migrado |
 | Tracking de reproducción | `StatTracker` + `SongStatEntity` + DAO con operaciones atómicas |
 | Smart Engine | Scoring + 3 Smart Playlists reactivas |
 | Smart Scheduler | `SmartPlaylistWorker` (WorkManager, 24h, HiltWorkerFactory) |
 | Visualizador de audio | FFT real-time, Compose Canvas, glow animado |
 | Crossfade | Configurable, fade por steps en `MusicService` |
 | Gapless playback | Pre-carga de siguiente MediaItem en ExoPlayer |
+| ReplayGain | Lectura tag TXXX vía mp3agic · Room v5 con columna `replayGain` · Ajuste de volumen lineal en `MusicPlayerManager` |
+| Feature gating | `Feature` enum + `FeatureGate` singleton (SharedPrefs backend, listo para Google Billing) |
 | Dynamic Theming | Palette API + Material You |
 | Backup & Restore | Export/import JSON (`.monkeybackup`) |
 | Estadísticas | Pantalla completa con top songs, top artists, tiempo total |
+| Android Auto | Árbol de navegación localizado (Songs/Favorites/Playlists via `getString`) |
 | Localización | 17 idiomas — 169/169 strings cada uno |
 | Bug: genre duplication | Fix `ID3v24Tag()` fresco + `IGNORE` + `updateSongMetadata` |
 | Bug: widget sync | `widgetUpdateJob` en `MusicService` |
 
-### 🔲 Pendiente
+### ✅ Completado (actualización)
 
-| Área | Prioridad |
+| Área | Detalle |
 |---|---|
-| Modularización Gradle (`:core`, `:domain`, `:data`, `:feature-*`) | Media |
-| ReplayGain | Baja |
-| Feature gating / Paywall (Google Billing) | Baja |
-| Android Auto / Chromecast | Baja |
-| Sincronización en nube | Baja |
-| Múltiples colas de reproducción | Baja |
+| Múltiples colas | `QueueManager` singleton — N colas nombradas, switch activo, reorden drag&drop |
+| Chromecast | `CastManager` + `CastOptionsProvider` + Cast SDK (Default Media Receiver) + integración Manifest |
+| Sincronización en nube | `CloudSyncRepository` + `CloudSyncWorker` (WorkManager, 12h, requires network) |
+
+### ✅ Completado (actualización final)
+
+| Área | Detalle |
+|---|---|
+| UI de múltiples colas | `QueuesScreen` — crear/cambiar/eliminar colas, badge activo, switch automático al player |
+| Cast integrado en UI | Botón Cast en TopAppBar (visible solo con dispositivos) · `CastManager.initialize/release` en `MainActivity` |
+| Cloud Sync UI | `CloudSyncScreen` — upload/download manual + nota de auto-sync cada 12h |
+| ViewModel completo | `castState`, `castCurrentSong`, `castActiveQueue`, `cloudSyncUpload`, `cloudSyncDownload` |
+
+### ✅ Completado (sesión final)
+
+| Área | Detalle |
+|---|---|
+| Localización completa | 17 locales × 189 strings — 100% sincronizados |
+| Paywall / Google Billing | `BillingManager` + `BillingState` + `PaywallScreen` con precio real de Play Console |
+| PRO CTA en Settings | Ítem destacado visible solo para usuarios no-PRO |
+| Billing en lifecycle | `connect()` en `onCreate`, `disconnect()` en `onDestroy` de MainActivity |
+
+### ✅ Completado (actualización final)
+
+| Área | Detalle |
+|---|---|
+| Localización completa | 17 idiomas — 204/204 strings (incluye PRO, Cast, Cloud, Queues) |
+| Backend de nube | `CloudBackend` interfaz + `LocalFileBackend` activo + `CloudSyncRepository` refactorizado |
+| Paywall | `BillingManager` + `PaywallScreen` + `BillingState` — completo |
+
+### 🔲 Pendiente (no implementable sin cuentas externas)
+
+| Área | Detalle |
+|---|---|
+| Modularización Gradle | Separar en `:core`, `:domain`, `:data`, `:feature-*` |
+| Registro SKU Play Console | Crear producto `monkey_music_pro_lifetime` en Google Play Console |
+| Backend de nube real | Implementar `CloudBackend` con Firebase Storage o Google Drive REST API |
 
 ## Librerías Principales
 

@@ -2,8 +2,8 @@
     <string name="app_name">Monkey Music Player</string>
     <string name="settings_title">Inställningar</string>
     <string name="back">Bakåt</string>
-    <string name="scan_music">Skanna musik</string>
-    <string name="scanning_progress">Skannar: %1$d / %2$d</string>
+    <string name="scan_music">Sök efter musik</string>
+    <string name="scanning_progress">Söker: %1$d / %2$d</string>
     <string name="timer_active">Timer (%s)</string>
     <string name="sleep_timer">Insomningstimer</string>
     <string name="equalizer">Equalizer</string>
@@ -27,9 +27,9 @@
     <string name="playlist">Spellista</string>
     <string name="search">Sök</string>
     <string name="sort">Sortera</string>
-    <string name="no_favorites_yet">Du har inga favoriter än</string>
+    <string name="no_favorites_yet">Inga favoriter än</string>
     <string name="favorites">Favoriter</string>
-    <string name="recent">Senaste</string>
+    <string name="recent">Nyligen</string>
     <string name="previous">Föregående</string>
     <string name="play_pause">Spela/Pausa</string>
     <string name="next">Nästa</string>
@@ -39,13 +39,13 @@
     <string name="shuffle">Blanda</string>
     <string name="repeat">Upprepa</string>
     <string name="add_to_playlist">Lägg till i spellista</string>
-    <string name="seek_back_10">Spola tillbaka 10s</string>
-    <string name="seek_forward_10">Spola framåt 10s</string>
-    <string name="skip_next">Hoppa till nästa</string>
+    <string name="seek_back_10">Bakåt 10s</string>
+    <string name="seek_forward_10">Framåt 10s</string>
+    <string name="skip_next">Hoppa över</string>
     <string name="options">Alternativ</string>
     <string name="remove_from_favorites">Ta bort från favoriter</string>
     <string name="add_to_favorites">Lägg till i favoriter</string>
-    <string name="add_to_queue">Lägg till i kön</string>
+    <string name="add_to_queue">Lägg till i kö</string>
     <string name="remove_from_playlist">Ta bort från spellista</string>
     <string name="edit_tags">Redigera taggar</string>
     <string name="no_songs">Inga låtar</string>
@@ -64,7 +64,7 @@
     <string name="album">Album</string>
     <string name="genre">Genre</string>
     <string name="save">Spara</string>
-    <string name="select_sleep_timer">Välj hur många minuter tills musiken stoppas:</string>
+    <string name="select_sleep_timer">Välj minuter till stopp:</string>
     <string name="disabled">Inaktiverad</string>
     <string name="minutes">%d minuter</string>
     <string name="unknown">Okänd</string>
@@ -79,104 +79,151 @@
     <string name="greeting_afternoon">God eftermiddag</string>
     <string name="greeting_evening">God kväll</string>
 
+    <!-- Player states -->
+    <string name="player_idle_title">Ingen låt spelas</string>
+    <string name="player_idle_subtitle">Välj en låt för att börja</string>
+
     <!-- Tag editor feedback -->
-    <string name="tags_saved_ok">Taggar sparades!</string>
-    <string name="tags_save_error">Fel när taggar sparades: %s</string>
-    <string name="tags_permission_needed">Lagringsbehörighet krävs för att redigera taggar.</string>
-    <string name="tags_permission_grant">Bevilja</string>
+    <string name="tags_saved_ok">Taggar sparade!</string>
+    <string name="tags_save_error">Fel vid sparande av taggar: %s</string>
+    <string name="tags_permission_needed">Lagringsåtkomst krävs för att redigera taggar.</string>
+    <string name="tags_permission_grant">Tillåt</string>
     <string name="tags_saving">Sparar\u2026</string>
     <string name="tags_edit_current_song">Redigera taggar</string>
 
     <!-- Storage permission -->
     <string name="manage_storage_permission_title">Lagringsåtkomst krävs</string>
-    <string name="manage_storage_permission_body">För att redigera låttaggar, tillåt den här appen att hantera alla filer i Inställningar.</string>
+    <string name="manage_storage_permission_body">För att redigera taggar måste du tillåta appen att hantera filer i inställningarna.</string>
     <string name="manage_storage_open_settings">Öppna inställningar</string>
 
     <!-- Permission screens -->
     <string name="permission_rationale_title">Åtkomst krävs</string>
-    <string name="permission_rationale_body">För att appen ska fungera korrekt, vänligen acceptera följande behörigheter:</string>
+    <string name="permission_rationale_body">För att appen ska fungera korrekt måste du godkänna följande behörigheter:</string>
     <string name="permission_denied_title">Behörigheter inaktiverade</string>
-    <string name="permission_denied_body">Du har inaktiverat viktiga behörigheter. Vänligen aktivera dem i inställningarna för att fortsätta:</string>
-    <string name="permission_retry">Uppfattat, försök igen</string>
+    <string name="permission_denied_body">Du har nekat viktiga behörigheter. Aktivera dem i inställningarna för att fortsätta:</string>
+    <string name="permission_retry">Jag förstår, försök igen</string>
     <string name="permission_open_settings">Öppna inställningar</string>
     <string name="exit_app">Avsluta appen</string>
-    <string name="permission_label_audio">Åtkomst till musik och ljud</string>
-    <string name="permission_label_notifications">Uppspelningsaviseringar</string>
-    <string name="permission_label_storage">Lagringsåtkomst</string>
-    <string name="permission_info_desc">Behörighetsinformation</string>
+    <string name="permission_label_audio">Musik och ljud</string>
+    <string name="permission_label_notifications">Meddelanden</string>
+    <string name="permission_label_storage">Lagring</string>
+    <string name="permission_info_desc">Behörighetsinfo</string>
     <string name="permission_required_desc">Behörighet krävs</string>
     <string name="permission_denied_desc">Behörighetsfel</string>
     <string name="permission_denied_item_desc">Behörighet nekad</string>
 
     <!-- Equalizer -->
-    <string name="eq_high_fidelity_mode">High-Fidelity-läge</string>
+    <string name="eq_high_fidelity_mode">Hi-Fi läge</string>
+    <string name="eq_save_preset">Spara förinställning</string>
+    <string name="eq_preset_name">Namn</string>
+    <string name="eq_preset_name_hint">Min inställning…</string>
+    <string name="eq_preset_saved">Förinställning sparad!</string>
+    <string name="eq_preset_deleted">Förinställning borttagen</string>
+    <string name="eq_delete_preset">Ta bort förinställning</string>
+    <string name="eq_my_presets">Mina förinställningar</string>
+    <string name="eq_built_in">Inbyggda</string>
 
-    <string name="backup_description">Exportera dina favoriter, spellistor, EQ-förinställningar och lyssnarstatistik till en fil. Återställ dem när som helst på vilken enhet som helst.</string>
+    <!-- Lyrics -->
+    <string name="lyrics_searching">Söker efter text…</string>
+    <string name="lyrics_not_found">Ingen text hittades</string>
+    <string name="lyrics_source_local">Lokal (.lrc)</string>
+    <string name="lyrics_source_online">Online</string>
+    <string name="lyrics_tab">Text</string>
+    <string name="queue_tab">Kö</string>
+
+    <!-- Excluded Folders -->
+    <string name="excluded_folders">Exkluderade mappar</string>
+    <string name="excluded_folders_subtitle">Ignoreras vid sökning</string>
+    <string name="excluded_folders_desc">Mappar i denna lista kommer att ignoreras när ditt musikbibliotek genomsöks. Ändringar träder i kraft vid nästa sökning.</string>
+    <string name="excluded_folders_empty">Inga exkluderade mappar</string>
+    <string name="exclude_whatsapp">Exkludera WhatsApp-ljud</string>
+    <string name="exclude_whatsapp_desc">Ignorera ljudfiler från WhatsApp och WhatsApp Business</string>
+    <string name="add_excluded_folder">Lägg till mapp…</string>
+    <string name="excluded_folder_hint">/storage/emulated/0/Recordings</string>
+    <string name="excluded_folder_invalid">Ange en giltig absolut sökväg som börjar med /</string>
+    <string name="rescan_required">Sök igenom biblioteket för att tillämpa ändringar</string>
+
+    <!-- Sort Order -->
+    <string name="sort_name">Namn</string>
+    <string name="sort_artist">Artist</string>
+    <string name="sort_album">Album</string>
+    <string name="sort_date_added">Tillagd datum</string>
+
+    <string name="backup_description">Exportera dina favoriter, spellistor, EQ-förinställningar och statistik till en fil. Återställ dem när som helst på vilken enhet som helst.</string>
     <string name="backup_export_button">Exportera</string>
-    <string name="backup_export_ok">Säkerhetskopian exporterades</string>
+    <string name="backup_export_ok">Säkerhetskopia exporterad</string>
     <string name="backup_export_subtitle">Spara en .monkeybackup-fil på din enhet</string>
     <string name="backup_export_title">Exportera säkerhetskopia</string>
     <string name="backup_import_button">Återställ</string>
-    <string name="backup_import_ok">Säkerhetskopian återställdes</string>
+    <string name="backup_import_ok">Säkerhetskopia återställd</string>
     <string name="backup_import_subtitle">Välj en .monkeybackup-fil att återställa</string>
-    <string name="backup_import_summary">Återställt: %1$d favoriter · %2$d spellistor · %3$d EQ-förinställningar · %4$d låtstatistik</string>
+    <string name="backup_import_summary">Återställde: %1$d favoriter · %2$d spellistor · %3$d EQ-förinställningar · %4$d statistik</string>
     <string name="backup_import_title">Återställ säkerhetskopia</string>
-    <string name="backup_info">Ljudfiler ingår inte i säkerhetskopian — endast dina appdata (favoriter, spellistor, EQ-förinställningar och statistik). Låtar måste finnas på enheten för att visas i återställda spellistor.</string>
+    <string name="backup_info">Ljudfiler ingår inte i säkerhetskopian — endast appdata. Låtarna måste finnas på enheten för att visas i de återställda spellistorna.</string>
     <string name="backup_menu_item">Säkerhetskopiering &amp; Återställning</string>
     <string name="backup_title">Säkerhetskopiering &amp; Återställning</string>
     <string name="error_unknown">Okänt fel</string>
-    <string name="smart_daily_mix_subtitle">Dina bästa val, nyrankade</string>
-    <string name="smart_daily_mix_title">Daglig Mix</string>
-    <string name="smart_empty_body">Lyssna på fler låtar så visas dina anpassade spellistor här</string>
-    <string name="smart_empty_title">Inte tillräckligt med data ännu</string>
-    <string name="smart_rediscover_subtitle">Låtar du älskade och glömde</string>
-    <string name="smart_rediscover_title">Återupptäck</string>
-    <string name="smart_top_songs_subtitle">Dina mest spelade genom tiderna</string>
+    <string name="smart_daily_mix_subtitle">Dina bästa val, nyligen sorterade</string>
+    <string name="smart_daily_mix_title">Dagens mix</string>
+    <string name="smart_empty_body">Lyssna på fler låtar så kommer dina personliga spellistor att visas här</string>
+    <string name="smart_empty_title">Inte tillräckligt med data</string>
+    <string name="smart_rediscover_subtitle">Låtar du älskade men glömt</string>
+    <string name="smart_rediscover_title">Upptäck igen</string>
+    <string name="smart_top_songs_subtitle">Dina mest spelade låtar</string>
     <string name="smart_top_songs_title">Topplåtar</string>
     <string name="stats_artist_songs">%d låtar</string>
-    <string name="stats_completed_percent">%d%% slutförd</string>
-    <string name="stats_empty_body">Spela lite musik så visas din lyssnarhistorik här</string>
-    <string name="stats_empty_title">Ingen statistik ännu</string>
+    <string name="stats_completed_percent">%d%% slutfört</string>
+    <string name="stats_empty_body">Lyssna på musik så visas din historik här</string>
+    <string name="stats_empty_title">Ingen statistik</string>
     <string name="stats_listened">Lyssnat</string>
     <string name="stats_menu_item">Min statistik</string>
-    <string name="stats_plays">Uppspelningar</string>
-    <string name="stats_plays_count">%d uppspelningar</string>
+    <string name="stats_plays">Spelningar</string>
+    <string name="stats_plays_count">%d spelningar</string>
     <string name="stats_songs_played">Låtar</string>
     <string name="stats_title">Din statistik</string>
-    <string name="stats_top_artists">Toppkonstnärer</string>
+    <string name="stats_top_artists">Toppartister</string>
     <string name="stats_top_songs">Topplåtar</string>
     <string name="tab_for_you">För dig</string>
-    <string name="time_unit_d_h">%dd %dt</string>
-    <string name="time_unit_h_m">%dt %dmin</string>
+    <string name="time_unit_d_h">%dd %dh</string>
+    <string name="time_unit_h_m">%dh %dmin</string>
     <string name="time_unit_m">%dmin</string>
-    <string name="eq_built_in">Inbyggd</string>
-    <string name="eq_delete_preset">Ta bort förinställning</string>
-    <string name="eq_my_presets">Mina förinställningar</string>
-    <string name="eq_preset_deleted">Förinställning borttagen</string>
-    <string name="eq_preset_name">Förinställningsnamn</string>
-    <string name="eq_preset_name_hint">Min förinställning…</string>
-    <string name="eq_preset_saved">Förinställning sparad!</string>
-    <string name="eq_save_preset">Spara förinställning</string>
-    <string name="lyrics_not_found">Inga låttexter hittades</string>
-    <string name="lyrics_searching">Söker låttexter…</string>
-    <string name="lyrics_source_local">Lokal (.lrc)</string>
-    <string name="lyrics_source_online">Online</string>
-    <string name="lyrics_tab">Låttexter</string>
-    <string name="queue_tab">Kö</string>
-    <string name="add_excluded_folder">Lägg till mappsökväg…</string>
-    <string name="exclude_whatsapp">Uteslut WhatsApp-ljud</string>
-    <string name="exclude_whatsapp_desc">Hoppa över WhatsApp- och WhatsApp Business-ljudfiler</string>
-    <string name="excluded_folder_hint">/storage/emulated/0/Recordings</string>
-    <string name="excluded_folder_invalid">Ange en giltig absolut sökväg som börjar med /</string>
-    <string name="excluded_folders">Uteslutna mappar</string>
-    <string name="excluded_folders_desc">Mappar listade här hoppas över vid genomsökning av ditt musikbibliotek. Ändringar träder i kraft vid nästa genomsökning.</string>
-    <string name="excluded_folders_empty">Inga mappar uteslutna</string>
-    <string name="excluded_folders_subtitle">Hoppas över vid genomsökning</string>
-    <string name="rescan_required">Genomsök biblioteket igen för att tillämpa ändringar</string>
-    <string name="sort_album">Album</string>
-    <string name="sort_artist">Artist</string>
-    <string name="sort_date_added">Datum tillagt</string>
-    <string name="sort_name">Namn</string>
-    <string name="player_idle_subtitle">Välj en låt för att börja</string>
-    <string name="player_idle_title">Ingen låt spelas</string>
+
+    <!-- Cast, Cloud Sync &amp; Queues -->
+    <string name="cast_button_desc">Strömma till enhet</string>
+    <string name="cast_connecting">Ansluter…</string>
+    <string name="cast_connected">Strömmar till %s</string>
+    <string name="cast_disconnected">Strömning avslutad</string>
+    <string name="cloud_sync_menu_item">Molnsynkronisering</string>
+    <string name="cloud_sync_upload">Ladda upp säkerhetskopia</string>
+    <string name="cloud_sync_download">Återställ från molnet</string>
+    <string name="cloud_sync_upload_ok">Säkerhetskopian laddades upp</string>
+    <string name="cloud_sync_download_ok">Säkerhetskopian återställdes från molnet</string>
+    <string name="cloud_sync_no_backup">Ingen säkerhetskopia i molnet hittades</string>
+    <string name="cloud_sync_subtitle">Automatisk synkronisering var 12:e timme</string>
+    <string name="queues_title">Mina köer</string>
+    <string name="queues_menu_item">Köer</string>
+    <string name="queue_new">Ny kö</string>
+    <string name="queue_name_hint">Könamn…</string>
+    <string name="queue_delete">Ta bort kö</string>
+    <string name="queue_switch">Byt till denna kö</string>
+    <string name="queue_empty">Töm kö</string>
+    <string name="queue_songs_count">%d låtar</string>
+    <string name="queue_active_badge">Aktiv</string>
+
+    <!-- PRO / Billing -->
+    <string name="pro_already_pro">Du har redan PRO</string>
+    <string name="pro_billing_unavailable">Google Play inte tillgängligt</string>
+    <string name="pro_feature_backup">Säkerhetskopiering &amp; Återställning</string>
+    <string name="pro_feature_crossfade">Crossfade</string>
+    <string name="pro_feature_eq_presets">EQ-förinställningar</string>
+    <string name="pro_feature_replay_gain">ReplayGain</string>
+    <string name="pro_feature_smart_playlists">Smarta spellistor</string>
+    <string name="pro_feature_stats">Lyssnarstatistik</string>
+    <string name="pro_feature_visualizer">Ljudvisualisering</string>
+    <string name="pro_menu_item">Uppgradera till PRO</string>
+    <string name="pro_upgrade_cta">Skaffa PRO</string>
+    <string name="pro_upgrade_loading">Laddar…</string>
+    <string name="pro_upgrade_subtitle">Lås upp hela upplevelsen</string>
+    <string name="pro_upgrade_success">Välkommen till PRO!</string>
+    <string name="pro_upgrade_title">Monkey Music PRO</string>
 </resources>

@@ -16,8 +16,10 @@ import com.lg.monkeymusicplayer.data.model.Song
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.*
+import timber.log.Timber
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlin.math.pow
 
 @UnstableApi
 class MusicPlayerManager(context: Context, private val statTracker: StatTracker) {
@@ -123,6 +125,9 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
                         updateCurrentSong(mediaItem)
                         _duration.value = mediaController.duration.coerceAtLeast(0L)
                         fetchAudioSessionId()
+                        // ReplayGain: ajustar volumen del controlador según el gain de la nueva canción
+                        val newSongForGain = mediaItem?.localConfiguration?.tag as? Song
+                        applyReplayGain(mediaController, newSongForGain?.replayGain)
 
                         // Registrar inicio de la nueva canción
                         val newSong = mediaItem?.localConfiguration?.tag as? Song
@@ -177,7 +182,8 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
                         updateQueue()
                     }
                 }
-                mediaController.addListener(playerListener!!)
+                // Attach listener safely to avoid NPEs if listener isn't set yet
+                playerListener?.let { mediaController.addListener(it) }
 
                 // Initial state sync
                 _isPlaying.value = mediaController.isPlaying
@@ -193,7 +199,8 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
                 fetchEqualizerData()
 
             } catch (e: Exception) {
-                e.printStackTrace()
+                // Log the error and attempt to reconnect
+                Timber.e(e, "setupMediaController: exception while configuring listener")
                 scheduleReconnect()
             }
         }, MoreExecutors.directExecutor())
@@ -341,6 +348,23 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
         if (!player.isPlaying && player.playbackState == Player.STATE_IDLE) {
             player.prepare()
         }
+    }
+
+    // ── ReplayGain ───────────────────────────────────────────────────────────────
+
+    /**
+     * Ajusta el volumen del [MediaController] según el gain de la canción.
+     *
+     * Conversión: factor = 10^(gainDb / 20). Clampeado a [0, 1] para no amplificar
+     * más allá del 100% y evitar clipping. Si [gainDb] es null, restaura a 1f.
+     */
+    private fun applyReplayGain(controller: MediaController, gainDb: Float?) {
+        val volume = if (gainDb != null) {
+            10f.pow(gainDb / 20f).coerceIn(0f, 1f)
+        } else {
+            1f
+        }
+        controller.volume = volume
     }
 
     private fun isPlaylistDifferent(player: Player, newItems: List<MediaItem>): Boolean {

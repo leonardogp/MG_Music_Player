@@ -181,4 +181,43 @@
     <string name="sort_artist">هنرمند</string>
     <string name="sort_date_added">تاریخ افزودن</string>
     <string name="sort_name">نام</string>
+
+    <!-- Cast, Cloud Sync & Queues -->
+    <string name="cast_button_desc">پخش روی دستگاه</string>
+    <string name="cast_connecting">در حال اتصال…</string>
+    <string name="cast_connected">در حال پخش روی %s</string>
+    <string name="cast_disconnected">پخش متوقف شد</string>
+    <string name="cloud_sync_menu_item">همگام‌سازی ابری</string>
+    <string name="cloud_sync_upload">بارگذاری پشتیبان</string>
+    <string name="cloud_sync_download">بازیابی از ابر</string>
+    <string name="cloud_sync_upload_ok">پشتیبان با موفقیت بارگذاری شد</string>
+    <string name="cloud_sync_download_ok">پشتیبان از ابر بازیابی شد</string>
+    <string name="cloud_sync_no_backup">پشتیبان ابری یافت نشد</string>
+    <string name="cloud_sync_subtitle">همگام‌سازی خودکار هر ۱۲ ساعت</string>
+    <string name="queues_title">صف‌های من</string>
+    <string name="queues_menu_item">صف‌ها</string>
+    <string name="queue_new">صف جدید</string>
+    <string name="queue_name_hint">نام صف…</string>
+    <string name="queue_delete">حذف صف</string>
+    <string name="queue_switch">تغییر به این صف</string>
+    <string name="queue_empty">خالی کردن صف</string>
+    <string name="queue_songs_count">%d آهنگ</string>
+    <string name="queue_active_badge">فعال</string>
+
+    <!-- PRO / Billing -->
+    <string name="pro_already_pro">شما قبلاً PRO دارید</string>
+    <string name="pro_billing_unavailable">Google Play در دسترس نیست</string>
+    <string name="pro_feature_backup">پشتیبان‌گیری و بازیابی</string>
+    <string name="pro_feature_crossfade">کراس‌فید</string>
+    <string name="pro_feature_eq_presets">پیش‌تنظیم‌های EQ</string>
+    <string name="pro_feature_replay_gain">ReplayGain</string>
+    <string name="pro_feature_smart_playlists">پلی‌لیست‌های هوشمند</string>
+    <string name="pro_feature_stats">آمار گوش دادن</string>
+    <string name="pro_feature_visualizer">بصری‌ساز صوتی</string>
+    <string name="pro_menu_item">ارتقا به PRO</string>
+    <string name="pro_upgrade_cta">دریافت PRO</string>
+    <string name="pro_upgrade_loading">در حال بارگذاری…</string>
+    <string name="pro_upgrade_subtitle">تجربه کامل را باز کنید</string>
+    <string name="pro_upgrade_success">به PRO خوش آمدید!</string>
+    <string name="pro_upgrade_title">Monkey Music PRO</string>
 </resources>

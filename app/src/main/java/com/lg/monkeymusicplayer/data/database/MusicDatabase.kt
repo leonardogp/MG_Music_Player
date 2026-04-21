@@ -17,7 +17,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         EqPresetEntity::class,
         SongStatEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class MusicDatabase : RoomDatabase() {
@@ -89,6 +89,13 @@ abstract class MusicDatabase : RoomDatabase() {
             }
         }
 
+        // v4 → v5: columna replayGain para normalización de volumen (ReplayGain)
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE songs ADD COLUMN replayGain REAL")
+            }
+        }
+
         fun getDatabase(context: Context): MusicDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -96,7 +103,7 @@ abstract class MusicDatabase : RoomDatabase() {
                     MusicDatabase::class.java,
                     "music_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .apply {
                         if (com.lg.monkeymusicplayer.BuildConfig.DEBUG) {
                             fallbackToDestructiveMigration()

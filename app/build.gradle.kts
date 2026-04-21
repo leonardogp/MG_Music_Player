@@ -103,6 +103,11 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
+    // Chromecast / Google Cast
+    implementation(libs.play.services.cast.framework)
+    implementation(libs.androidx.mediarouter)
+    // Google Play Billing (Paywall)
+    implementation(libs.google.billing)
 
     testImplementation(libs.junit)
     testImplementation("org.mockito.kotlin:mockito-kotlin:3.2.0")

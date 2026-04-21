@@ -185,4 +185,43 @@
     <string name="lyrics_source_online">En ligne</string>
     <string name="lyrics_tab">Paroles</string>
     <string name="queue_tab">File d\'attente</string>
+
+    <!-- Cast, Cloud Sync & Queues -->
+    <string name="cast_button_desc">Diffuser sur un appareil</string>
+    <string name="cast_connecting">Connexion en cours…</string>
+    <string name="cast_connected">Diffusion sur %s</string>
+    <string name="cast_disconnected">Diffusion arrêtée</string>
+    <string name="cloud_sync_menu_item">Sync cloud</string>
+    <string name="cloud_sync_upload">Envoyer la sauvegarde</string>
+    <string name="cloud_sync_download">Restaurer depuis le cloud</string>
+    <string name="cloud_sync_upload_ok">Sauvegarde envoyée avec succès</string>
+    <string name="cloud_sync_download_ok">Sauvegarde restaurée depuis le cloud</string>
+    <string name="cloud_sync_no_backup">Aucune sauvegarde cloud trouvée</string>
+    <string name="cloud_sync_subtitle">Synchronisation automatique toutes les 12 heures</string>
+    <string name="queues_title">Mes files</string>
+    <string name="queues_menu_item">Files</string>
+    <string name="queue_new">Nouvelle file</string>
+    <string name="queue_name_hint">Nom de la file…</string>
+    <string name="queue_delete">Supprimer la file</string>
+    <string name="queue_switch">Passer à cette file</string>
+    <string name="queue_empty">Vider la file</string>
+    <string name="queue_songs_count">%d chansons</string>
+    <string name="queue_active_badge">Active</string>
+
+    <!-- PRO / Billing -->
+    <string name="pro_already_pro">Vous avez déjà PRO</string>
+    <string name="pro_billing_unavailable">Google Play non disponibile</string>
+    <string name="pro_feature_backup">Sauvegarde &amp; Restauration</string>
+    <string name="pro_feature_crossfade">Fondu enchaîné</string>
+    <string name="pro_feature_eq_presets">Presets EQ</string>
+    <string name="pro_feature_replay_gain">ReplayGain</string>
+    <string name="pro_feature_smart_playlists">Listes intelligentes</string>
+    <string name="pro_feature_stats">Statistiques d\'écoute</string>
+    <string name="pro_feature_visualizer">Visualiseur audio</string>
+    <string name="pro_menu_item">Passer à PRO</string>
+    <string name="pro_upgrade_cta">Obtenir PRO</string>
+    <string name="pro_upgrade_loading">Chargement…</string>
+    <string name="pro_upgrade_subtitle">Débloquez l\'expérience complète</string>
+    <string name="pro_upgrade_success">Bienvenue dans PRO !</string>
+    <string name="pro_upgrade_title">Monkey Music PRO</string>
 </resources>

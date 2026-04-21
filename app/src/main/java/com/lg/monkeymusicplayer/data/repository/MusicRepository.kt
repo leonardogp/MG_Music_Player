@@ -102,6 +102,10 @@ class MusicRepository(
             }
         } catch (e: Exception) {
             Timber.e(e, "refreshMusicDatabase failed after scanning ${allScannedIds.size} songs")
+        } finally {
+            // Explicit invalidation after a scan completes (success or failure)
+            // to ensure genre cache is rebuilt on next request.
+            scanner.invalidateGenreCache()
         }
     }
 
@@ -239,6 +243,8 @@ class MusicRepository(
             }
 
             musicDao.updateSongTags(song.id, newTitle, newArtist, newAlbum, newGenre)
+            // Invalidate genre cache since tags may affect genre mappings
+            scanner.invalidateGenreCache()
 
             Result.Success(Unit)
 
@@ -275,7 +281,8 @@ class MusicRepository(
         genre = genre,
         folder = folder,
         path = path,
-        albumArtUri = albumArtUri
+        albumArtUri = albumArtUri,
+        replayGain = replayGain
     )
 
     private fun Song.toEntity() = SongEntity(
@@ -287,7 +294,8 @@ class MusicRepository(
         genre = genre,
         folder = folder,
         path = path,
-        albumArtUri = albumArtUri
+        albumArtUri = albumArtUri,
+        replayGain = replayGain
     )
 
     // ── EQ Presets ──────────────────────────────────────────────────────────────

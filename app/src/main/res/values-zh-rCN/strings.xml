@@ -179,4 +179,43 @@
     <string name="sort_name">名称</string>
     <string name="player_idle_subtitle">选择一首歌曲开始</string>
     <string name="player_idle_title">没有正在播放的歌曲</string>
+
+    <!-- Cast, Cloud Sync & Queues -->
+    <string name="cast_button_desc">投射到设备</string>
+    <string name="cast_connecting">正在连接…</string>
+    <string name="cast_connected">正在投射到 %s</string>
+    <string name="cast_disconnected">投射已停止</string>
+    <string name="cloud_sync_menu_item">云同步</string>
+    <string name="cloud_sync_upload">上传备份</string>
+    <string name="cloud_sync_download">从云端恢复</string>
+    <string name="cloud_sync_upload_ok">备份上传成功</string>
+    <string name="cloud_sync_download_ok">已从云端恢复备份</string>
+    <string name="cloud_sync_no_backup">未找到云端备份</string>
+    <string name="cloud_sync_subtitle">每12小时自动同步</string>
+    <string name="queues_title">我的队列</string>
+    <string name="queues_menu_item">队列</string>
+    <string name="queue_new">新建队列</string>
+    <string name="queue_name_hint">队列名称…</string>
+    <string name="queue_delete">删除队列</string>
+    <string name="queue_switch">切换到此队列</string>
+    <string name="queue_empty">清空队列</string>
+    <string name="queue_songs_count">%d首歌曲</string>
+    <string name="queue_active_badge">当前</string>
+
+    <!-- PRO / Billing -->
+    <string name="pro_already_pro">您已拥有PRO版</string>
+    <string name="pro_billing_unavailable">Google Play不可用</string>
+    <string name="pro_feature_backup">备份与恢复</string>
+    <string name="pro_feature_crossfade">交叉淡入淡出</string>
+    <string name="pro_feature_eq_presets">EQ预设</string>
+    <string name="pro_feature_replay_gain">ReplayGain</string>
+    <string name="pro_feature_smart_playlists">智能播放列表</string>
+    <string name="pro_feature_stats">收听统计</string>
+    <string name="pro_feature_visualizer">音频可视化</string>
+    <string name="pro_menu_item">升级到PRO</string>
+    <string name="pro_upgrade_cta">获取PRO</string>
+    <string name="pro_upgrade_loading">加载中…</string>
+    <string name="pro_upgrade_subtitle">解锁完整体验</string>
+    <string name="pro_upgrade_success">欢迎加入PRO！</string>
+    <string name="pro_upgrade_title">Monkey Music PRO</string>
 </resources>

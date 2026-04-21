@@ -30,6 +30,19 @@ import com.lg.monkeymusicplayer.data.repository.MusicRepository
 import com.lg.monkeymusicplayer.data.repository.BackupRepository
 import com.lg.monkeymusicplayer.data.repository.SmartRepository
 import com.lg.monkeymusicplayer.data.repository.StatsRepository
+import com.lg.monkeymusicplayer.core.billing.BillingManager
+import com.lg.monkeymusicplayer.core.cast.CastManager
+import com.lg.monkeymusicplayer.core.feature.Feature
+import com.lg.monkeymusicplayer.core.feature.FeatureGate
+import com.lg.monkeymusicplayer.data.repository.CloudSyncRepository
+import com.lg.monkeymusicplayer.core.queue.QueueManager
+import com.lg.monkeymusicplayer.domain.usecase.GetSmartPlaylistsUseCase
+import com.lg.monkeymusicplayer.domain.usecase.GetSongsUseCase
+import com.lg.monkeymusicplayer.domain.usecase.GetUserStatsUseCase
+import com.lg.monkeymusicplayer.domain.usecase.PlaySongUseCase
+import com.lg.monkeymusicplayer.domain.usecase.RefreshMusicLibraryUseCase
+import com.lg.monkeymusicplayer.domain.usecase.ToggleFavoriteUseCase
+import com.lg.monkeymusicplayer.domain.usecase.UpdateSongTagsUseCase
 import com.lg.monkeymusicplayer.ui.theme.PrimaryOrange
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -49,7 +62,49 @@ class MusicViewModel @Inject constructor(
     private val smartRepository: SmartRepository,
     val statsRepository: StatsRepository,
     val backupRepository: BackupRepository,
+    // ── Use Cases ─────────────────────────────────────────────────────────
+    private val getSongsUseCase: GetSongsUseCase,
+    private val getSmartPlaylistsUseCase: GetSmartPlaylistsUseCase,
+    private val getUserStatsUseCase: GetUserStatsUseCase,
+    private val refreshMusicLibraryUseCase: RefreshMusicLibraryUseCase,
+    private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
+    private val playSongUseCase: PlaySongUseCase,
+    private val updateSongTagsUseCase: UpdateSongTagsUseCase,
+    val queueManager: QueueManager,
+    private val castManager: CastManager,
+    private val cloudSyncRepository: CloudSyncRepository,
+    val featureGate: FeatureGate,
+    val billingManager: BillingManager,
 ) : ViewModel() {
+
+    // ── Cast ─────────────────────────────────────────────────────────────────
+    val castState = castManager.castState
+    val isCastConnected = castManager.isConnected
+
+    fun onCastButtonClick() {
+        // El botón Cast abre el selector de dispositivos via MediaRouter.
+        // La apertura real se hace desde la Activity con MediaRouteChooserDialog;
+        // este método prepara la sesión si ya hay un dispositivo conectado.
+        if (castManager.isConnected.value) {
+            castManager.currentRemoteSongId // no-op, solo expone el estado
+        }
+        // La apertura del diálogo se maneja en la Activity con MediaRouteButton.
+    }
+
+    /** Carga la canción actual en el receptor Cast activo. */
+    fun castCurrentSong() {
+        val song = playerManager.currentSong.value ?: return
+        castManager.loadSong(song)
+        playerManager.pause()
+    }
+
+    /** Carga la cola activa en el receptor Cast. */
+    fun castActiveQueue() {
+        val songs = queueManager.activeSongs
+        if (songs.isEmpty()) return
+        castManager.loadQueue(songs)
+        playerManager.pause()
+    }
 
     val context get() = applicationContext
 
@@ -310,7 +365,7 @@ class MusicViewModel @Inject constructor(
     }
     // Encadenar smartPlaylists como 6ª fuente (combine() está limitado a 5 parámetros
     // en la sobrecarga tipada; .combine() encadenado es el patrón recomendado).
-    .combine(smartRepository.smartPlaylists) { state, smart ->
+    .combine(getSmartPlaylistsUseCase()) { state, smart ->
         state.copy(smartPlaylists = smart)
     }
     .stateIn(viewModelScope, SharingStarted.Lazily, LibraryUiState())
@@ -453,22 +508,20 @@ class MusicViewModel @Inject constructor(
     fun scanMusic() = viewModelScope.launch {
         if (_loadState.value is LibraryLoadState.Scanning) return@launch
         _loadState.value = LibraryLoadState.Scanning()
-        try {
-            repository.refreshMusicDatabase { current, total ->
-                _loadState.value = LibraryLoadState.Scanning(current, total)
-            }
-            _loadState.value = LibraryLoadState.Idle
-        } catch (e: Exception) {
-            _loadState.value = LibraryLoadState.Error(e.message ?: context.getString(R.string.error_unknown))
-        } finally {
-            // Apagar initial load en cualquier caso (scan completado o fallido)
-            _isInitialLoad.value = false
+        val result = refreshMusicLibraryUseCase { current, total ->
+            _loadState.value = LibraryLoadState.Scanning(current, total)
         }
+        _loadState.value = when (result) {
+            is Result.Success -> LibraryLoadState.Idle
+            is Result.Error   -> LibraryLoadState.Error(result.message)
+            else              -> LibraryLoadState.Idle
+        }
+        _isInitialLoad.value = false
     }
 
     fun toggleFavorite(song: Song) = viewModelScope.launch {
         val currentFavorites = repository.favorites.first()
-        repository.toggleFavorite(song.id, !currentFavorites.contains(song.id))
+        toggleFavoriteUseCase.toggle(song.id, currentFavorites.contains(song.id))
     }
 
     fun updateSongTags(
@@ -478,20 +531,53 @@ class MusicViewModel @Inject constructor(
         album: String,
         genre: String
     ) = viewModelScope.launch {
-        val result = repository.updateSongTags(song, title, artist, album, genre)
+        val result = updateSongTagsUseCase(song, title, artist, album, genre)
         _tagUpdateResult.emit(result)
     }
 
     fun playSong(song: Song, playlist: List<Song> = uiState.value.songs) {
         viewModelScope.launch {
-            playerManager.setPlaylist(playlist)
-            playerManager.play(song)
-            // Registrar en historial — se ejecuta en IO para no bloquear la reproducción
-            launch(Dispatchers.IO) { repository.addToHistory(song.id) }
+            playSongUseCase(song, playlist)
         }
     }
 
     fun addToQueue(song: Song) = playerManager.addToQueue(song)
+
+    // ── Gestión de múltiples colas ───────────────────────────────────────────
+
+    /**
+     * Crea una cola nueva y, opcionalmente, hace switch a ella.
+     * El player se actualiza si [switchTo] es true.
+     */
+    fun createAndSwitchQueue(name: String, displayName: String = name, songs: List<Song> = emptyList()) {
+        queueManager.createQueue(name, displayName)
+        if (songs.isNotEmpty()) queueManager.setQueueSongs(name, songs)
+        queueManager.switchToQueue(name)
+        // Cargar en el player
+        val queueSongs = queueManager.getQueue(name)?.songs ?: return
+        viewModelScope.launch { playerManager.setPlaylist(queueSongs) }
+    }
+
+    /** Cambia a una cola existente y la carga en el player. */
+    fun switchToQueue(name: String) {
+        queueManager.switchToQueue(name)
+        val songs = queueManager.getQueue(name)?.songs ?: return
+        viewModelScope.launch { playerManager.setPlaylist(songs) }
+    }
+
+    /** Elimina una cola (no se pueden eliminar main ni smart). */
+    fun deleteQueue(name: String) = queueManager.deleteQueue(name)
+
+    /** Añade una canción a la cola activa sin cambiar la reproducción actual. */
+    fun addToActiveQueue(song: Song) {
+        queueManager.addToActiveQueue(song)
+        playerManager.addToQueue(song)
+    }
+
+    /** Reordena una canción en la cola activa. */
+    fun moveInActiveQueue(fromIndex: Int, toIndex: Int) {
+        queueManager.moveInQueue(queueManager.activeQueueName.value, fromIndex, toIndex)
+    }
     fun togglePlayPause() = playerManager.togglePlayPause()
     fun skipNext() = playerManager.skipNext()
     fun skipPrevious() = playerManager.skipPrevious()
@@ -500,6 +586,28 @@ class MusicViewModel @Inject constructor(
     fun seekBack() = playerManager.seekBack()
     fun toggleShuffle() = playerManager.toggleShuffle()
     fun cycleRepeatMode() = playerManager.cycleRepeatMode()
+
+    // ── Cloud Sync ───────────────────────────────────────────────────────────────
+
+    suspend fun cloudSyncUpload() = cloudSyncRepository.upload()
+
+    suspend fun cloudSyncDownload() = cloudSyncRepository.download()
+
+    // ── Paywall / Feature Gate ────────────────────────────────────────────────
+
+    /** True si la feature está disponible para el usuario actual. */
+    fun isFeatureUnlocked(feature: Feature): Boolean = featureGate.isUnlocked(feature)
+
+    /** Lista de features premium que el usuario aún no tiene. */
+    fun lockedFeatures(): List<Feature> = featureGate.lockedPremiumFeatures()
+
+    /**
+     * Lanza el flujo de compra de Google Play.
+     * Requiere una Activity activa — llamar desde un onClick en la UI.
+     */
+    fun launchProUpgrade(activity: android.app.Activity) {
+        billingManager.launchBillingFlow(activity)
+    }
 
     // ── EQ Presets ──────────────────────────────────────────────────────────────
 

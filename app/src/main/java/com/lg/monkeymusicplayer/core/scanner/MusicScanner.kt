@@ -6,10 +6,28 @@ import android.net.Uri
 import android.provider.MediaStore
 import com.lg.monkeymusicplayer.data.model.Song
 import com.lg.monkeymusicplayer.util.PermissionHelper
+import com.lg.monkeymusicplayer.core.player.ReplayGainReader
 import timber.log.Timber
 import java.io.File
 
 class MusicScanner(private val context: Context) {
+
+    // Explicit invalidation hook for event-driven cache invalidation
+    fun invalidateGenreCache() {
+        genreCache = null
+        genreCacheTimeMs = 0L
+    }
+
+    // Simple in-memory cache for genre lookups to avoid repeated expensive queries
+    private var genreCache: MutableMap<Long, String>? = null
+    private var genreCacheTimeMs: Long = 0L
+    private val GENRE_CACHE_TTL_MS: Long = 5L * 60L * 1000L // 5 minutes
+
+    // Public helper for tests: determine if a given path should be excluded.
+    internal fun isPathExcluded(fullPath: String, excludedPaths: List<String>): Boolean {
+        val set = excludedPaths.toSet()
+        return set.isNotEmpty() && fullPath.isNotEmpty() && set.any { excluded -> fullPath.startsWith(excluded) }
+    }
 
     suspend fun scan(
         excludedPaths: List<String> = emptyList(),
@@ -57,6 +75,8 @@ class MusicScanner(private val context: Context) {
             return songs
         }
 
+        // Precompute a Set for excluded paths to improve lookup performance
+        val excludedSet = excludedPaths.toSet()
         cursor.use {
             val total = it.count
             Timber.d("MusicScanner: encontradas $total canciones en MediaStore")
@@ -93,8 +113,8 @@ class MusicScanner(private val context: Context) {
                 // ── Filtro de rutas excluidas ──
                 // Comparamos el path completo contra cada ruta excluida.
                 // startsWith cubre tanto la carpeta exacta como sus subcarpetas.
-                if (excludedPaths.isNotEmpty() && fullPath.isNotEmpty()) {
-                    if (excludedPaths.any { excluded -> fullPath.startsWith(excluded) }) {
+                if (excludedSet.isNotEmpty() && fullPath.isNotEmpty()) {
+                    if (excludedSet.any { excluded -> fullPath.startsWith(excluded) }) {
                         current++
                         onProgress(current, total)
                         continue
@@ -110,6 +130,11 @@ class MusicScanner(private val context: Context) {
                 // ── Lookup O(1) en lugar de query individual por cada canción ──
                 val genre = genreMap[id] ?: "Sin género"
 
+                // ReplayGain: se lee el tag del archivo físico (path real, no content URI).
+                // Es una operación IO liviana (~1ms por archivo); se ejecuta en el contexto
+                // suspendido del scanner que ya corre en Dispatchers.IO.
+                val replayGain = ReplayGainReader.readTrackGain(fullPath)
+
                 val song = Song(
                     id = id,
                     albumId = albumId,
@@ -119,7 +144,8 @@ class MusicScanner(private val context: Context) {
                     genre = genre,
                     folder = folder,
                     path = contentUri.toString(),
-                    albumArtUri = albumArtUri
+                    albumArtUri = albumArtUri,
+                    replayGain = replayGain
                 )
 
                 songs.add(song)
@@ -152,6 +178,12 @@ class MusicScanner(private val context: Context) {
      * En una biblioteca típica: ~20 géneros vs ~1000 canciones → 50x menos queries.
      */
     private fun loadAllGenres(): Map<Long, String> {
+        val now = System.currentTimeMillis()
+        genreCache?.let {
+            if (now - genreCacheTimeMs < GENRE_CACHE_TTL_MS) {
+                return it
+            }
+        }
         val genreMap = mutableMapOf<Long, String>()
 
         // Paso 1: obtener todos los géneros disponibles
@@ -196,6 +228,9 @@ class MusicScanner(private val context: Context) {
             }
         }
 
+        // Cache the result for subsequent scans within TTL
+        genreCache = genreMap
+        genreCacheTimeMs = now
         return genreMap
     }
 }

@@ -3,16 +3,17 @@ package com.lg.monkeymusicplayer.ui
 import android.app.Application
 import android.os.Bundle
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
+import com.lg.monkeymusicplayer.core.billing.BillingManager
+import com.lg.monkeymusicplayer.core.cast.CastManager
+import com.lg.monkeymusicplayer.core.feature.FeatureGate
 import com.lg.monkeymusicplayer.core.player.MusicPlayerManager
+import com.lg.monkeymusicplayer.core.queue.QueueManager
 import com.lg.monkeymusicplayer.data.database.EqPresetEntity
 import com.lg.monkeymusicplayer.data.database.HistoryEntity
 import com.lg.monkeymusicplayer.data.database.PlaylistEntity
 import com.lg.monkeymusicplayer.data.model.Song
-import com.lg.monkeymusicplayer.data.repository.ExcludedFoldersRepository
-import com.lg.monkeymusicplayer.data.repository.MusicRepository
-import com.lg.monkeymusicplayer.data.repository.SmartRepository
-import com.lg.monkeymusicplayer.data.repository.StatsRepository
-import com.lg.monkeymusicplayer.data.repository.BackupRepository
+import com.lg.monkeymusicplayer.data.repository.*
+import com.lg.monkeymusicplayer.domain.usecase.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +41,21 @@ class MusicViewModelTest {
     private val backupRepository: BackupRepository = mock()
     private val application: Application = mock()
 
+    // Use Cases
+    private val getSongsUseCase: GetSongsUseCase = mock()
+    private val getSmartPlaylistsUseCase: GetSmartPlaylistsUseCase = mock()
+    private val getUserStatsUseCase: GetUserStatsUseCase = mock()
+    private val refreshMusicLibraryUseCase: RefreshMusicLibraryUseCase = mock()
+    private val toggleFavoriteUseCase: ToggleFavoriteUseCase = mock()
+    private val playSongUseCase: PlaySongUseCase = mock()
+    private val updateSongTagsUseCase: UpdateSongTagsUseCase = mock()
+
+    private val queueManager: QueueManager = mock()
+    private val castManager: CastManager = mock()
+    private val cloudSyncRepository: CloudSyncRepository = mock()
+    private val featureGate: FeatureGate = mock()
+    private val billingManager: BillingManager = mock()
+
     private val testDispatcher = StandardTestDispatcher()
 
     @Before
@@ -65,6 +81,13 @@ class MusicViewModelTest {
         whenever(excludedFoldersRepository.excludedFolders).thenReturn(MutableStateFlow<List<String>>(emptyList()))
         whenever(smartRepository.smartPlaylists).thenReturn(emptyFlow())
 
+        // Stubbing for Use Cases called in init or uiState
+        whenever(getSmartPlaylistsUseCase.invoke()).thenReturn(emptyFlow())
+        whenever(castManager.castState).thenReturn(MutableStateFlow(0))
+        whenever(castManager.isConnected).thenReturn(MutableStateFlow(false))
+        whenever(queueManager.activeSongs).thenReturn(emptyList())
+        whenever(queueManager.activeQueueName).thenReturn(MutableStateFlow("main"))
+
         viewModel = MusicViewModel(
             application,
             repository,
@@ -72,7 +95,19 @@ class MusicViewModelTest {
             excludedFoldersRepository,
             smartRepository,
             statsRepository,
-            backupRepository
+            backupRepository,
+            getSongsUseCase,
+            getSmartPlaylistsUseCase,
+            getUserStatsUseCase,
+            refreshMusicLibraryUseCase,
+            toggleFavoriteUseCase,
+            playSongUseCase,
+            updateSongTagsUseCase,
+            queueManager,
+            castManager,
+            cloudSyncRepository,
+            featureGate,
+            billingManager
         )
     }
 
@@ -91,9 +126,10 @@ class MusicViewModelTest {
     @Test
     fun testPlaySong() = runTest {
         val song = Song(1, 1, "Title", "Artist", "Album", "Genre", "Folder", "Path", "Uri", false)
-        viewModel.playSong(song)
-        verify(playerManager).setPlaylist(any())
-        verify(playerManager).play(song)
+        val playlist = emptyList<Song>()
+        viewModel.playSong(song, playlist)
+        advanceUntilIdle()
+        verify(playSongUseCase).invoke(eq(song), eq(playlist))
     }
 
     @Test
@@ -107,6 +143,7 @@ class MusicViewModelTest {
         val song = Song(1, 1, "Title", "Artist", "Album", "Genre", "Folder", "Path", "Uri", false)
         whenever(repository.favorites).thenReturn(MutableStateFlow<List<Long>>(emptyList()))
         viewModel.toggleFavorite(song)
-        verify(repository).toggleFavorite(eq(1L), eq(true))
+        advanceUntilIdle()
+        verify(toggleFavoriteUseCase).toggle(eq(1L), eq(false))
     }
 }

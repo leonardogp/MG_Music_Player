@@ -29,17 +29,20 @@ class MusicScanner(private val context: Context) {
         return set.isNotEmpty() && fullPath.isNotEmpty() && set.any { excluded -> fullPath.startsWith(excluded) }
     }
 
+    /**
+     * Scans the MediaStore for music.
+     * @param existingIds IDs already in the database. Reading ReplayGain will be skipped for these.
+     */
     suspend fun scan(
         excludedPaths: List<String> = emptyList(),
+        existingIds: Set<Long> = emptySet(),
         onProgress: (Int, Int) -> Unit = { _, _ -> },
         onSongsFound: suspend (List<Song>) -> Unit = {}
     ): List<Song> {
         val songs = mutableListOf<Song>()
         val uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
 
-        // ── CORRECCIÓN: pre-cargar TODOS los géneros en un Map antes del loop ──
-        // Antes: se hacía 1 query al ContentResolver por cada canción → O(N) queries
-        // Ahora: 1 sola query para todos → O(1) lookup por canción
+        // Pre-cargar TODOS los géneros en un Map para evitar miles de queries individuales.
         val genreMap = loadAllGenres()
 
         val projection = arrayOf(
@@ -54,9 +57,6 @@ class MusicScanner(private val context: Context) {
 
         val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
 
-        // Guard: en Android 14+ (especialmente Xiaomi HyperOS) el ContentResolver puede
-        // devolver cursor vacío silenciosamente si READ_MEDIA_AUDIO no está concedido.
-        // Verificar antes de consultar para evitar confundir "sin permisos" con "sin música".
         if (!PermissionHelper.hasReadPermissions(context)) {
             Timber.w("MusicScanner: scan abortado — permisos de lectura no concedidos")
             return songs
@@ -71,18 +71,15 @@ class MusicScanner(private val context: Context) {
         )
 
         if (cursor == null) {
-            Timber.w("MusicScanner: ContentResolver devolvió cursor null — posible bloqueo de permisos OEM (HyperOS/MIUI)")
+            Timber.w("MusicScanner: ContentResolver devolvió cursor null")
             return songs
         }
 
-        // Precompute a Set for excluded paths to improve lookup performance
         val excludedSet = excludedPaths.toSet()
         cursor.use {
             val total = it.count
             Timber.d("MusicScanner: encontradas $total canciones en MediaStore")
-            if (total == 0) {
-                Timber.w("MusicScanner: MediaStore devuelve 0 canciones — verificar permisos en Ajustes de la app o restricciones del OEM")
-            }
+            
             val idColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
             val albumIdColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
             val titleColumn = it.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
@@ -102,24 +99,19 @@ class MusicScanner(private val context: Context) {
                 val artist = it.getString(artistColumn) ?: "Artista Desconocido"
                 val album = it.getString(albumColumn) ?: "Álbum Desconocido"
 
+                val fullPath = it.getString(dataColumn) ?: ""
+
+                // Filtro de rutas excluidas
+                if (excludedSet.isNotEmpty() && fullPath.isNotEmpty() && excludedSet.any { excluded -> fullPath.startsWith(excluded) }) {
+                    onProgress(current, total)
+                    continue
+                }
+
                 val contentUri = ContentUris.withAppendedId(
                     MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id
                 )
                 val sArtworkUri = Uri.parse("content://media/external/audio/albumart")
                 val albumArtUri = ContentUris.withAppendedId(sArtworkUri, albumId).toString()
-
-                val fullPath = it.getString(dataColumn) ?: ""
-
-                // ── Filtro de rutas excluidas ──
-                // Comparamos el path completo contra cada ruta excluida.
-                // startsWith cubre tanto la carpeta exacta como sus subcarpetas.
-                if (excludedSet.isNotEmpty() && fullPath.isNotEmpty()) {
-                    if (excludedSet.any { excluded -> fullPath.startsWith(excluded) }) {
-                        current++
-                        onProgress(current, total)
-                        continue
-                    }
-                }
 
                 val folder = if (fullPath.isNotEmpty()) {
                     File(fullPath).parentFile?.name ?: "Raíz"
@@ -127,13 +119,16 @@ class MusicScanner(private val context: Context) {
                     "Desconocida"
                 }
 
-                // ── Lookup O(1) en lugar de query individual por cada canción ──
                 val genre = genreMap[id] ?: "Sin género"
 
-                // ReplayGain: se lee el tag del archivo físico (path real, no content URI).
-                // Es una operación IO liviana (~1ms por archivo); se ejecuta en el contexto
-                // suspendido del scanner que ya corre en Dispatchers.IO.
-                val replayGain = ReplayGainReader.readTrackGain(fullPath)
+                // OPTIMIZACIÓN: Solo leer ReplayGain si la canción es NUEVA.
+                // Leer etiquetas ID3 directamente de miles de archivos es extremadamente lento.
+                val isNew = id !in existingIds
+                val replayGain = if (isNew && fullPath.isNotEmpty()) {
+                    ReplayGainReader.readTrackGain(fullPath)
+                } else {
+                    null
+                }
 
                 val song = Song(
                     id = id,
@@ -166,17 +161,6 @@ class MusicScanner(private val context: Context) {
         return songs
     }
 
-    /**
-     * Carga todos los géneros del dispositivo en un Map<songId, genreName>.
-     *
-     * Estrategia:
-     *  1. Obtener todos los géneros con sus IDs.
-     *  2. Por cada género, obtener los IDs de las canciones que pertenecen a él.
-     *  3. Construir el mapa inverso songId → genreName.
-     *
-     * Resultado: 1 + N_genres queries en lugar de N_songs queries.
-     * En una biblioteca típica: ~20 géneros vs ~1000 canciones → 50x menos queries.
-     */
     private fun loadAllGenres(): Map<Long, String> {
         val now = System.currentTimeMillis()
         genreCache?.let {
@@ -186,7 +170,6 @@ class MusicScanner(private val context: Context) {
         }
         val genreMap = mutableMapOf<Long, String>()
 
-        // Paso 1: obtener todos los géneros disponibles
         val genreUri = MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI
         val genreProjection = arrayOf(
             MediaStore.Audio.Genres._ID,
@@ -205,7 +188,6 @@ class MusicScanner(private val context: Context) {
                 val genreId = gc.getLong(genreIdCol)
                 val genreName = gc.getString(genreNameCol) ?: continue
 
-                // Paso 2: obtener las canciones de este género
                 val songUri = MediaStore.Audio.Genres.Members.getContentUri("external", genreId)
                 val songProjection = arrayOf(MediaStore.Audio.Genres.Members.AUDIO_ID)
 
@@ -219,7 +201,6 @@ class MusicScanner(private val context: Context) {
                     )
                     while (sc.moveToNext()) {
                         val songId = sc.getLong(audioIdCol)
-                        // Si una canción tiene varios géneros, quedarse con el primero encontrado
                         if (!genreMap.containsKey(songId)) {
                             genreMap[songId] = genreName
                         }
@@ -228,7 +209,6 @@ class MusicScanner(private val context: Context) {
             }
         }
 
-        // Cache the result for subsequent scans within TTL
         genreCache = genreMap
         genreCacheTimeMs = now
         return genreMap

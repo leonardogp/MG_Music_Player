@@ -623,31 +623,32 @@ fun LibraryMainContent(
                     onSearchQueryChanged = onSearchQueryChanged,
                     onMenuClick = onMenuClick
                 )
-                ScrollableTabRow(
-                    selectedTabIndex = pagerState.currentPage,
-                    edgePadding = 16.dp,
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.primary,
-                    indicator = { tabPositions ->
-                        TabRowDefaults.SecondaryIndicator(
-                            Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    divider = {}
+                // Chips tipo pastilla (igual que la imagen de referencia)
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = pagerState.currentPage == index,
+                    itemsIndexed(tabs) { index, title ->
+                        val selected = pagerState.currentPage == index
+                        Surface(
                             onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                            text = {
+                            shape = RoundedCornerShape(50),
+                            color = if (selected) PrimaryOrange else MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.height(36.dp)
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.padding(horizontal = 16.dp)
+                            ) {
                                 Text(
                                     text = title,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = if (pagerState.currentPage == index) FontWeight.Bold else FontWeight.Normal
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selected) Color.White
+                                            else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                        )
+                        }
                     }
                 }
             }
@@ -772,12 +773,31 @@ fun HomeContent(
         } else if (favoriteSongs.isEmpty() && smartPlaylists.isEmpty()) {
             item {
                 Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        stringResource(R.string.smart_empty_body),
-                        style = MaterialTheme.typography.bodyMedium,
-                        textAlign = TextAlign.Center,
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.padding(32.dp)
-                    )
+                    ) {
+                        Icon(
+                            Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = PrimaryOrange,
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            stringResource(R.string.smart_empty_title),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            stringResource(R.string.smart_empty_body),
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
@@ -786,12 +806,22 @@ fun HomeContent(
 
 @Composable
 fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(start = 16.dp, top = 24.dp, bottom = 12.dp)
-    )
+    Row(
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp).height(18.dp)
+                .background(PrimaryOrange, RoundedCornerShape(2.dp))
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+    }
 }
 
 @Composable
@@ -836,42 +866,65 @@ fun SongCard(song: Song, onClick: () -> Unit) {
 fun LibraryTopBar(
     searchQuery: String,
     onSearchQueryChanged: (String) -> Unit,
-    onMenuClick: () -> Unit
+    onMenuClick: () -> Unit,
+    isSearchActive: Boolean = false
 ) {
-    // FIX: Usar un estado local para la consulta de búsqueda para evitar que el cursor salte
-    // cuando el estado del ViewModel (uiState) se actualiza de forma asíncrona.
     var text by remember { mutableStateOf(searchQuery) }
+    LaunchedEffect(searchQuery) { if (text != searchQuery) text = searchQuery }
 
-    // Sincronizar el estado local si searchQuery cambia desde fuera (ej. al limpiar la búsqueda)
-    LaunchedEffect(searchQuery) {
-        if (text != searchQuery) {
-            text = searchQuery
-        }
-    }
-
-    CenterAlignedTopAppBar(
+    TopAppBar(
         title = {
-            SearchBar(
-                query = text,
-                onQueryChange = {
-                    text = it
-                    onSearchQueryChanged(it)
-                },
-                onSearch = {},
-                active = false,
-                onActiveChange = {},
-                placeholder = { Text(stringResource(R.string.search)) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                colors = SearchBarDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            ) {}
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(R.drawable.ic_monkey_head),
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp).clip(RoundedCornerShape(50))
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
         },
         actions = {
+            IconButton(onClick = {
+                text = if (text.isEmpty()) "" else ""
+                onSearchQueryChanged(text)
+            }) {
+                Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
+            }
             IconButton(onClick = onMenuClick) {
                 Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
             }
-        }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.background
+        )
     )
+    // Barra de búsqueda expandible debajo del TopAppBar
+    if (text.isNotEmpty() || isSearchActive) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it; onSearchQueryChanged(it) },
+            placeholder = { Text(stringResource(R.string.search)) },
+            leadingIcon = { Icon(Icons.Default.Search, null) },
+            trailingIcon = {
+                if (text.isNotEmpty()) IconButton(onClick = { text = ""; onSearchQueryChanged("") }) {
+                    Icon(Icons.Default.Close, null)
+                }
+            },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+            shape = RoundedCornerShape(50),
+            singleLine = true,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = PrimaryOrange,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+            )
+        )
+    }
 }
 
 @Composable
@@ -903,40 +956,74 @@ fun SongListItem(
     onClick: () -> Unit,
     onMoreClick: () -> Unit
 ) {
+    val bgColor = if (isSelected)
+        PrimaryOrange.copy(alpha = 0.08f)
+    else Color.Transparent
+
     ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .background(bgColor),
         headlineContent = {
             Text(
                 text = song.title,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                color = if (isSelected) PrimaryOrange else MaterialTheme.colorScheme.onSurface
             )
         },
         supportingContent = {
             Text(
-                text = "${song.artist} • ${song.album}",
+                text = buildString {
+                    append(song.artist)
+                    if (song.album.isNotBlank()) append(" • \${song.album}")
+                },
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
         leadingContent = {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(song.albumArtUri)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = null,
-                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(4.dp)),
-                contentScale = ContentScale.Crop,
-                error = painterResource(R.drawable.ic_monkey_head)
-            )
+            Box {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(song.albumArtUri)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    modifier = Modifier.size(52.dp).clip(RoundedCornerShape(6.dp)),
+                    contentScale = ContentScale.Crop,
+                    error = painterResource(R.drawable.ic_monkey_head)
+                )
+                if (isPlaying) {
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color.Black.copy(alpha = 0.45f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.VolumeUp,
+                            contentDescription = null,
+                            tint = PrimaryOrange,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
         },
         trailingContent = {
             IconButton(onClick = onMoreClick) {
-                Icon(Icons.Default.MoreVert, contentDescription = null)
+                Icon(Icons.Default.MoreVert, contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+    )
+    HorizontalDivider(
+        modifier = Modifier.padding(start = 76.dp),
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
     )
 }
 
@@ -952,55 +1039,88 @@ fun PlayerBottomBar(
     // Si no hay ninguna → mostrar estado idle con texto indicativo.
     val song = playerState.currentSong ?: playerState.lastPlayedSong
 
+    val progress = if (playerState.duration > 0L)
+        (playerState.currentPosition.toFloat() / playerState.duration.toFloat()).coerceIn(0f, 1f)
+    else 0f
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp)
             .clickable(enabled = song != null, onClick = onClick),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        tonalElevation = 8.dp
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 12.dp
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (song == null) {
-                // Estado idle: sin canción reproducida aún
-                Icon(
-                    Icons.Default.MusicNote,
-                    contentDescription = null,
-                    modifier = Modifier.size(48.dp).padding(8.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+        Column {
+            // Barra de progreso naranja en la parte superior del mini player
+            if (song != null && playerState.duration > 0L) {
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth().height(2.dp),
+                    color = PrimaryOrange,
+                    trackColor = PrimaryOrange.copy(alpha = 0.15f)
                 )
-                Text(
-                    text = stringResource(R.string.player_idle_title),
-                    modifier = Modifier.weight(1f).padding(start = 12.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                return@Surface
             }
-            AsyncImage(
-                model = song.albumArtUri,
-                contentDescription = null,
-                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(4.dp)),
-                contentScale = ContentScale.Crop,
-                error = painterResource(R.drawable.ic_monkey_head)
-            )
-            Column(
-                modifier = Modifier.weight(1f).padding(start = 12.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(song.title, style = MaterialTheme.typography.titleSmall, maxLines = 1)
-                Text(song.artist, style = MaterialTheme.typography.bodySmall, maxLines = 1)
-            }
-            IconButton(onClick = onPlayPause) {
-                Icon(
-                    if (playerState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = null
+                if (song == null) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(PrimaryOrange.copy(alpha = 0.12f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.MusicNote, null,
+                            tint = PrimaryOrange, modifier = Modifier.size(22.dp))
+                    }
+                    Text(
+                        text = stringResource(R.string.player_idle_subtitle),
+                        modifier = Modifier.weight(1f).padding(start = 12.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    return@Row
+                }
+                AsyncImage(
+                    model = song.albumArtUri,
+                    contentDescription = null,
+                    modifier = Modifier.size(44.dp).clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop,
+                    error = painterResource(R.drawable.ic_monkey_head)
                 )
-            }
-            IconButton(onClick = onSkipNext) {
-                Icon(Icons.Default.SkipNext, contentDescription = null)
+                Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                    Text(
+                        song.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        song.artist,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                IconButton(onClick = onPlayPause) {
+                    Icon(
+                        if (playerState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        tint = PrimaryOrange,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+                IconButton(onClick = onSkipNext) {
+                    Icon(Icons.Default.SkipNext, contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurface)
+                }
             }
         }
     }
@@ -1275,19 +1395,39 @@ fun SmartPlaylistCard(smart: SmartPlaylist, onClick: () -> Unit) {
         SmartPlaylistType.TOP_SONGS -> Icons.Default.Star
     }
     
+    val gradients = listOf(
+        listOf(Color(0xFFFF8C00), Color(0xFFFF5500)),  // DAILY_MIX
+        listOf(Color(0xFF7B2FBE), Color(0xFFFF8C00)),  // REDISCOVER
+        listOf(Color(0xFF1DB954), Color(0xFF0D7A38))   // TOP_SONGS
+    )
+    val gradientColors = when (smart.type) {
+        SmartPlaylistType.DAILY_MIX -> gradients[0]
+        SmartPlaylistType.REDISCOVER -> gradients[1]
+        SmartPlaylistType.TOP_SONGS -> gradients[2]
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth().aspectRatio(1f).clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Brush.linearGradient(gradientColors))
+        ) {
             Icon(
                 icon,
                 contentDescription = null,
-                modifier = Modifier.align(Alignment.Center).size(64.dp).alpha(0.1f)
+                modifier = Modifier.align(Alignment.Center).size(56.dp).alpha(0.2f),
+                tint = Color.White
             )
             Column(modifier = Modifier.align(Alignment.BottomStart).padding(12.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                Text(stringResource(R.string.stats_artist_songs, smart.songs.size), style = MaterialTheme.typography.bodySmall)
+                Text(title, style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+                Text(stringResource(R.string.stats_artist_songs, smart.songs.size),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.8f))
             }
         }
     }

@@ -50,7 +50,8 @@ fun monkeymusicplayerTheme(
     windowSizeClass: WindowSizeClass? = null,
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    // dynamicColor deshabilitado — la app usa su propio naranja (#FF8C00) como identidad de marca.
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

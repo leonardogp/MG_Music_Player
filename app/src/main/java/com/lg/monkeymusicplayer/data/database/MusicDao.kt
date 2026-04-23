@@ -27,6 +27,9 @@ interface MusicDao {
     @Query("UPDATE songs SET title = :title, artist = :artist, album = :album, genre = :genre WHERE id = :id")
     suspend fun updateSongTags(id: Long, title: String, artist: String, album: String, genre: String)
 
+    @Query("UPDATE songs SET replayGain = :gain WHERE id = :id")
+    suspend fun updateReplayGain(id: Long, gain: Float)
+
     /**
      * OPT-3: Actualiza metadatos de múltiples canciones en una sola transacción.
      * Drásticamente más rápido que N llamadas individuales a updateSongMetadata:

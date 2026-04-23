@@ -9,6 +9,7 @@ import com.lg.monkeymusicplayer.core.lyrics.LrcLibService
 import com.lg.monkeymusicplayer.core.result.Result
 import timber.log.Timber
 import com.lg.monkeymusicplayer.core.scanner.MusicScanner
+import com.lg.monkeymusicplayer.core.worker.ReplayGainWorker
 import com.lg.monkeymusicplayer.data.database.EqPresetEntity
 import com.lg.monkeymusicplayer.data.database.FavoriteEntity
 import com.lg.monkeymusicplayer.data.database.HistoryEntity
@@ -94,9 +95,11 @@ class MusicRepository(
         } catch (e: Exception) {
             Timber.e(e, "refreshMusicDatabase failed after scanning ${allScannedIds.size} songs")
         } finally {
-            // Explicit invalidation after a scan completes (success or failure)
-            // to ensure genre cache is rebuilt on next request.
             scanner.invalidateGenreCache()
+            // Leer ReplayGain en background post-scan para no bloquear el escaneo principal.
+            // Mp3File() lee el archivo completo (~50-200ms/archivo); con 800 canciones
+            // son ~2 minutos secuenciales — inaceptable dentro del scan principal.
+            ReplayGainWorker.schedule(context)
         }
     }
 

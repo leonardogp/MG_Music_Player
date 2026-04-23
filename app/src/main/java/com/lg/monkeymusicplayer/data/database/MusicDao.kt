@@ -27,6 +27,29 @@ interface MusicDao {
     @Query("UPDATE songs SET title = :title, artist = :artist, album = :album, genre = :genre WHERE id = :id")
     suspend fun updateSongTags(id: Long, title: String, artist: String, album: String, genre: String)
 
+    /**
+     * OPT-3: Actualiza metadatos de múltiples canciones en una sola transacción.
+     * Drásticamente más rápido que N llamadas individuales a updateSongMetadata:
+     * cada llamada individual abre/cierra su propia transacción SQLite.
+     * Con @Transaction todo el batch se ejecuta en una sola transacción.
+     * NO toca el campo genre (preserva ediciones manuales del usuario).
+     */
+    @Transaction
+    suspend fun updateSongMetadataBatch(songs: List<SongEntity>) {
+        for (song in songs) {
+            updateSongMetadata(
+                id          = song.id,
+                title       = song.title,
+                artist      = song.artist,
+                album       = song.album,
+                albumId     = song.albumId,
+                folder      = song.folder,
+                path        = song.path,
+                albumArtUri = song.albumArtUri
+            )
+        }
+    }
+
     @Query("DELETE FROM songs WHERE id IN (:ids)")
     suspend fun deleteSongsByIds(ids: List<Long>)
 

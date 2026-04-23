@@ -61,27 +61,18 @@ class MusicRepository(
 
             scanner.scan(
                 excludedPaths = excludedFolders.excludedFolders.value,
-                onProgress = onProgress,
-                onSongsFound = { songsBatch ->
+                existingIds   = existingIds,        // OPT-2: el scanner evita leer ReplayGain para IDs existentes
+                onProgress    = onProgress,
+                onSongsFound  = { songsBatch ->
                     val newSongs = mutableListOf<SongEntity>()
-                    val oldSongs = mutableListOf<Song>()
+                    val oldSongs = mutableListOf<SongEntity>()
                     for (song in songsBatch) {
-                        if (song.id in existingIds) oldSongs.add(song)
+                        if (song.id in existingIds) oldSongs.add(song.toEntity())
                         else newSongs.add(song.toEntity())
                     }
                     if (newSongs.isNotEmpty()) musicDao.insertSongs(newSongs)
-                    for (song in oldSongs) {
-                        musicDao.updateSongMetadata(
-                            id = song.id,
-                            title = song.title,
-                            artist = song.artist,
-                            album = song.album,
-                            albumId = song.albumId,
-                            folder = song.folder,
-                            path = song.path,
-                            albumArtUri = song.albumArtUri
-                        )
-                    }
+                    // OPT-3: batch en una sola transacción Room en lugar de N transacciones
+                    if (oldSongs.isNotEmpty()) musicDao.updateSongMetadataBatch(oldSongs)
                     allScannedIds.addAll(songsBatch.map { it.id })
                 }
             )

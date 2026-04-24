@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.animation.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -977,7 +978,7 @@ fun SongListItem(
             Text(
                 text = buildString {
                     append(song.artist)
-                    if (song.album.isNotBlank()) append(" • \${song.album}")
+                    if (song.album.isNotBlank()) append(" • ${song.album}")
                 },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -1005,7 +1006,7 @@ fun SongListItem(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Default.VolumeUp,
+                            Icons.AutoMirrored.Filled.VolumeUp,
                             contentDescription = null,
                             tint = PrimaryOrange,
                             modifier = Modifier.size(20.dp)
@@ -1310,7 +1311,7 @@ fun FullPlayerScreen(
                                 supportingContent = { Text(queueSong.artist) },
                                 leadingContent = {
                                     if (queueSong.id == song.id) {
-                                        Icon(Icons.Default.VolumeUp, contentDescription = null, tint = PrimaryOrange)
+                                        Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, tint = PrimaryOrange)
                                     } else {
                                         AsyncImage(
                                             model = queueSong.albumArtUri,
@@ -1388,11 +1389,13 @@ fun SmartPlaylistCard(smart: SmartPlaylist, onClick: () -> Unit) {
         SmartPlaylistType.DAILY_MIX -> stringResource(R.string.smart_daily_mix_title)
         SmartPlaylistType.REDISCOVER -> stringResource(R.string.smart_rediscover_title)
         SmartPlaylistType.TOP_SONGS -> stringResource(R.string.smart_top_songs_title)
+        else -> ""
     }
     val icon = when (smart.type) {
         SmartPlaylistType.DAILY_MIX -> Icons.Default.AutoAwesome
         SmartPlaylistType.REDISCOVER -> Icons.Default.History
         SmartPlaylistType.TOP_SONGS -> Icons.Default.Star
+        else -> Icons.AutoMirrored.Filled.PlaylistPlay
     }
     
     val gradients = listOf(
@@ -1404,6 +1407,7 @@ fun SmartPlaylistCard(smart: SmartPlaylist, onClick: () -> Unit) {
         SmartPlaylistType.DAILY_MIX -> gradients[0]
         SmartPlaylistType.REDISCOVER -> gradients[1]
         SmartPlaylistType.TOP_SONGS -> gradients[2]
+        else -> gradients[0]
     }
 
     Card(
@@ -1438,7 +1442,7 @@ fun PlaylistCard(name: String, subtitle: String, onPlaylistClick: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clickable(onClick = onPlaylistClick)) {
         Box(modifier = Modifier.fillMaxSize()) {
             Icon(
-                Icons.Default.QueueMusic,
+                Icons.AutoMirrored.Filled.QueueMusic,
                 contentDescription = null,
                 modifier = Modifier.align(Alignment.Center).size(64.dp).alpha(0.1f)
             )
@@ -1831,7 +1835,7 @@ fun PlaylistPickerDialog(
                     ListItem(
                         modifier = Modifier.clickable { onPlaylistSelected(playlist) },
                         headlineContent = { Text(playlist.name) },
-                        leadingContent = { Icon(Icons.Default.PlaylistAdd, contentDescription = null) }
+                        leadingContent = { Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null) }
                     )
                 }
             }

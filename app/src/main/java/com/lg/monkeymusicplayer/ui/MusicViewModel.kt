@@ -50,7 +50,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File  // retenido para posibles extensiones futuras; sin uso directo
+import java.io.File
 
 @OptIn(UnstableApi::class)
 @HiltViewModel
@@ -62,7 +62,6 @@ class MusicViewModel @Inject constructor(
     private val smartRepository: SmartRepository,
     val statsRepository: StatsRepository,
     val backupRepository: BackupRepository,
-    // ── Use Cases ─────────────────────────────────────────────────────────
     private val getSongsUseCase: GetSongsUseCase,
     private val getSmartPlaylistsUseCase: GetSmartPlaylistsUseCase,
     private val getUserStatsUseCase: GetUserStatsUseCase,
@@ -77,43 +76,7 @@ class MusicViewModel @Inject constructor(
     val billingManager: BillingManager,
 ) : ViewModel() {
 
-    // ── Cast ─────────────────────────────────────────────────────────────────
-    val castState = castManager.castState
-    val isCastConnected = castManager.isConnected
-
-    fun onCastButtonClick() {
-        // El botón Cast abre el selector de dispositivos via MediaRouter.
-        // La apertura real se hace desde la Activity con MediaRouteChooserDialog;
-        // este método prepara la sesión si ya hay un dispositivo conectado.
-        if (castManager.isConnected.value) {
-            castManager.currentRemoteSongId // no-op, solo expone el estado
-        }
-        // La apertura del diálogo se maneja en la Activity con MediaRouteButton.
-    }
-
-    /** Carga la canción actual en el receptor Cast activo. */
-    fun castCurrentSong() {
-        val song = playerManager.currentSong.value ?: return
-        castManager.loadSong(song)
-        playerManager.pause()
-    }
-
-    /** Carga la cola activa en el receptor Cast. */
-    fun castActiveQueue() {
-        val songs = queueManager.activeSongs
-        if (songs.isEmpty()) return
-        castManager.loadQueue(songs)
-        playerManager.pause()
-    }
-
-    val context get() = applicationContext
-
-    // Carpetas excluidas del escaneo — expuesto directamente desde el repositorio
-    val excludedFolders: StateFlow<List<String>> = excludedFoldersRepository.excludedFolders
-
-    fun addExcludedFolder(path: String) = excludedFoldersRepository.addFolder(path)
-    fun removeExcludedFolder(path: String) = excludedFoldersRepository.removeFolder(path)
-
+    // 1. Declarar TODOS los MutableStateFlow primero para evitar NullPointerException en inicialización
     private val _loadState = MutableStateFlow<LibraryLoadState>(LibraryLoadState.Idle)
     private val _isInitialLoad = MutableStateFlow(true)
     private val _searchQuery = MutableStateFlow("")
@@ -121,62 +84,33 @@ class MusicViewModel @Inject constructor(
     private val _currentPlaylistSongs = MutableStateFlow<List<Song>>(emptyList())
     private val _sleepTimerMinutes = MutableStateFlow(0)
     private val _sleepTimerRemaining = MutableStateFlow(0L)
-    private var sleepTimerJob: Job? = null
     private val _accentColor = MutableStateFlow(PrimaryOrange)
     private val _lyrics = MutableStateFlow<List<LyricLine>>(emptyList())
     private val _isLoadingLyrics = MutableStateFlow(false)
-    val isLoadingLyrics: StateFlow<Boolean> = _isLoadingLyrics.asStateFlow()
-
-    // EQ presets guardados por el usuario — Flow directo desde Room
-    val eqPresets: StateFlow<List<EqPresetEntity>> = repository.eqPresets
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-
-    // ── PUNTO 5: estado del permiso MANAGE_EXTERNAL_STORAGE ──
-    // true  → el usuario ya otorgó el permiso, el editor de tags puede escribir archivos.
-    // false → hay que pedirlo antes de abrir el diálogo de edición.
     private val _hasManageStoragePermission = MutableStateFlow(false)
-    val hasManageStoragePermission: StateFlow<Boolean> = _hasManageStoragePermission.asStateFlow()
-
-    // Evento one-shot: la UI escucha este Flow para saber cuándo abrir la pantalla de Settings.
-    // Se usa SharedFlow (no StateFlow) para que el evento no se repita al recomponerse.
+    
+    // Eventos one-shot
     private val _requestManageStorageEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    val requestManageStorageEvent: SharedFlow<Unit> = _requestManageStorageEvent.asSharedFlow()
-
-    // Evento one-shot para abrir el editor de tags desde el reproductor.
-    // Emitido cuando el usuario toca "Editar" en FullPlayerScreen.
     private val _requestEditSongEvent = MutableSharedFlow<Song>(extraBufferCapacity = 1)
-    val requestEditSongEvent: SharedFlow<Song> = _requestEditSongEvent.asSharedFlow()
-
-    fun requestEditSong(song: Song) {
-        viewModelScope.launch { _requestEditSongEvent.emit(song) }
-    }
-
-    // Llamado desde MainActivity al arrancar y al volver de la pantalla de Settings
-    fun onManageStoragePermissionResult(granted: Boolean) {
-        _hasManageStoragePermission.value = granted
-    }
-
-    // Llamado desde la UI cuando el usuario intenta editar tags sin el permiso.
-    // Emite el evento para que MainActivity abra la pantalla de Settings correcta.
-    fun requestManageStoragePermission() {
-        viewModelScope.launch { _requestManageStorageEvent.emit(Unit) }
-    }
-    // Esto permite que la UI muestre el mensaje de error específico cuando falla,
-    // en lugar de solo saber que "algo salió mal".
     private val _tagUpdateResult = MutableSharedFlow<Result<Unit>>(extraBufferCapacity = 1)
-    val tagUpdateResult: SharedFlow<Result<Unit>> = _tagUpdateResult.asSharedFlow()
 
+    // 2. Propiedades públicas simples
+    val context get() = applicationContext
+    val excludedFolders: StateFlow<List<String>> = excludedFoldersRepository.excludedFolders
+    val hasManageStoragePermission: StateFlow<Boolean> = _hasManageStoragePermission.asStateFlow()
+    val requestManageStorageEvent: SharedFlow<Unit> = _requestManageStorageEvent.asSharedFlow()
+    val requestEditSongEvent: SharedFlow<Song> = _requestEditSongEvent.asSharedFlow()
+    val tagUpdateResult: SharedFlow<Result<Unit>> = _tagUpdateResult.asSharedFlow()
+    val isLoadingLyrics: StateFlow<Boolean> = _isLoadingLyrics.asStateFlow()
     val currentSong: StateFlow<Song?> = playerManager.currentSong
     val searchQuery = _searchQuery.asStateFlow()
     val equalizerData = playerManager.equalizerData
+    val castState = castManager.castState
+    val isCastConnected = castManager.isConnected
+    val eqPresets: StateFlow<List<EqPresetEntity>> = repository.eqPresets
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    // ── Flows intermedios: playerStateFlow ───────────────────────────────────
-    //
-    // Dividimos las 14 fuentes originales en 3 flows tipados.
-    // Cada combine interno usa la sobrecarga tipada (≤5 fuentes) — el compilador
-    // valida tipos en lugar de depender de casts Array<Any?> en runtime.
-
-    /** Posición de reproducción: canción activa, flags de control y progreso. */
+    // 3. Clases de datos auxiliares para flows combinados
     private data class PlaybackCore(
         val currentSong: Song?,
         val isPlaying: Boolean,
@@ -187,7 +121,6 @@ class MusicViewModel @Inject constructor(
         val audioSessionId: Int
     )
 
-    /** Extras de UI: color de acento, letras y sleep timer. */
     private data class PlaybackUiExtras(
         val accentColor: Color,
         val lyrics: List<LyricLine>,
@@ -195,6 +128,22 @@ class MusicViewModel @Inject constructor(
         val sleepTimerRemainingMillis: Long
     )
 
+    private data class FilteredSongs(
+        val all: List<Song>,
+        val filtered: List<Song>,
+        val playlistSongs: List<Song>
+    )
+
+    private data class LibraryCatalog(
+        val playlists: List<PlaylistEntity>,
+        val history: List<HistoryEntity>,
+        val genres: Map<String, List<Song>>,
+        val artists: Map<String, List<Song>>,
+        val albums: Map<String, List<Song>>,
+        val folders: Map<String, List<Song>>
+    )
+
+    // 4. Definición de Flows intermedios
     private val playbackCoreFlow: Flow<PlaybackCore> = combine(
         playerManager.currentSong,
         playerManager.isPlaying,
@@ -202,8 +151,6 @@ class MusicViewModel @Inject constructor(
         playerManager.repeatMode,
         playerManager.currentPosition
     ) { song, playing, shuffle, repeat, position ->
-        // duration y audioSessionId se combinan en un segundo paso porque combine
-        // tiene sobrecargas tipadas solo hasta 5 argumentos
         PlaybackCore(song, playing, shuffle, repeat, position, 0L, -1)
     }.combine(playerManager.duration) { core, dur ->
         core.copy(duration = dur)
@@ -226,12 +173,7 @@ class MusicViewModel @Inject constructor(
     ) { queue, favorites ->
         queue.map { it.copy(isFavorite = favorites.contains(it.id)) }
     }.flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    /**
-     * Última canción reproducida, resuelta desde el historial.
-     * Visible en PlayerBottomBar cuando currentSong == null (estado idle).
-     */
     private val lastPlayedSongFlow: Flow<Song?> = combine(
         repository.history,
         repository.allSongsFlow
@@ -241,7 +183,6 @@ class MusicViewModel @Inject constructor(
         songIndex[history.first().songId]
     }.flowOn(Dispatchers.Default)
 
-    // combine final: 5 fuentes tipadas — sin Array<Any?>, sin índices numéricos
     private val playerStateFlow: Flow<PlayerState> = combine(
         playbackCoreFlow,
         playbackUiExtrasFlow,
@@ -267,27 +208,6 @@ class MusicViewModel @Inject constructor(
             isFavorite               = isFavorite
         )
     }
-
-    // ── Flows intermedios: libraryDataFlow ───────────────────────────────────
-    //
-    // Dividimos las 7 fuentes originales en 2 flows tipados.
-
-    /** Songs filtradas, ordenadas y enriquecidas con isFavorite. */
-    private data class FilteredSongs(
-        val all: List<Song>,            // todas las canciones con isFavorite
-        val filtered: List<Song>,       // filtradas y ordenadas por query/sortOrder
-        val playlistSongs: List<Song>   // canciones de la playlist activa, con isFavorite
-    )
-
-    /** Metadatos de biblioteca: playlists, historial, categorías. */
-    private data class LibraryCatalog(
-        val playlists: List<PlaylistEntity>,
-        val history: List<HistoryEntity>,
-        val genres: Map<String, List<Song>>,
-        val artists: Map<String, List<Song>>,
-        val albums: Map<String, List<Song>>,
-        val folders: Map<String, List<Song>>
-    )
 
     private val filteredSongsFlow: Flow<FilteredSongs> = combine(
         repository.allSongsFlow,
@@ -334,12 +254,7 @@ class MusicViewModel @Inject constructor(
         )
     }.flowOn(Dispatchers.Default)
 
-    // ── uiState final: 5 fuentes tipadas ────────────────────────────────────
-    //
-    // Antes: 8 fuentes con Array<Any?>.
-    // Ahora: filteredSongsFlow y libraryCatalogFlow ya agrupan todo —
-    // solo necesitamos 5 fuentes para construir LibraryUiState completo.
-
+    // 5. Estado de UI final
     val uiState: StateFlow<LibraryUiState> = combine(
         filteredSongsFlow,
         libraryCatalogFlow,
@@ -362,23 +277,16 @@ class MusicViewModel @Inject constructor(
             sortOrder            = _sortOrder.value,
             playerState          = playerState
         )
-    }
-    // Encadenar smartPlaylists como 6ª fuente (combine() está limitado a 5 parámetros
-    // en la sobrecarga tipada; .combine() encadenado es el patrón recomendado).
-    .combine(getSmartPlaylistsUseCase()) { state, smart ->
+    }.combine(getSmartPlaylistsUseCase()) { state, smart ->
         state.copy(smartPlaylists = smart)
-    }
-    .stateIn(viewModelScope, SharingStarted.Lazily, LibraryUiState())
+    }.stateIn(viewModelScope, SharingStarted.Lazily, LibraryUiState())
+
+    private var sleepTimerJob: Job? = null
 
     init {
         viewModelScope.launch {
-            // Esperar el primer valor de la librería.
-            // Si está vacía → primera instalación o DB limpia → lanzar escaneo automático.
-            // Si ya tiene canciones → solo quitar el loading, no re-escanear.
             repository.allSongsFlow.take(1).collect { songs ->
                 if (songs.isEmpty()) {
-                    // Primera instalación o DB vacía: escanear.
-                    // isInitialLoad se apaga cuando el scan termina (en scanMusic).
                     scanMusic()
                 } else {
                     _isInitialLoad.value = false
@@ -391,6 +299,41 @@ class MusicViewModel @Inject constructor(
                     ?: run { _lyrics.value = emptyList() }
             }
         }
+    }
+
+    // Resto de funciones...
+    fun onCastButtonClick() {
+        if (castManager.isConnected.value) {
+            castManager.currentRemoteSongId 
+        }
+    }
+
+    fun castCurrentSong() {
+        val song = playerManager.currentSong.value ?: return
+        castManager.loadSong(song)
+        playerManager.pause()
+    }
+
+    fun castActiveQueue() {
+        val songs = queueManager.activeSongs
+        if (songs.isEmpty()) return
+        castManager.loadQueue(songs)
+        playerManager.pause()
+    }
+
+    fun addExcludedFolder(path: String) = excludedFoldersRepository.addFolder(path)
+    fun removeExcludedFolder(path: String) = excludedFoldersRepository.removeFolder(path)
+
+    fun requestEditSong(song: Song) {
+        viewModelScope.launch { _requestEditSongEvent.emit(song) }
+    }
+
+    fun onManageStoragePermissionResult(granted: Boolean) {
+        _hasManageStoragePermission.value = granted
+    }
+
+    fun requestManageStoragePermission() {
+        viewModelScope.launch { _requestManageStorageEvent.emit(Unit) }
     }
 
     private fun loadLyrics(song: Song) {
@@ -543,38 +486,27 @@ class MusicViewModel @Inject constructor(
 
     fun addToQueue(song: Song) = playerManager.addToQueue(song)
 
-    // ── Gestión de múltiples colas ───────────────────────────────────────────
-
-    /**
-     * Crea una cola nueva y, opcionalmente, hace switch a ella.
-     * El player se actualiza si [switchTo] es true.
-     */
     fun createAndSwitchQueue(name: String, displayName: String = name, songs: List<Song> = emptyList()) {
         queueManager.createQueue(name, displayName)
         if (songs.isNotEmpty()) queueManager.setQueueSongs(name, songs)
         queueManager.switchToQueue(name)
-        // Cargar en el player
         val queueSongs = queueManager.getQueue(name)?.songs ?: return
         viewModelScope.launch { playerManager.setPlaylist(queueSongs) }
     }
 
-    /** Cambia a una cola existente y la carga en el player. */
     fun switchToQueue(name: String) {
         queueManager.switchToQueue(name)
         val songs = queueManager.getQueue(name)?.songs ?: return
         viewModelScope.launch { playerManager.setPlaylist(songs) }
     }
 
-    /** Elimina una cola (no se pueden eliminar main ni smart). */
     fun deleteQueue(name: String) = queueManager.deleteQueue(name)
 
-    /** Añade una canción a la cola activa sin cambiar la reproducción actual. */
     fun addToActiveQueue(song: Song) {
         queueManager.addToActiveQueue(song)
         playerManager.addToQueue(song)
     }
 
-    /** Reordena una canción en la cola activa. */
     fun moveInActiveQueue(fromIndex: Int, toIndex: Int) {
         queueManager.moveInQueue(queueManager.activeQueueName.value, fromIndex, toIndex)
     }
@@ -587,33 +519,25 @@ class MusicViewModel @Inject constructor(
     fun toggleShuffle() = playerManager.toggleShuffle()
     fun cycleRepeatMode() = playerManager.cycleRepeatMode()
 
-    // ── Cloud Sync ───────────────────────────────────────────────────────────────
-
     suspend fun cloudSyncUpload() = cloudSyncRepository.upload()
-
     suspend fun cloudSyncDownload() = cloudSyncRepository.download()
 
-    // ── Paywall / Feature Gate ────────────────────────────────────────────────
-
-    /** True si la feature está disponible para el usuario actual. */
     fun isFeatureUnlocked(feature: Feature): Boolean = featureGate.isUnlocked(feature)
-
-    /** Lista de features premium que el usuario aún no tiene. */
     fun lockedFeatures(): List<Feature> = featureGate.lockedPremiumFeatures()
-
-    /**
-     * Lanza el flujo de compra de Google Play.
-     * Requiere una Activity activa — llamar desde un onClick en la UI.
-     */
     fun launchProUpgrade(activity: android.app.Activity) {
         billingManager.launchBillingFlow(activity)
     }
-
-    // ── EQ Presets ──────────────────────────────────────────────────────────────
 
     fun saveEqPreset(name: String, levels: List<Float>) =
         viewModelScope.launch(Dispatchers.IO) { repository.saveEqPreset(name, levels) }
 
     fun deleteEqPreset(preset: EqPresetEntity) =
         viewModelScope.launch(Dispatchers.IO) { repository.deleteEqPreset(preset) }
+
+    fun exportBackup(uri: android.net.Uri) = viewModelScope.launch {
+        backupRepository.exportBackup(uri)
+    }
+    fun importBackup(uri: android.net.Uri) = viewModelScope.launch {
+        backupRepository.importBackup(uri)
+    }
 }

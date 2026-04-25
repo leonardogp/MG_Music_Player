@@ -105,34 +105,55 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
                 // Conexión exitosa — resetear contador de reintentos
                 reconnectAttempts = 0
 
+                // Flag para evitar doble onPlayStarted cuando una transición
+                // ya registró el inicio de la nueva canción.
+                var transitionHandledPlay = false
+
                 playerListener = object : Player.Listener {
                     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                         val prevSong = _currentSong.value
-                        val posMs = mediaController.currentPosition
-                        val durMs = mediaController.duration.coerceAtLeast(0L)
+                        val posMs    = mediaController.currentPosition
+                        val durMs    = mediaController.duration.coerceAtLeast(0L)
 
-                        // Registrar evento de la canción que acaba de terminar/saltarse
                         if (prevSong != null && durMs > 0L) {
-                            val isUserSkip = reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
-                            if (isUserSkip) {
-                                statTracker.onSkip(prevSong.id, posMs, durMs)
-                            } else if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
-                                // Auto-advance: la canción anterior se completó
-                                statTracker.onSongComplete(prevSong.id, durMs)
+                            when (reason) {
+                                Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> {
+                                    // Salto manual del usuario
+                                    statTracker.onSkip(prevSong.id, posMs, durMs)
+                                }
+                                Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> {
+                                    // Auto-advance de la cola: verificar umbral del 80%
+                                    // antes de marcar como completa. ExoPlayer transiciona
+                                    // cuando termina el buffer, por lo que posMs ≈ durMs.
+                                    val ratio = if (durMs > 0L) posMs.toFloat() / durMs else 0f
+                                    if (ratio >= StatTracker.COMPLETE_THRESHOLD_PERCENT) {
+                                        statTracker.onSongComplete(prevSong.id, durMs)
+                                    } else {
+                                        // No alcanzó el umbral (ej. canción muy corta o
+                                        // problema de buffering) — registrar como skip
+                                        statTracker.onSkip(prevSong.id, posMs, durMs)
+                                    }
+                                }
+                                // REASON_REPEAT y REASON_PLAYLIST_CHANGED no cuentan
+                                // como complete ni skip del usuario.
+                                else -> { /* no-op */ }
                             }
                         }
 
                         updateCurrentSong(mediaItem)
                         _duration.value = mediaController.duration.coerceAtLeast(0L)
                         fetchAudioSessionId()
-                        // ReplayGain: ajustar volumen del controlador según el gain de la nueva canción
-                        val newSongForGain = mediaItem?.localConfiguration?.tag as? Song
-                        applyReplayGain(mediaController, newSongForGain?.replayGain)
+                        applyReplayGain(mediaController,
+                            (mediaItem?.localConfiguration?.tag as? Song)?.replayGain)
 
-                        // Registrar inicio de la nueva canción
+                        // Registrar inicio de la nueva canción y marcar flag
+                        // para que onIsPlayingChanged no lo duplique.
                         val newSong = mediaItem?.localConfiguration?.tag as? Song
-                        if (newSong != null && mediaController.isPlaying) {
-                            statTracker.onPlayStarted(newSong.id)
+                        if (newSong != null) {
+                            transitionHandledPlay = true
+                            if (mediaController.isPlaying) {
+                                statTracker.onPlayStarted(newSong.id)
+                            }
                         }
                     }
 
@@ -141,13 +162,15 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
                         if (isPlaying) {
                             startProgressUpdate()
                             fetchAudioSessionId()
-                            // Registrar inicio solo si no venía de una transición (que ya lo registra)
-                            if (song != null && mediaController.currentPosition < 1000L) {
+                            // Solo registrar onPlayStarted si la transición no lo hizo ya.
+                            // Esto evita el doble conteo cuando el usuario selecciona
+                            // una canción (transición → onIsPlayingChanged ambos disparan).
+                            if (song != null && !transitionHandledPlay) {
                                 statTracker.onPlayStarted(song.id)
                             }
+                            transitionHandledPlay = false
                         } else {
                             stopProgressUpdate()
-                            // Registrar pausa para acumular tiempo de sesión
                             if (song != null) {
                                 statTracker.onPause(song.id, mediaController.currentPosition)
                             }
@@ -168,19 +191,26 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
                             _duration.value = mediaController.duration.coerceAtLeast(0L)
                             fetchAudioSessionId()
                         } else if (playbackState == Player.STATE_ENDED) {
-                            // Reproducción finalizada (última canción de la cola)
+                            // Última canción de la cola — STATE_ENDED no dispara
+                            // onMediaItemTransition, así que registramos aquí.
                             val song = _currentSong.value
-                            val dur = mediaController.duration.coerceAtLeast(0L)
+                            val dur  = mediaController.duration.coerceAtLeast(0L)
+                            val pos  = mediaController.currentPosition
                             if (song != null && dur > 0L) {
-                                statTracker.onSongComplete(song.id, dur)
+                                val ratio = pos.toFloat() / dur
+                                if (ratio >= StatTracker.COMPLETE_THRESHOLD_PERCENT) {
+                                    statTracker.onSongComplete(song.id, dur)
+                                }
+                                // Si no alcanzó el umbral en STATE_ENDED, no se registra nada
+                                // (el usuario probablemente paró manualmente).
                             }
                         }
                         _playbackState.value = playbackState
                     }
 
-                    override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
-                        updateQueue()
-                    }
+                    override fun onTimelineChanged(
+                        timeline: androidx.media3.common.Timeline, reason: Int
+                    ) { updateQueue() }
                 }
                 // Attach listener safely to avoid NPEs if listener isn't set yet
                 playerListener?.let { mediaController.addListener(it) }

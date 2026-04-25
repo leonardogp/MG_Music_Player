@@ -270,6 +270,7 @@ fun LibraryScreen(
                 SmartPlaylistType.DAILY_MIX -> stringResource(R.string.smart_daily_mix_title)
                 SmartPlaylistType.REDISCOVER -> stringResource(R.string.smart_rediscover_title)
                 SmartPlaylistType.TOP_SONGS -> stringResource(R.string.smart_top_songs_title)
+                else -> ""
             }
             
             SongListDetailScreen(
@@ -1600,7 +1601,7 @@ fun LanguageDialog(onDismiss: () -> Unit, onLanguageSelected: (String) -> Unit) 
         "ru" to "Русский",
         "uk" to "Українська",
         "ar" to "العربية",
-        "fa" to "فارسی",
+        "fa" to "فارsi",
         "hi" to "हिन्दी",
         "ja" to "日本語",
         "ko" to "한국어",

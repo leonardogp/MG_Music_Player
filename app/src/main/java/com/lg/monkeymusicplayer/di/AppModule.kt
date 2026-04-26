@@ -81,12 +81,6 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideCastManager(@ApplicationContext context: Context): CastManager {
-        return CastManager(context)
-    }
-
-    @Provides
-    @Singleton
     fun provideFeatureGate(@ApplicationContext context: Context): FeatureGate {
         return FeatureGate(context)
     }

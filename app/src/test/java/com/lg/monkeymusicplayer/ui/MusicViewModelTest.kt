@@ -11,6 +11,7 @@ import com.lg.monkeymusicplayer.core.queue.QueueManager
 import com.lg.monkeymusicplayer.data.database.EqPresetEntity
 import com.lg.monkeymusicplayer.data.database.HistoryEntity
 import com.lg.monkeymusicplayer.data.database.PlaylistEntity
+import com.lg.monkeymusicplayer.data.model.SmartPlaylist
 import com.lg.monkeymusicplayer.data.model.Song
 import com.lg.monkeymusicplayer.data.repository.*
 import com.lg.monkeymusicplayer.domain.usecase.*
@@ -69,24 +70,24 @@ class MusicViewModelTest {
         whenever(repository.eqPresets).thenReturn(emptyFlow<List<EqPresetEntity>>())
         
         whenever(playerManager.currentSong).thenReturn(MutableStateFlow<Song?>(null))
-        whenever(playerManager.isPlaying).thenReturn(MutableStateFlow(false))
-        whenever(playerManager.isShuffleMode).thenReturn(MutableStateFlow(false))
-        whenever(playerManager.repeatMode).thenReturn(MutableStateFlow(0))
-        whenever(playerManager.currentPosition).thenReturn(MutableStateFlow(0L))
-        whenever(playerManager.duration).thenReturn(MutableStateFlow(0L))
-        whenever(playerManager.currentQueue).thenReturn(MutableStateFlow(emptyList<Song>()))
-        whenever(playerManager.audioSessionId).thenReturn(MutableStateFlow(0))
+        whenever(playerManager.isPlaying).thenReturn(MutableStateFlow<Boolean>(false))
+        whenever(playerManager.isShuffleMode).thenReturn(MutableStateFlow<Boolean>(false))
+        whenever(playerManager.repeatMode).thenReturn(MutableStateFlow<Int>(0))
+        whenever(playerManager.currentPosition).thenReturn(MutableStateFlow<Long>(0L))
+        whenever(playerManager.duration).thenReturn(MutableStateFlow<Long>(0L))
+        whenever(playerManager.currentQueue).thenReturn(MutableStateFlow<List<Song>>(emptyList()))
+        whenever(playerManager.audioSessionId).thenReturn(MutableStateFlow<Int>(0))
         whenever(playerManager.equalizerData).thenReturn(MutableStateFlow<Bundle?>(null))
 
         whenever(excludedFoldersRepository.excludedFolders).thenReturn(MutableStateFlow<List<String>>(emptyList()))
-        whenever(smartRepository.smartPlaylists).thenReturn(emptyFlow())
+        whenever(smartRepository.smartPlaylists).thenReturn(emptyFlow<List<SmartPlaylist>>())
 
         // Stubbing for Use Cases called in init or uiState
-        whenever(getSmartPlaylistsUseCase.invoke()).thenReturn(emptyFlow())
-        whenever(castManager.castState).thenReturn(MutableStateFlow(0))
-        whenever(castManager.isConnected).thenReturn(MutableStateFlow(false))
-        whenever(queueManager.activeSongs).thenReturn(emptyList())
-        whenever(queueManager.activeQueueName).thenReturn(MutableStateFlow("main"))
+        whenever(getSmartPlaylistsUseCase.invoke()).thenReturn(emptyFlow<List<SmartPlaylist>>())
+        whenever(castManager.castStateCode).thenReturn(MutableStateFlow<Int>(0))
+        whenever(castManager.isConnected).thenReturn(MutableStateFlow<Boolean>(false))
+        whenever(queueManager.activeSongs).thenReturn(emptyList<Song>())
+        whenever(queueManager.activeQueueName).thenReturn(MutableStateFlow<String>("main"))
 
         viewModel = MusicViewModel(
             applicationContext = application,

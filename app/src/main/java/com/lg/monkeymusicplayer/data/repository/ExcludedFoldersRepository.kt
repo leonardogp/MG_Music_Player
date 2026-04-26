@@ -29,8 +29,13 @@ class ExcludedFoldersRepository(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    private val _excludedFolders = MutableStateFlow(loadFromPrefs())
+    private val _excludedFolders = MutableStateFlow<List<String>>(emptyList())
     val excludedFolders: StateFlow<List<String>> = _excludedFolders.asStateFlow()
+
+    init {
+        // Cargamos desde preferencias después de que _excludedFolders haya sido instanciado
+        _excludedFolders.value = loadFromPrefs()
+    }
 
     // ── API pública ──────────────────────────────────────────────────────────
 

@@ -51,8 +51,6 @@ import androidx.navigation.compose.*
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.lg.monkeymusicplayer.R
-import com.lg.monkeymusicplayer.core.cast.CastManager
-import com.google.android.gms.cast.framework.CastState
 import com.lg.monkeymusicplayer.data.database.PlaylistEntity
 import com.lg.monkeymusicplayer.data.database.HistoryEntity
 import com.lg.monkeymusicplayer.data.model.Song

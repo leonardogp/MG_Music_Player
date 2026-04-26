@@ -2,6 +2,7 @@ package com.lg.monkeymusicplayer.core.player
 
 import android.content.Context
 import androidx.media3.common.util.UnstableApi
+import com.lg.monkeymusicplayer.core.feature.FeatureGate
 import com.lg.monkeymusicplayer.core.tracker.StatTracker
 import com.lg.monkeymusicplayer.data.model.Song
 import org.junit.Assert.*
@@ -15,11 +16,12 @@ class MusicPlayerManagerTest {
     private val context: Context = mock()
     private val mockApplicationContext: Context = mock()
     private val statTracker: StatTracker = mock()
+    private val featureGate: FeatureGate = mock()
 
     @Before
     fun setup() {
         org.mockito.kotlin.whenever(context.applicationContext).thenReturn(mockApplicationContext)
-        musicPlayerManager = MusicPlayerManager(context, statTracker)
+        musicPlayerManager = MusicPlayerManager(context, statTracker, featureGate)
     }
 
     @Test

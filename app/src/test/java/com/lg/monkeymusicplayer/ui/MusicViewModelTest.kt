@@ -39,6 +39,7 @@ class MusicViewModelTest {
     private val smartRepository: SmartRepository = mock()
     private val statsRepository: StatsRepository = mock()
     private val backupRepository: BackupRepository = mock()
+    private val cloudSyncRepository: CloudSyncRepository = mock()
     private val application: Application = mock()
 
     // Use Cases
@@ -47,14 +48,13 @@ class MusicViewModelTest {
     private val getUserStatsUseCase: GetUserStatsUseCase = mock()
     private val refreshMusicLibraryUseCase: RefreshMusicLibraryUseCase = mock()
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase = mock()
-    private val playSongUseCase: PlaySongUseCase = mock()
     private val updateSongTagsUseCase: UpdateSongTagsUseCase = mock()
+    private val playSongUseCase: PlaySongUseCase = mock()
 
-    private val queueManager: QueueManager = mock()
-    private val castManager: CastManager = mock()
-    private val cloudSyncRepository: CloudSyncRepository = mock()
     private val featureGate: FeatureGate = mock()
     private val billingManager: BillingManager = mock()
+    private val castManager: CastManager = mock()
+    private val queueManager: QueueManager = mock()
 
     private val testDispatcher = StandardTestDispatcher()
 
@@ -89,25 +89,25 @@ class MusicViewModelTest {
         whenever(queueManager.activeQueueName).thenReturn(MutableStateFlow("main"))
 
         viewModel = MusicViewModel(
-            application,
-            repository,
-            playerManager,
-            excludedFoldersRepository,
-            smartRepository,
-            statsRepository,
-            backupRepository,
-            getSongsUseCase,
-            getSmartPlaylistsUseCase,
-            getUserStatsUseCase,
-            refreshMusicLibraryUseCase,
-            toggleFavoriteUseCase,
-            playSongUseCase,
-            updateSongTagsUseCase,
-            queueManager,
-            castManager,
-            cloudSyncRepository,
-            featureGate,
-            billingManager
+            applicationContext = application,
+            repository = repository,
+            playerManager = playerManager,
+            excludedFoldersRepository = excludedFoldersRepository,
+            smartRepository = smartRepository,
+            statsRepository = statsRepository,
+            backupRepository = backupRepository,
+            cloudSyncRepository = cloudSyncRepository,
+            getSongsUseCase = getSongsUseCase,
+            getSmartPlaylistsUseCase = getSmartPlaylistsUseCase,
+            getUserStatsUseCase = getUserStatsUseCase,
+            refreshMusicLibraryUseCase = refreshMusicLibraryUseCase,
+            toggleFavoriteUseCase = toggleFavoriteUseCase,
+            updateSongTagsUseCase = updateSongTagsUseCase,
+            playSongUseCase = playSongUseCase,
+            featureGate = featureGate,
+            billingManager = billingManager,
+            castManager = castManager,
+            queueManager = queueManager
         )
     }
 

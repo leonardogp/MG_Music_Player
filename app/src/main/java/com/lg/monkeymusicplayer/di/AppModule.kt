@@ -67,9 +67,10 @@ object AppModule {
     @Singleton
     fun provideMusicPlayerManager(
         @ApplicationContext context: Context,
-        statTracker: StatTracker
+        statTracker: StatTracker,
+        featureGate: com.lg.monkeymusicplayer.core.feature.FeatureGate
     ): MusicPlayerManager {
-        return MusicPlayerManager(context, statTracker)
+        return MusicPlayerManager(context, statTracker, featureGate)
     }
 
     @Provides

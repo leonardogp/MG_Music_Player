@@ -46,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.os.LocaleListCompat
+import androidx.navigation.NavController
 import androidx.navigation.compose.*
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -173,6 +174,7 @@ fun LibraryScreen(
             LibraryMainContent(
                 uiState = uiState,
                 viewModel = viewModel,
+                navController = navController,
                 onSearchQueryChanged = viewModel::onSearchQueryChanged,
                 onSortOrderChanged = viewModel::setSortOrder,
                 onPlayPause = viewModel::togglePlayPause,
@@ -270,7 +272,6 @@ fun LibraryScreen(
                 SmartPlaylistType.DAILY_MIX -> stringResource(R.string.smart_daily_mix_title)
                 SmartPlaylistType.REDISCOVER -> stringResource(R.string.smart_rediscover_title)
                 SmartPlaylistType.TOP_SONGS -> stringResource(R.string.smart_top_songs_title)
-                else -> ""
             }
             
             SongListDetailScreen(
@@ -351,26 +352,14 @@ fun LibraryScreen(
                 onBack = { navController.popBackStack() }
             )
         }
-        composable("backup") {
-            BackupScreen(
-                backupRepository = viewModel.backupRepository,
+        composable("paywall") {
+            PaywallScreen(
+                viewModel = viewModel,
                 onBack = { navController.popBackStack() }
             )
         }
         composable("queues") {
             QueuesScreen(
-                viewModel = viewModel,
-                onBack = { navController.popBackStack() }
-            )
-        }
-        composable("cloud_sync") {
-            CloudSyncScreen(
-                viewModel = viewModel,
-                onBack = { navController.popBackStack() }
-            )
-        }
-        composable("paywall") {
-            PaywallScreen(
                 viewModel = viewModel,
                 onBack = { navController.popBackStack() }
             )
@@ -383,13 +372,13 @@ fun LibraryScreen(
 fun SettingsScreen(
     uiState: LibraryUiState,
     viewModel: MusicViewModel,
-    navController: androidx.navigation.NavController,
+    navController: NavController,
     onBack: () -> Unit,
     onScanMusic: () -> Unit,
     onOpenEqualizer: () -> Unit,
     onSetSleepTimer: (Int) -> Unit,
     onChangeLanguage: (String) -> Unit
-){
+) {
     var showSleepTimerDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
 
@@ -439,22 +428,22 @@ fun SettingsScreen(
                     headlineContent = {
                         Text(
                             stringResource(R.string.pro_menu_item),
-                            color = com.lg.monkeymusicplayer.ui.theme.PrimaryOrange,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                            color = PrimaryOrange,
+                            fontWeight = FontWeight.Bold
                         )
                     },
                     leadingContent = {
                         Icon(
                             Icons.Default.WorkspacePremium,
                             contentDescription = null,
-                            tint = com.lg.monkeymusicplayer.ui.theme.PrimaryOrange
+                            tint = PrimaryOrange
                         )
                     },
                     trailingContent = {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = null,
-                            tint = com.lg.monkeymusicplayer.ui.theme.PrimaryOrange
+                            tint = PrimaryOrange
                         )
                     }
                 )
@@ -508,33 +497,62 @@ fun SettingsScreen(
                 leadingContent = { Icon(Icons.Default.Timer, contentDescription = null) }
             )
             ListItem(
-                modifier = Modifier.clickable { navController.navigate("equalizer") },
+                modifier = Modifier.clickable { onOpenEqualizer() },
                 headlineContent = { Text(stringResource(R.string.equalizer)) },
-                leadingContent = { Icon(Icons.Default.GraphicEq, contentDescription = null) }
+                leadingContent = { Icon(Icons.Default.Tune, contentDescription = null) },
+                trailingContent = { Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null) }
             )
             ListItem(
                 modifier = Modifier.clickable { showLanguageDialog = true },
                 headlineContent = { Text(stringResource(R.string.language)) },
                 leadingContent = { Icon(Icons.Default.Language, contentDescription = null) }
             )
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            
             ListItem(
-                modifier = Modifier.clickable { navController.navigate("stats") },
+                modifier = Modifier.clickable { 
+                    if (viewModel.isFeatureUnlocked(Feature.STATS))
+                        navController.navigate("stats")
+                    else navController.navigate("paywall")
+                },
                 headlineContent = { Text(stringResource(R.string.stats_menu_item)) },
+                supportingContent = { Text(stringResource(R.string.stats_empty_body)) },
                 leadingContent = { Icon(Icons.Default.BarChart, contentDescription = null) },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null) }
+                trailingContent = {
+                    if (viewModel.isFeatureUnlocked(Feature.STATS))
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
+                    else Icon(Icons.Default.Lock, contentDescription = null, tint = PrimaryOrange)
+                }
             )
             ListItem(
-                modifier = Modifier.clickable { navController.navigate("backup") },
+                modifier = Modifier.clickable { 
+                    if (viewModel.isFeatureUnlocked(Feature.BACKUP))
+                        navController.navigate("backup")
+                    else navController.navigate("paywall")
+                },
                 headlineContent = { Text(stringResource(R.string.backup_menu_item)) },
+                supportingContent = { Text(stringResource(R.string.backup_description)) },
                 leadingContent = { Icon(Icons.Default.CloudUpload, contentDescription = null) },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null) }
+                trailingContent = {
+                    if (viewModel.isFeatureUnlocked(Feature.BACKUP))
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
+                    else Icon(Icons.Default.Lock, contentDescription = null, tint = PrimaryOrange)
+                }
             )
             ListItem(
-                modifier = Modifier.clickable { navController.navigate("cloud_sync") },
+                modifier = Modifier.clickable { 
+                    if (viewModel.isFeatureUnlocked(Feature.CLOUD_SYNC))
+                        navController.navigate("cloud_sync")
+                    else navController.navigate("paywall")
+                },
                 headlineContent = { Text(stringResource(R.string.cloud_sync_menu_item)) },
                 supportingContent = { Text(stringResource(R.string.cloud_sync_subtitle)) },
                 leadingContent = { Icon(Icons.Default.Cloud, contentDescription = null) },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null) }
+                trailingContent = {
+                    if (viewModel.isFeatureUnlocked(Feature.CLOUD_SYNC))
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
+                    else Icon(Icons.Default.Lock, contentDescription = null, tint = PrimaryOrange)
+                }
             )
             ListItem(
                 modifier = Modifier.clickable { navController.navigate("queues") },
@@ -556,6 +574,7 @@ fun SettingsScreen(
 fun LibraryMainContent(
     uiState: LibraryUiState,
     viewModel: MusicViewModel,
+    navController: NavController,
     onSearchQueryChanged: (String) -> Unit,
     onSortOrderChanged: (SortOrder) -> Unit,
     onPlayPause: () -> Unit,
@@ -670,14 +689,48 @@ fun LibraryMainContent(
             beyondViewportPageCount = 1
         ) { page ->
             when (page) {
-                0 -> HomeContent(
-                    favoriteSongs = favoriteSongs,
-                    recentSongs = recentSongs,
-                    smartPlaylists = uiState.smartPlaylists,
-                    onSongClick = { onPlay(it, uiState.songs) },
-                    onSongMoreClick = onSongMoreClick,
-                    onSmartPlaylistClick = { onSmartPlaylistClick(it) }
-                )
+                0 -> if (viewModel.isFeatureUnlocked(Feature.SMART_PLAYLISTS)) {
+                    HomeContent(
+                        favoriteSongs = favoriteSongs,
+                        recentSongs = recentSongs,
+                        smartPlaylists = uiState.smartPlaylists,
+                        onSongClick = { onPlay(it, uiState.songs) },
+                        onSongMoreClick = onSongMoreClick,
+                        onSmartPlaylistClick = { onSmartPlaylistClick(it) }
+                    )
+                } else {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(32.dp)
+                        ) {
+                            Icon(Icons.Default.AutoAwesome, null,
+                                tint = PrimaryOrange, modifier = Modifier.size(64.dp))
+                            Spacer(Modifier.height(16.dp))
+                            Text(stringResource(R.string.tab_for_you),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center)
+                            Spacer(Modifier.height(8.dp))
+                            Text(stringResource(R.string.pro_upgrade_subtitle),
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.height(24.dp))
+                            Button(
+                                onClick = { navController.navigate("paywall") },
+                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Default.Lock, null,
+                                    tint = Color.Black, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(R.string.pro_upgrade_cta),
+                                    color = Color.Black, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
                 1 -> SongList(
                     songs = songsForTab,
                     currentSong = uiState.playerState.currentSong,
@@ -877,7 +930,7 @@ fun LibraryTopBar(
     TopAppBar(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Image(
+                androidx.compose.foundation.Image(
                     painter = painterResource(R.drawable.ic_monkey_head),
                     contentDescription = null,
                     modifier = Modifier.size(32.dp).clip(RoundedCornerShape(50))
@@ -1007,7 +1060,7 @@ fun SongListItem(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.AutoMirrored.Filled.VolumeUp,
+                            Icons.Default.VolumeUp,
                             contentDescription = null,
                             tint = PrimaryOrange,
                             modifier = Modifier.size(20.dp)
@@ -1150,16 +1203,14 @@ fun FullPlayerScreen(
     onEditSong: (Song) -> Unit,
     onPlayFromQueue: (Song) -> Unit
 ) {
-    // Pager: 0 = portada+controles, 1 = letras, 2 = cola
-    val tabs = listOf(
-        stringResource(R.string.tab_songs),
+    val tabLabels = listOf(
+        stringResource(R.string.tab_playlist),
         stringResource(R.string.lyrics_tab),
         stringResource(R.string.queue_tab)
     )
-    val pagerState = rememberPagerState(pageCount = { tabs.size })
+    val pagerState = rememberPagerState(pageCount = { tabLabels.size })
     val scope = rememberCoroutineScope()
 
-    // EditTagsDialog
     var showEditDialog by remember { mutableStateOf(false) }
     if (showEditDialog) {
         EditTagsDialog(
@@ -1173,160 +1224,294 @@ fun FullPlayerScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {},
-                navigationIcon = {
-                    IconButton(onClick = onClose) {
-                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = null)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showEditDialog = true }) {
-                        Icon(Icons.Default.Edit, contentDescription = null)
-                    }
-                    IconButton(onClick = onToggleFavorite) {
-                        Icon(
-                            if (song.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = null,
-                            tint = if (song.isFavorite) PrimaryOrange else LocalContentColor.current
-                        )
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        Column(
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .systemBarsPadding()
+    ) {
+        // ── TopBar: flecha abajo | PLAYLIST / nombre | (vacío) ────────────
+        Box(
             modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 4.dp)
         ) {
-            // Tab row: Portada / Letras / Cola
-            TabRow(
-                selectedTabIndex = pagerState.currentPage,
-                indicator = { tabPositions ->
-                    TabRowDefaults.SecondaryIndicator(
-                        modifier = Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
-                        color = PrimaryOrange
-                    )
-                }
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = pagerState.currentPage == index,
-                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                        text = { Text(title) }
-                    )
-                }
+            IconButton(onClick = onClose, modifier = Modifier.align(Alignment.CenterStart)) {
+                Icon(
+                    Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp)
+                )
             }
+            Column(
+                modifier = Modifier.align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = stringResource(R.string.tab_playlist).uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.6f),
+                    letterSpacing = 2.sp
+                )
+                Text(
+                    text = song.album.ifBlank { song.artist },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
 
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.weight(1f)
-            ) { page ->
-                when (page) {
-                    // ── Página 0: Portada + controles ──────────────────────
-                    0 -> Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+        // ── Tabs: Playlist / Letras / Cola ─────────────────────────────────
+        TabRow(
+            selectedTabIndex = pagerState.currentPage,
+            containerColor = Color.Black,
+            contentColor = Color.White,
+            indicator = { tabPositions ->
+                TabRowDefaults.SecondaryIndicator(
+                    modifier = Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
+                    color = PrimaryOrange,
+                    height = 2.dp
+                )
+            },
+            divider = {}
+        ) {
+            tabLabels.forEachIndexed { index, label ->
+                Tab(
+                    selected = pagerState.currentPage == index,
+                    onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                    text = {
+                        Text(
+                            label,
+                            color = if (pagerState.currentPage == index) Color.White
+                                    else Color.White.copy(alpha = 0.45f),
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                    }
+                )
+            }
+        }
+
+        // ── Pager ──────────────────────────────────────────────────────────
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.weight(1f)
+        ) { page ->
+            when (page) {
+
+                // ── Página 0: Portada + info + controles ───────────────────
+                0 -> Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black)
+                        .padding(horizontal = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(Modifier.height(12.dp))
+
+                    // Artwork grande
+                    AsyncImage(
+                        model = song.albumArtUri,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop,
+                        error = painterResource(R.drawable.ic_monkey_head)
+                    )
+
+                    Spacer(Modifier.height(20.dp))
+
+                    // Título + íconos edit/fav en la misma fila
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        AsyncImage(
-                            model = song.albumArtUri,
-                            contentDescription = null,
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                song.title,
+                                style = MaterialTheme.typography.displaySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                song.artist,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = PrimaryOrange,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        IconButton(onClick = { showEditDialog = true }) {
+                            Icon(Icons.Default.Edit, null,
+                                tint = Color.White.copy(alpha = 0.7f))
+                        }
+                        IconButton(onClick = onToggleFavorite) {
+                            Icon(
+                                if (song.isFavorite) Icons.Default.Favorite
+                                else Icons.Default.FavoriteBorder,
+                                null,
+                                tint = if (song.isFavorite) PrimaryOrange
+                                       else Color.White.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // Slider de progreso
+                    MediaProgressSlider(
+                        playerState = playerState,
+                        onSeekTo = onSeekTo
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Fila principal: prev | play | next
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = onSkipPrevious, modifier = Modifier.size(52.dp)) {
+                            Icon(Icons.Default.SkipPrevious, null,
+                                tint = Color.White, modifier = Modifier.size(36.dp))
+                        }
+                        Box(
                             modifier = Modifier
-                                .size(280.dp)
-                                .clip(RoundedCornerShape(12.dp)),
-                            contentScale = ContentScale.Crop,
-                            error = painterResource(R.drawable.ic_monkey_head)
-                        )
-                        Spacer(Modifier.height(24.dp))
-                        Text(
-                            song.title,
-                            style = MaterialTheme.typography.headlineSmall,
-                            textAlign = TextAlign.Center,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 24.dp),
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            song.artist,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 24.dp),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(Modifier.height(24.dp))
-                        MediaProgressSlider(
-                            playerState = playerState,
-                            onSeekTo = onSeekTo
-                        )
-                        PlayerControls(
-                            playerState = playerState,
-                            onPlayPause = onPlayPause,
-                            onSkipNext = onSkipNext,
-                            onSkipPrevious = onSkipPrevious,
-                            onSeekBack = onSeekBack,
-                            onSeekForward = onSeekForward,
-                            onToggleFavorite = onToggleFavorite,
-                            onToggleShuffle = onToggleShuffle,
-                            onCycleRepeat = onCycleRepeatMode
-                        )
+                                .size(72.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(Color.White)
+                                .clickable { onPlayPause() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                if (playerState.isPlaying) Icons.Default.Pause
+                                else Icons.Default.PlayArrow,
+                                null,
+                                tint = Color.Black,
+                                modifier = Modifier.size(40.dp)
+                            )
+                        }
+                        IconButton(onClick = onSkipNext, modifier = Modifier.size(52.dp)) {
+                            Icon(Icons.Default.SkipNext, null,
+                                tint = Color.White, modifier = Modifier.size(36.dp))
+                        }
                     }
 
-                    // ── Página 1: Letras ────────────────────────────────────
-                    1 -> Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                    Spacer(Modifier.height(8.dp))
+
+                    // Fila inferior: shuffle | seek-back | seek-forward | add-to-queue | repeat
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        when {
-                            isLoadingLyrics -> CircularProgressIndicator(color = PrimaryOrange)
-                            lyrics.isEmpty() -> Text(
-                                stringResource(R.string.lyrics_not_found),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        IconButton(onClick = onToggleShuffle) {
+                            Icon(
+                                Icons.Default.Shuffle, null,
+                                tint = if (playerState.isShuffleMode) PrimaryOrange
+                                       else Color.White.copy(alpha = 0.6f),
+                                modifier = Modifier.size(24.dp)
                             )
-                            else -> LyricsView(
-                                lyrics = lyrics,
-                                currentPosition = playerState.currentPosition,
-                                accentColor = playerState.accentColor,
-                                onLyricClick = onSeekTo
+                        }
+                        IconButton(onClick = onSeekBack) {
+                            Icon(Icons.Default.Replay10, null,
+                                tint = Color.White.copy(alpha = 0.7f),
+                                modifier = Modifier.size(28.dp))
+                        }
+                        IconButton(onClick = { onAddToPlaylist(song) }) {
+                            Icon(Icons.Default.PlaylistAdd, null,
+                                tint = Color.White.copy(alpha = 0.7f),
+                                modifier = Modifier.size(28.dp))
+                        }
+                        IconButton(onClick = onSeekForward) {
+                            Icon(Icons.Default.Forward10, null,
+                                tint = Color.White.copy(alpha = 0.7f),
+                                modifier = Modifier.size(28.dp))
+                        }
+                        IconButton(onClick = onCycleRepeatMode) {
+                            Icon(
+                                when (playerState.repeatMode) {
+                                    androidx.media3.common.Player.REPEAT_MODE_ONE -> Icons.Default.RepeatOne
+                                    else -> Icons.Default.Repeat
+                                },
+                                null,
+                                tint = if (playerState.repeatMode != androidx.media3.common.Player.REPEAT_MODE_OFF)
+                                           PrimaryOrange
+                                       else Color.White.copy(alpha = 0.6f),
+                                modifier = Modifier.size(24.dp)
                             )
                         }
                     }
+                }
 
-                    // ── Página 2: Cola ──────────────────────────────────────
-                    2 -> LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(queue, key = { it.id }) { queueSong ->
-                            ListItem(
-                                headlineContent = {
-                                    Text(
-                                        queueSong.title,
-                                        fontWeight = if (queueSong.id == song.id) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (queueSong.id == song.id) PrimaryOrange else LocalContentColor.current
+                // ── Página 1: Letras ───────────────────────────────────────
+                1 -> Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black),
+                    contentAlignment = Alignment.Center
+                ) {
+                    when {
+                        isLoadingLyrics -> CircularProgressIndicator(color = PrimaryOrange)
+                        lyrics.isEmpty() -> Text(
+                            stringResource(R.string.lyrics_not_found),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.White.copy(alpha = 0.5f)
+                        )
+                        else -> LyricsView(
+                            lyrics = lyrics,
+                            currentPosition = playerState.currentPosition,
+                            accentColor = playerState.accentColor,
+                            onLyricClick = onSeekTo
+                        )
+                    }
+                }
+
+                // ── Página 2: Cola ─────────────────────────────────────────
+                2 -> LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black)
+                ) {
+                    items(queue, key = { it.id }) { queueSong ->
+                        ListItem(
+                            headlineContent = {
+                                Text(
+                                    queueSong.title,
+                                    fontWeight = if (queueSong.id == song.id) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (queueSong.id == song.id) PrimaryOrange else Color.White
+                                )
+                            },
+                            supportingContent = {
+                                Text(queueSong.artist, color = Color.White.copy(alpha = 0.55f))
+                            },
+                            leadingContent = {
+                                if (queueSong.id == song.id) {
+                                    Icon(Icons.Default.VolumeUp, null, tint = PrimaryOrange)
+                                } else {
+                                    AsyncImage(
+                                        model = queueSong.albumArtUri,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .clip(RoundedCornerShape(6.dp)),
+                                        contentScale = ContentScale.Crop,
+                                        error = painterResource(R.drawable.ic_monkey_head)
                                     )
-                                },
-                                supportingContent = { Text(queueSong.artist) },
-                                leadingContent = {
-                                    if (queueSong.id == song.id) {
-                                        Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, tint = PrimaryOrange)
-                                    } else {
-                                        AsyncImage(
-                                            model = queueSong.albumArtUri,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(40.dp).clip(RoundedCornerShape(4.dp)),
-                                            contentScale = ContentScale.Crop,
-                                            error = painterResource(R.drawable.ic_monkey_head)
-                                        )
-                                    }
-                                },
-                                modifier = Modifier.clickable { onPlayFromQueue(queueSong) }
-                            )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-                        }
+                                }
+                            },
+                            colors = ListItemDefaults.colors(containerColor = Color.Black),
+                            modifier = Modifier.clickable { onPlayFromQueue(queueSong) }
+                        )
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.07f))
                     }
                 }
             }
@@ -1390,13 +1575,11 @@ fun SmartPlaylistCard(smart: SmartPlaylist, onClick: () -> Unit) {
         SmartPlaylistType.DAILY_MIX -> stringResource(R.string.smart_daily_mix_title)
         SmartPlaylistType.REDISCOVER -> stringResource(R.string.smart_rediscover_title)
         SmartPlaylistType.TOP_SONGS -> stringResource(R.string.smart_top_songs_title)
-        else -> ""
     }
     val icon = when (smart.type) {
         SmartPlaylistType.DAILY_MIX -> Icons.Default.AutoAwesome
         SmartPlaylistType.REDISCOVER -> Icons.Default.History
         SmartPlaylistType.TOP_SONGS -> Icons.Default.Star
-        else -> Icons.AutoMirrored.Filled.PlaylistPlay
     }
     
     val gradients = listOf(
@@ -1408,7 +1591,6 @@ fun SmartPlaylistCard(smart: SmartPlaylist, onClick: () -> Unit) {
         SmartPlaylistType.DAILY_MIX -> gradients[0]
         SmartPlaylistType.REDISCOVER -> gradients[1]
         SmartPlaylistType.TOP_SONGS -> gradients[2]
-        else -> gradients[0]
     }
 
     Card(
@@ -1443,7 +1625,7 @@ fun PlaylistCard(name: String, subtitle: String, onPlaylistClick: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth().aspectRatio(1f).clickable(onClick = onPlaylistClick)) {
         Box(modifier = Modifier.fillMaxSize()) {
             Icon(
-                Icons.AutoMirrored.Filled.QueueMusic,
+                Icons.Default.QueueMusic,
                 contentDescription = null,
                 modifier = Modifier.align(Alignment.Center).size(64.dp).alpha(0.1f)
             )
@@ -1601,7 +1783,7 @@ fun LanguageDialog(onDismiss: () -> Unit, onLanguageSelected: (String) -> Unit) 
         "ru" to "Русский",
         "uk" to "Українська",
         "ar" to "العربية",
-        "fa" to "فارsi",
+        "fa" to "فارسی",
         "hi" to "हिन्दी",
         "ja" to "日本語",
         "ko" to "한국어",
@@ -1836,7 +2018,7 @@ fun PlaylistPickerDialog(
                     ListItem(
                         modifier = Modifier.clickable { onPlaylistSelected(playlist) },
                         headlineContent = { Text(playlist.name) },
-                        leadingContent = { Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null) }
+                        leadingContent = { Icon(Icons.Default.PlaylistAdd, contentDescription = null) }
                     )
                 }
             }

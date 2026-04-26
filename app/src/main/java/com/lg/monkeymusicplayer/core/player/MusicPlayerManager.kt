@@ -22,7 +22,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.pow
 
 @UnstableApi
-class MusicPlayerManager(context: Context, private val statTracker: StatTracker) {
+class MusicPlayerManager(
+    context: Context,
+    private val statTracker: StatTracker,
+    private val featureGate: com.lg.monkeymusicplayer.core.feature.FeatureGate
+) {
 
     private val appContext = context.applicationContext
     private var controllerFuture: ListenableFuture<MediaController>? = null
@@ -63,27 +67,22 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
     
     private var lastPlaylist = listOf<Song>()
 
-    // Índice para lookup O(1) en lugar de find{} O(N) en updateQueue/updateCurrentSong
     private var playlistIndex = mapOf<String, Song>()
 
-    // playerListener: Player.Listener para eventos de reproducción
     private var playerListener: Player.Listener? = null
 
-    // reconnectListener: MediaController.Listener para detectar desconexión de sesión.
     private var reconnectListener: MediaController.Listener? = null
 
     init {
         setupMediaController()
     }
 
-    // Contador de intentos para backoff exponencial en reconexión
     private var reconnectAttempts = 0
     private var reconnectJob: Job? = null
 
     private fun setupMediaController() {
         val sessionToken = SessionToken(appContext, ComponentName(appContext, MusicService::class.java))
         
-        // Creamos el listener de la sesión
         val mcl = object : MediaController.Listener {
             override fun onDisconnected(controller: MediaController) {
                 scheduleReconnect()
@@ -91,7 +90,6 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
         }
         reconnectListener = mcl
 
-        // Lo establecemos en el Builder antes de construir el controlador
         controllerFuture = MediaController.Builder(appContext, sessionToken)
             .setListener(mcl)
             .buildAsync()
@@ -102,11 +100,8 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
                     scheduleReconnect()
                     return@addListener
                 }
-                // Conexión exitosa — resetear contador de reintentos
                 reconnectAttempts = 0
 
-                // Flag para evitar doble onPlayStarted cuando una transición
-                // ya registró el inicio de la nueva canción.
                 var transitionHandledPlay = false
 
                 playerListener = object : Player.Listener {
@@ -118,24 +113,16 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
                         if (prevSong != null && durMs > 0L) {
                             when (reason) {
                                 Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> {
-                                    // Salto manual del usuario
                                     statTracker.onSkip(prevSong.id, posMs, durMs)
                                 }
                                 Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> {
-                                    // Auto-advance de la cola: verificar umbral del 80%
-                                    // antes de marcar como completa. ExoPlayer transiciona
-                                    // cuando termina el buffer, por lo que posMs ≈ durMs.
                                     val ratio = if (durMs > 0L) posMs.toFloat() / durMs else 0f
                                     if (ratio >= StatTracker.COMPLETE_THRESHOLD_PERCENT) {
                                         statTracker.onSongComplete(prevSong.id, durMs)
                                     } else {
-                                        // No alcanzó el umbral (ej. canción muy corta o
-                                        // problema de buffering) — registrar como skip
                                         statTracker.onSkip(prevSong.id, posMs, durMs)
                                     }
                                 }
-                                // REASON_REPEAT y REASON_PLAYLIST_CHANGED no cuentan
-                                // como complete ni skip del usuario.
                                 else -> { /* no-op */ }
                             }
                         }
@@ -146,8 +133,6 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
                         applyReplayGain(mediaController,
                             (mediaItem?.localConfiguration?.tag as? Song)?.replayGain)
 
-                        // Registrar inicio de la nueva canción y marcar flag
-                        // para que onIsPlayingChanged no lo duplique.
                         val newSong = mediaItem?.localConfiguration?.tag as? Song
                         if (newSong != null) {
                             transitionHandledPlay = true
@@ -162,9 +147,6 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
                         if (isPlaying) {
                             startProgressUpdate()
                             fetchAudioSessionId()
-                            // Solo registrar onPlayStarted si la transición no lo hizo ya.
-                            // Esto evita el doble conteo cuando el usuario selecciona
-                            // una canción (transición → onIsPlayingChanged ambos disparan).
                             if (song != null && !transitionHandledPlay) {
                                 statTracker.onPlayStarted(song.id)
                             }
@@ -191,8 +173,6 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
                             _duration.value = mediaController.duration.coerceAtLeast(0L)
                             fetchAudioSessionId()
                         } else if (playbackState == Player.STATE_ENDED) {
-                            // Última canción de la cola — STATE_ENDED no dispara
-                            // onMediaItemTransition, así que registramos aquí.
                             val song = _currentSong.value
                             val dur  = mediaController.duration.coerceAtLeast(0L)
                             val pos  = mediaController.currentPosition
@@ -201,8 +181,6 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
                                 if (ratio >= StatTracker.COMPLETE_THRESHOLD_PERCENT) {
                                     statTracker.onSongComplete(song.id, dur)
                                 }
-                                // Si no alcanzó el umbral en STATE_ENDED, no se registra nada
-                                // (el usuario probablemente paró manualmente).
                             }
                         }
                         _playbackState.value = playbackState
@@ -212,10 +190,8 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
                         timeline: androidx.media3.common.Timeline, reason: Int
                     ) { updateQueue() }
                 }
-                // Attach listener safely to avoid NPEs if listener isn't set yet
                 playerListener?.let { mediaController.addListener(it) }
 
-                // Initial state sync
                 _isPlaying.value = mediaController.isPlaying
                 _playbackState.value = mediaController.playbackState
                 _isShuffleMode.value = mediaController.shuffleModeEnabled
@@ -229,17 +205,12 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
                 fetchEqualizerData()
 
             } catch (e: Exception) {
-                // Log the error and attempt to reconnect
                 Timber.e(e, "setupMediaController: exception while configuring listener")
                 scheduleReconnect()
             }
         }, MoreExecutors.directExecutor())
     }
 
-    /**
-     * Reconexión con backoff exponencial: 500ms → 1s → 2s → 4s (máx).
-     * Cancela cualquier reintento pendiente para no acumular corrutinas.
-     */
     private fun scheduleReconnect() {
         reconnectJob?.cancel()
         reconnectJob = scope.launch(Dispatchers.Main) {
@@ -253,8 +224,6 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
     private fun reconnect() {
         controller?.let { player ->
             playerListener?.let { player.removeListener(it) }
-            // No es necesario (ni posible) remover el MediaController.Listener manualmente
-            // ya que se asocia al ciclo de vida del controlador en el Builder.
         }
         playerListener = null
         reconnectListener = null
@@ -328,11 +297,6 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
     private fun startProgressUpdate() {
         stopProgressUpdate()
         progressJob = scope.launch(Dispatchers.Main) {
-            // ── FIX 3: toda la operación read-compare-write en Main ──
-            // Antes: pos se leía en Main pero la comparación y el write ocurrían en Default,
-            // lo que creaba una condición de carrera no atómica sobre _currentPosition.
-            // Ahora: el job corre directamente en Main; la corrutina es ligera (solo lectura
-            // de una propiedad y update de StateFlow) y no bloquea el hilo.
             while (isActive) {
                 val pos = controller?.currentPosition ?: _currentPosition.value
                 if (kotlin.math.abs(pos - _currentPosition.value) > 500) {
@@ -380,15 +344,11 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
         }
     }
 
-    // ── ReplayGain ───────────────────────────────────────────────────────────────
-
-    /**
-     * Ajusta el volumen del [MediaController] según el gain de la canción.
-     *
-     * Conversión: factor = 10^(gainDb / 20). Clampeado a [0, 1] para no amplificar
-     * más allá del 100% y evitar clipping. Si [gainDb] es null, restaura a 1f.
-     */
     private fun applyReplayGain(controller: MediaController, gainDb: Float?) {
+        if (!featureGate.isUnlocked(com.lg.monkeymusicplayer.core.feature.Feature.REPLAY_GAIN)) {
+            controller.volume = 1f
+            return
+        }
         val volume = if (gainDb != null) {
             10f.pow(gainDb / 20f).coerceIn(0f, 1f)
         } else {
@@ -457,6 +417,14 @@ class MusicPlayerManager(context: Context, private val statTracker: StatTracker)
 
     fun seekForward() { controller?.let { it.seekTo(it.currentPosition + 10000) } }
     fun seekBack() { controller?.let { it.seekTo(it.currentPosition - 10000) } }
+
+    fun setShuffleMode(enabled: Boolean) {
+        controller?.shuffleModeEnabled = enabled
+    }
+
+    fun setRepeatMode(mode: Int) {
+        controller?.repeatMode = mode
+    }
 
     fun toggleShuffle() { controller?.let { it.shuffleModeEnabled = !it.shuffleModeEnabled } }
 

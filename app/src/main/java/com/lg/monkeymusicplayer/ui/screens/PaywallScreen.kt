@@ -57,13 +57,15 @@ fun PaywallScreen(
     }
 
     val premiumFeatures = listOf(
-        Feature.VISUALIZER     to Icons.Default.GraphicEq,
-        Feature.CROSSFADE      to Icons.Default.BlurOn,
+        Feature.SMART_PLAYLISTS  to Icons.Default.AutoAwesome,
+        Feature.STATS            to Icons.Default.BarChart,
+        Feature.VISUALIZER       to Icons.Default.GraphicEq,
+        Feature.CROSSFADE        to Icons.Default.BlurOn,
+        Feature.REPLAY_GAIN      to Icons.Default.VolumeUp,
         Feature.EQUALIZER_PRESETS to Icons.Default.Tune,
-        Feature.SMART_PLAYLISTS to Icons.Default.AutoAwesome,
-        Feature.STATS          to Icons.Default.BarChart,
-        Feature.BACKUP         to Icons.Default.CloudUpload,
-        Feature.REPLAY_GAIN    to Icons.Default.VolumeUp,
+        Feature.BACKUP           to Icons.Default.CloudUpload,
+        Feature.CLOUD_SYNC       to Icons.Default.Sync,
+        Feature.CHROMECAST       to Icons.Default.Cast,
     )
 
     Scaffold(

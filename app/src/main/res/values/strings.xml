@@ -238,4 +238,6 @@
     <string name="pro_menu_item">Upgrade to PRO</string>
     <string name="pro_billing_unavailable">Google Play not available</string>
     <string name="tab_playlist">Playlist</string>
+    <string name="pro_feature_cloud_sync">Cloud Sync</string>
+    <string name="pro_feature_chromecast">Chromecast</string>
 </resources>

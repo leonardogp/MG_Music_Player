@@ -13,6 +13,10 @@ import javax.inject.Inject
 class ToggleFavoriteUseCase @Inject constructor(
     private val dao: MusicDao
 ) {
+    suspend operator fun invoke(song: Song) {
+        toggle(song.id, song.isFavorite)
+    }
+
     suspend fun toggle(songId: Long, isFavorite: Boolean) {
         if (isFavorite) {
             dao.deleteFavorite(FavoriteEntity(songId))

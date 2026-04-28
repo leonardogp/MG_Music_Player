@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -17,6 +18,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -525,7 +527,7 @@ fun SettingsScreen(
             ListItem(
                 modifier = Modifier.clickable { 
                     if (viewModel.isFeatureUnlocked(Feature.BACKUP))
-                        navController.navigate("backup")
+                        navController.navigate("stats")
                     else navController.navigate("paywall")
                 },
                 headlineContent = { Text(stringResource(R.string.backup_menu_item)) },
@@ -592,6 +594,7 @@ fun LibraryMainContent(
     onAddSongToPlaylist: (String, Song) -> Unit,
     onAddSongsToPlaylist: (String, List<Song>) -> Unit,
     onRemoveSongFromPlaylist: (String, Long) -> Unit,
+    onRemovePlaylist: (PlaylistEntity) -> Unit = {},
     onLoadPlaylistSongs: (String) -> Unit,
     onUpdateSongTags: (Song, String, String, String, String) -> Unit,
     onOpenEqualizer: () -> Unit,
@@ -632,7 +635,13 @@ fun LibraryMainContent(
     )
     
     val pagerState = rememberPagerState(pageCount = { tabs.size })
+    val tabsListState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+
+    // Sincronizar el scroll de las pestañas (LazyRow) con el cambio de página en el HorizontalPager
+    LaunchedEffect(pagerState.currentPage) {
+        tabsListState.animateScrollToItem(pagerState.currentPage)
+    }
 
     Scaffold(
         topBar = {
@@ -642,8 +651,9 @@ fun LibraryMainContent(
                     onSearchQueryChanged = onSearchQueryChanged,
                     onMenuClick = onMenuClick
                 )
-                // Chips tipo pastilla (igual que la imagen de referencia)
+                // Chips tipo pastilla con scroll automático sincronizado
                 LazyRow(
+                    state = tabsListState,
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {

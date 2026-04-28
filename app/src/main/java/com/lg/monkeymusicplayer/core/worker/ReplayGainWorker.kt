@@ -13,16 +13,15 @@ import com.lg.monkeymusicplayer.data.database.MusicDao
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 /**
- * ReplayGainWorker — lee los tags REPLAYGAIN_TRACK_GAIN de disco en background
- * y actualiza el campo replayGain en Room para las canciones que no lo tienen aún.
- *
- * Se lanza como tarea one-shot después de cada scan. No bloquea la UI.
- * Mp3File() parsea archivos completos (~50–200ms por archivo), por lo que procesar
- * 800 canciones secuencialmente aquí no tiene impacto en la experiencia del usuario.
+ * ReplayGainWorker — lee los tags REPLAYGAIN_TRACK_GAIN de disco en background.
+ * 
+ * Optimización: se han añadido pausas (delay) entre archivos para evitar saturar
+ * el decodificador de audio del sistema (Codec2) y los buffers de I/O en dispositivos reales.
  */
 @HiltWorker
 class ReplayGainWorker @AssistedInject constructor(
@@ -41,41 +40,44 @@ class ReplayGainWorker @AssistedInject constructor(
                 ExistingWorkPolicy.REPLACE,
                 request
             )
-            Timber.d("ReplayGainWorker: scheduled")
         }
     }
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
-            // Solo procesar canciones cuyo replayGain aún sea null
             val songs = musicDao.getAllSongs().filter { it.replayGain == null }
             if (songs.isEmpty()) return@withContext Result.success()
 
-            Timber.d("ReplayGainWorker: procesando ${songs.size} canciones sin ReplayGain")
-
-            // Construir mapa id → path real desde MediaStore para el conjunto de IDs
             val idSet = songs.map { it.id }.toSet()
             val pathMap = queryRealPaths(idSet)
 
             var updated = 0
-            for (song in songs) {
+            for ((index, song) in songs.withIndex()) {
                 val path = pathMap[song.id] ?: continue
-                val gain = ReplayGainReader.readTrackGain(path) ?: continue
-                musicDao.updateReplayGain(song.id, gain)
-                updated++
+                
+                // Leer el gain (operación pesada de I/O)
+                val gain = ReplayGainReader.readTrackGain(path)
+                if (gain != null) {
+                    musicDao.updateReplayGain(song.id, gain)
+                    updated++
+                }
+
+                // OPT: Cada 10 archivos, pausar 100ms para liberar el bufferpool del sistema
+                if (index % 10 == 0) {
+                    delay(100)
+                }
             }
 
-            Timber.d("ReplayGainWorker: $updated canciones actualizadas con ReplayGain")
+            Timber.d("ReplayGainWorker: proceso completado ($updated canciones actualizadas)")
             Result.success()
         } catch (e: Exception) {
-            Timber.e(e, "ReplayGainWorker: error")
+            Timber.e(e, "ReplayGainWorker failed")
             Result.retry()
         }
     }
 
     private fun queryRealPaths(ids: Set<Long>): Map<Long, String> {
         val result = mutableMapOf<Long, String>()
-        // Procesar en chunks de 500 para evitar el límite de 999 variables SQLite
         ids.chunked(500).forEach { chunk ->
             val placeholders = chunk.joinToString(",") { "?" }
             applicationContext.contentResolver.query(

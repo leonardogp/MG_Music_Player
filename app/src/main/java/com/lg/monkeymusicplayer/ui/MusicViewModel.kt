@@ -96,12 +96,24 @@ class MusicViewModel @Inject constructor(
     private val _requestEditSongEvent = MutableSharedFlow<Song>(extraBufferCapacity = 1)
     val requestEditSongEvent: SharedFlow<Song> = _requestEditSongEvent.asSharedFlow()
 
+    init {
+        // Ejecutamos el primer refresco con un ligero delay para no saturar el inicio de la App
+        viewModelScope.launch {
+            delay(500)
+            refreshLibrary()
+        }
+    }
+
     fun requestEditSong(song: Song) {
         viewModelScope.launch { _requestEditSongEvent.emit(song) }
     }
 
     fun onManageStoragePermissionResult(granted: Boolean) {
+        val wasGranted = _hasManageStoragePermission.value
         _hasManageStoragePermission.value = granted
+        if (!wasGranted && granted) {
+            refreshLibrary()
+        }
     }
 
     fun requestManageStoragePermission() {

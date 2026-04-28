@@ -8,6 +8,7 @@ import com.lg.monkeymusicplayer.core.cast.CastManager
 import com.lg.monkeymusicplayer.core.feature.FeatureGate
 import com.lg.monkeymusicplayer.core.player.MusicPlayerManager
 import com.lg.monkeymusicplayer.core.queue.QueueManager
+import com.lg.monkeymusicplayer.core.result.Result
 import com.lg.monkeymusicplayer.data.database.EqPresetEntity
 import com.lg.monkeymusicplayer.data.database.HistoryEntity
 import com.lg.monkeymusicplayer.data.database.PlaylistEntity
@@ -60,7 +61,7 @@ class MusicViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
 
     @Before
-    fun setUp() {
+    fun setUp() = runTest {
         Dispatchers.setMain(testDispatcher)
         
         whenever(repository.allSongsFlow).thenReturn(emptyFlow<List<Song>>())
@@ -84,6 +85,7 @@ class MusicViewModelTest {
 
         // Stubbing for Use Cases called in init or uiState
         whenever(getSmartPlaylistsUseCase.invoke()).thenReturn(emptyFlow<List<SmartPlaylist>>())
+        whenever(refreshMusicLibraryUseCase.invoke(any())).thenReturn(Result.Success(Unit))
         whenever(castManager.castStateCode).thenReturn(MutableStateFlow<Int>(0))
         whenever(castManager.isConnected).thenReturn(MutableStateFlow<Boolean>(false))
         whenever(queueManager.activeSongs).thenReturn(emptyList<Song>())
@@ -145,6 +147,6 @@ class MusicViewModelTest {
         whenever(repository.favorites).thenReturn(MutableStateFlow<List<Long>>(emptyList()))
         viewModel.toggleFavorite(song)
         advanceUntilIdle()
-        verify(toggleFavoriteUseCase).toggle(eq(1L), eq(false))
+        verify(toggleFavoriteUseCase).invoke(eq(song))
     }
 }

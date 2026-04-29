@@ -438,13 +438,6 @@ fun SettingsScreen(
                             contentDescription = null,
                             tint = PrimaryOrange
                         )
-                    },
-                    trailingContent = {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null,
-                            tint = PrimaryOrange
-                        )
                     }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
@@ -499,8 +492,7 @@ fun SettingsScreen(
             ListItem(
                 modifier = Modifier.clickable { onOpenEqualizer() },
                 headlineContent = { Text(stringResource(R.string.equalizer)) },
-                leadingContent = { Icon(Icons.Default.Tune, contentDescription = null) },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null) }
+                leadingContent = { Icon(Icons.Default.Tune, contentDescription = null) }
             )
             ListItem(
                 modifier = Modifier.clickable { showLanguageDialog = true },
@@ -519,9 +511,8 @@ fun SettingsScreen(
                 supportingContent = { Text(stringResource(R.string.stats_empty_body)) },
                 leadingContent = { Icon(Icons.Default.BarChart, contentDescription = null) },
                 trailingContent = {
-                    if (viewModel.isFeatureUnlocked(Feature.STATS))
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
-                    else Icon(Icons.Default.Lock, contentDescription = null, tint = PrimaryOrange)
+                    if (!viewModel.isFeatureUnlocked(Feature.STATS))
+                        Icon(Icons.Default.Lock, contentDescription = null, tint = PrimaryOrange)
                 }
             )
             ListItem(
@@ -534,9 +525,8 @@ fun SettingsScreen(
                 supportingContent = { Text(stringResource(R.string.backup_description)) },
                 leadingContent = { Icon(Icons.Default.CloudUpload, contentDescription = null) },
                 trailingContent = {
-                    if (viewModel.isFeatureUnlocked(Feature.BACKUP))
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
-                    else Icon(Icons.Default.Lock, contentDescription = null, tint = PrimaryOrange)
+                    if (!viewModel.isFeatureUnlocked(Feature.BACKUP))
+                        Icon(Icons.Default.Lock, contentDescription = null, tint = PrimaryOrange)
                 }
             )
             ListItem(
@@ -549,22 +539,19 @@ fun SettingsScreen(
                 supportingContent = { Text(stringResource(R.string.cloud_sync_subtitle)) },
                 leadingContent = { Icon(Icons.Default.Cloud, contentDescription = null) },
                 trailingContent = {
-                    if (viewModel.isFeatureUnlocked(Feature.CLOUD_SYNC))
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
-                    else Icon(Icons.Default.Lock, contentDescription = null, tint = PrimaryOrange)
+                    if (!viewModel.isFeatureUnlocked(Feature.CLOUD_SYNC))
+                        Icon(Icons.Default.Lock, contentDescription = null, tint = PrimaryOrange)
                 }
             )
             ListItem(
                 modifier = Modifier.clickable { navController.navigate("queues") },
                 headlineContent = { Text(stringResource(R.string.queues_menu_item)) },
-                leadingContent = { Icon(Icons.Default.QueueMusic, contentDescription = null) },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null) }
+                leadingContent = { Icon(Icons.Default.QueueMusic, contentDescription = null) }
             )
             ListItem(
                 modifier = Modifier.clickable { navController.navigate("excluded_folders") },
                 headlineContent = { Text(stringResource(R.string.excluded_folders)) },
-                leadingContent = { Icon(Icons.Default.FolderOff, contentDescription = null) },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null) }
+                leadingContent = { Icon(Icons.Default.FolderOff, contentDescription = null) }
             )
         }
     }
@@ -591,6 +578,7 @@ fun LibraryMainContent(
     onCycleRepeatMode: () -> Unit,
     onToggleFavorite: (Song) -> Unit,
     onCreatePlaylist: (String) -> Unit,
+    onReorderPlaylistSongs: (String, List<Song>) -> Unit = { _, _ -> },
     onDeletePlaylist: (PlaylistEntity) -> Unit,
     onAddSongToPlaylist: (String, Song) -> Unit,
     onAddSongsToPlaylist: (String, List<Song>) -> Unit,
@@ -740,13 +728,19 @@ fun LibraryMainContent(
                         }
                     }
                 }
-                1 -> SongList(
-                    songs = songsForTab,
-                    currentSong = uiState.playerState.currentSong,
-                    isPlaying = uiState.playerState.isPlaying,
-                    onSongClick = { onPlay(it, songsForTab) },
-                    onMoreClick = onSongMoreClick
-                )
+                1 -> {
+                    if (songsForTab.isEmpty() && uiState.loadState is LibraryLoadState.Idle) {
+                        EmptyLibraryState(onScan = onScanMusic)
+                    } else {
+                        SongList(
+                            songs = songsForTab,
+                            currentSong = uiState.playerState.currentSong,
+                            isPlaying = uiState.playerState.isPlaying,
+                            onSongClick = { onPlay(it, songsForTab) },
+                            onMoreClick = onSongMoreClick
+                        )
+                    }
+                }
                 2 -> PlaylistGrid(
                     playlists = playlistsForTab,
                     smartPlaylists = uiState.smartPlaylists,
@@ -770,6 +764,46 @@ fun LibraryMainContent(
                     folders = foldersForTab,
                     onFolderClick = onFolderClick
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun EmptyLibraryState(onScan: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            Icon(
+                Icons.Default.LibraryMusic,
+                contentDescription = null,
+                tint = PrimaryOrange,
+                modifier = Modifier.size(80.dp)
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                stringResource(R.string.empty_library_title),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.empty_library_body),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(24.dp))
+            Button(
+                onClick = onScan,
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.Refresh, null, tint = Color.Black)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.scan_now), color = Color.Black, fontWeight = FontWeight.Bold)
             }
         }
     }

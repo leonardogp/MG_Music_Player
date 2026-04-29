@@ -97,11 +97,10 @@ class MusicViewModel @Inject constructor(
     val requestEditSongEvent: SharedFlow<Song> = _requestEditSongEvent.asSharedFlow()
 
     init {
-        // Ejecutamos el primer refresco con un ligero delay para no saturar el inicio de la App
-        viewModelScope.launch {
-            delay(500)
-            refreshLibrary()
-        }
+        // CORRECCIÓN: Se elimina el escaneo automático al iniciar (refreshLibrary)
+        // para evitar bloqueos del hilo principal y saturación de E/S.
+        // El usuario puede iniciar el escaneo manualmente si lo desea.
+        _isInitialLoad.value = false
     }
 
     fun requestEditSong(song: Song) {

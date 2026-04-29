@@ -75,6 +75,11 @@
     <string name="root">Root</string>
     <string name="system_default">System default</string>
 
+    <!-- Empty States -->
+    <string name="empty_library_title">Your library is empty</string>
+    <string name="empty_library_body">Scan your device to find and add your music files to the player.</string>
+    <string name="scan_now">Scan now</string>
+
     <!-- Greetings -->
     <string name="greeting_morning">Good morning</string>
     <string name="greeting_afternoon">Good afternoon</string>

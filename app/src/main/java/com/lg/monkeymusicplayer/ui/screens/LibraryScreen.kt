@@ -196,7 +196,7 @@ fun LibraryScreen(
                 onRemoveSongFromPlaylist = viewModel::removeSongFromPlaylist,
                 onLoadPlaylistSongs = viewModel::loadPlaylistSongs,
                 onUpdateSongTags = { song, t, a, al, g -> viewModel.updateSongTags(song, t, a, al, g) },
-                onOpenEqualizer = { viewModel.openEqualizer(viewModel.context) },
+                onOpenEqualizer = { navController.navigate("equalizer") },
                 onSetSleepTimer = viewModel::setSleepTimer,
                 onChangeLanguage = { lang ->
                     val appLocale: LocaleListCompat = if (lang.isEmpty()) {
@@ -318,7 +318,7 @@ fun LibraryScreen(
                 navController = navController,
                 onBack = { navController.popBackStack() },
                 onScanMusic = { viewModel.scanMusic() },
-                onOpenEqualizer = { viewModel.openEqualizer(viewModel.context) },
+                onOpenEqualizer = { navController.navigate("equalizer") },
                 onSetSleepTimer = viewModel::setSleepTimer,
                 onChangeLanguage = { lang ->
                     val appLocale: LocaleListCompat = if (lang.isEmpty()) {
@@ -584,6 +584,7 @@ fun LibraryMainContent(
     onSkipNext: () -> Unit,
     onSkipPrevious: () -> Unit,
     onSeekTo: (Long) -> Unit,
+    onSearchOpen: () -> Unit = {},
     onSeekForward: () -> Unit,
     onSeekBack: () -> Unit,
     onToggleShuffle: () -> Unit,

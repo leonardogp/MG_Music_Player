@@ -43,8 +43,6 @@ import java.io.File
 import javax.inject.Inject
 import androidx.media3.common.util.UnstableApi
 import androidx.palette.graphics.Palette
-import com.lg.monkeymusicplayer.core.lyrics.LrcLibService
-import kotlinx.coroutines.flow.distinctUntilChanged
 
 @OptIn(UnstableApi::class)
 @HiltViewModel
@@ -99,19 +97,10 @@ class MusicViewModel @Inject constructor(
     val requestEditSongEvent: SharedFlow<Song> = _requestEditSongEvent.asSharedFlow()
 
     init {
-        viewModelScope.launch {
-            delay(500)
-            refreshLibrary()
-        }
-        // Disparar loadLyrics automáticamente cada vez que cambia la canción
-        viewModelScope.launch {
-            playerManager.currentSong
-                .distinctUntilChanged { old, new -> old?.id == new?.id }
-                .collect { song ->
-                    if (song != null) loadLyrics(song)
-                    else _lyrics.value = emptyList()
-                }
-        }
+        // CORRECCIÓN: Se elimina el escaneo automático al iniciar (refreshLibrary)
+        // para evitar bloqueos del hilo principal y saturación de E/S.
+        // El usuario puede iniciar el escaneo manualmente si lo desea.
+        _isInitialLoad.value = false
     }
 
     fun requestEditSong(song: Song) {
@@ -539,64 +528,8 @@ class MusicViewModel @Inject constructor(
             _isLoadingLyrics.value = true
             delay(500)
             _lyrics.value = emptyList()
-            try {
-                val lrcContent = withContext(Dispatchers.IO) {
-                    repository.fetchLyrics(song)
-                }
-                _lyrics.value = if (lrcContent != null) parseLrc(lrcContent) else emptyList()
-            } catch (e: Exception) {
-                timber.log.Timber.w(e, "loadLyrics failed for '${song.title}'")
-                _lyrics.value = emptyList()
-            } finally {
-                _isLoadingLyrics.value = false
-            }
+            _isLoadingLyrics.value = false
         }
-    }
-
-    /**
-     * Parsea contenido LRC a lista de [LyricLine] con timestamps en ms.
-     * Formato: [mm:ss.xx] texto
-     * Soporta múltiples timestamps por línea y líneas sin timestamp (plainLyrics).
-     */
-    private fun parseLrc(lrc: String): List<LyricLine> {
-        val lines = mutableListOf<LyricLine>()
-        val timeRegex = Regex("""\[(\d{2}):(\d{2})\.(\d{2,3})](.*)"""  )
-        var sharedTimeMs = 0L
-
-        for (raw in lrc.lines()) {
-            val trimmed = raw.trim()
-            if (trimmed.isEmpty()) continue
-
-            // Ignorar tags de metadatos [ar:], [ti:], [al:], [by:], [offset:]
-            if (Regex("""^\[[a-z]+:.*]$""", RegexOption.IGNORE_CASE).matches(trimmed)) continue
-
-            val matches = timeRegex.findAll(trimmed)
-            if (!matches.any()) {
-                // Línea plana sin timestamp — usar tiempo compartido con la anterior
-                lines.add(LyricLine(timeMs = sharedTimeMs, text = trimmed))
-                continue
-            }
-
-            var lastText = ""
-            for (match in matches) {
-                val mm  = match.groupValues[1].toLongOrNull() ?: 0L
-                val ss  = match.groupValues[2].toLongOrNull() ?: 0L
-                val cs  = match.groupValues[3].let {
-                    // Centésimas (2 dígitos) o milésimas (3 dígitos)
-                    val v = it.toLongOrNull() ?: 0L
-                    if (it.length == 2) v * 10L else v
-                }
-                val timeMs = mm * 60_000L + ss * 1_000L + cs
-                val text = match.groupValues[4].trim()
-                if (text.isNotEmpty()) {
-                    lines.add(LyricLine(timeMs = timeMs, text = text))
-                    sharedTimeMs = timeMs
-                    lastText = text
-                }
-            }
-        }
-
-        return lines.sortedBy { it.timeMs }
     }
 
     // ── Tag Editing ──────────────────────────────────────────────────────────

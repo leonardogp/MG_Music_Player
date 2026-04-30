@@ -61,6 +61,7 @@ import com.lg.monkeymusicplayer.ui.PlayerState
 import com.lg.monkeymusicplayer.ui.LibraryUiState
 import com.lg.monkeymusicplayer.ui.MusicViewModel
 import com.lg.monkeymusicplayer.core.result.Result
+import com.lg.monkeymusicplayer.ui.components.core.MonkeyPlayerBottomBar
 import com.lg.monkeymusicplayer.ui.components.MediaProgressSlider
 import com.lg.monkeymusicplayer.ui.components.PlayerControls
 import com.lg.monkeymusicplayer.ui.theme.PrimaryOrange
@@ -672,7 +673,7 @@ fun LibraryMainContent(
             }
         },
         bottomBar = {
-            PlayerBottomBar(
+            MonkeyPlayerBottomBar(
                 playerState = uiState.playerState,
                 onPlayPause = onPlayPause,
                 onSkipNext = onSkipNext,

@@ -1,19 +1,14 @@
 package com.lg.monkeymusicplayer.ui.screens
 
-import android.content.res.Configuration
 import android.widget.Toast
-import androidx.activity.compose.BackHandler
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.compose.animation.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -27,15 +22,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
-import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -54,7 +45,6 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.lg.monkeymusicplayer.R
 import com.lg.monkeymusicplayer.data.database.PlaylistEntity
-import com.lg.monkeymusicplayer.data.database.HistoryEntity
 import com.lg.monkeymusicplayer.data.model.Song
 import com.lg.monkeymusicplayer.ui.SortOrder
 import com.lg.monkeymusicplayer.ui.PlayerState
@@ -63,31 +53,18 @@ import com.lg.monkeymusicplayer.ui.MusicViewModel
 import com.lg.monkeymusicplayer.core.result.Result
 import com.lg.monkeymusicplayer.ui.components.core.MonkeyPlayerBottomBar
 import com.lg.monkeymusicplayer.ui.components.MediaProgressSlider
-import com.lg.monkeymusicplayer.ui.components.PlayerControls
 import com.lg.monkeymusicplayer.ui.theme.PrimaryOrange
-import androidx.media3.common.Player
 import kotlinx.coroutines.launch
-import java.util.Calendar
 import com.lg.monkeymusicplayer.util.TimeFormatter
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import com.lg.monkeymusicplayer.ui.components.LyricsView
 import com.lg.monkeymusicplayer.data.model.SmartPlaylist
 import com.lg.monkeymusicplayer.data.model.SmartPlaylistType
 import com.lg.monkeymusicplayer.core.feature.Feature
-import com.lg.monkeymusicplayer.data.repository.BackupRepository
-import com.lg.monkeymusicplayer.data.repository.StatsRepository
 import com.lg.monkeymusicplayer.ui.LibraryLoadState
-import com.lg.monkeymusicplayer.data.repository.ExcludedFoldersRepository
 import android.net.Uri
-import android.os.Environment
-import android.provider.DocumentsContract
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.border
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.vector.ImageVector
+import com.lg.monkeymusicplayer.ui.components.core.MonkeyButton
+import com.lg.monkeymusicplayer.ui.components.core.MonkeySearchBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -406,14 +383,44 @@ fun SettingsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.settings_title)) },
-                navigationIcon = {
+            Surface(
+                tonalElevation = 8.dp,
+                shadowElevation = 12.dp,
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                        Icon(Icons.Default.ArrowBack, contentDescription = null)
                     }
+
+                    Spacer(Modifier.width(8.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.settings_title),
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Text(
+                            text = "Monkey preferences",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Icon(
+                        Icons.Default.Settings,
+                        contentDescription = null,
+                        tint = PrimaryOrange
+                    )
                 }
-            )
+            }
         }
     ) { padding ->
         Column(
@@ -651,9 +658,11 @@ fun LibraryMainContent(
                         val selected = pagerState.currentPage == index
                         Surface(
                             onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                            shape = RoundedCornerShape(50),
+                            shape = RoundedCornerShape(22.dp),
                             color = if (selected) PrimaryOrange else MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.height(36.dp)
+                            tonalElevation = if (selected) 8.dp else 2.dp,
+                            shadowElevation = if (selected) 12.dp else 0.dp,
+                            modifier = Modifier.height(40.dp)
                         ) {
                             Box(
                                 contentAlignment = Alignment.Center,
@@ -683,19 +692,26 @@ fun LibraryMainContent(
     ) { padding ->
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.padding(padding).fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 12.dp),
             beyondViewportPageCount = 1
         ) { page ->
             when (page) {
                 0 -> if (viewModel.isFeatureUnlocked(Feature.SMART_PLAYLISTS)) {
-                    HomeContent(
-                        favoriteSongs = favoriteSongs,
-                        recentSongs = recentSongs,
-                        smartPlaylists = uiState.smartPlaylists,
-                        onSongClick = { onPlay(it, uiState.songs) },
-                        onSongMoreClick = onSongMoreClick,
-                        onSmartPlaylistClick = { onSmartPlaylistClick(it) }
-                    )
+                    Box(
+                        modifier = Modifier.padding(top = 12.dp)
+                    ) {
+                        HomeContent(
+                            favoriteSongs = favoriteSongs,
+                            recentSongs = recentSongs,
+                            smartPlaylists = uiState.smartPlaylists,
+                            onSongClick = { onPlay(it, uiState.songs) },
+                            onSongMoreClick = onSongMoreClick,
+                            onSmartPlaylistClick = { onSmartPlaylistClick(it) }
+                        )
+                    }
                 } else {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(
@@ -715,17 +731,10 @@ fun LibraryMainContent(
                                 textAlign = TextAlign.Center,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(Modifier.height(24.dp))
-                            Button(
-                                onClick = { navController.navigate("paywall") },
-                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Icon(Icons.Default.Lock, null,
-                                    tint = Color.Black, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.pro_upgrade_cta),
-                                    color = Color.Black, fontWeight = FontWeight.Bold)
-                            }
+                            MonkeyButton(
+                                text = stringResource(R.string.pro_upgrade_cta),
+                                onClick = { navController.navigate("paywall") }
+                            )
                         }
                     }
                 }
@@ -797,15 +806,10 @@ fun EmptyLibraryState(onScan: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(24.dp))
-            Button(
-                onClick = onScan,
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryOrange),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(Icons.Default.Refresh, null, tint = Color.Black)
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.scan_now), color = Color.Black, fontWeight = FontWeight.Bold)
-            }
+            MonkeyButton(
+                text = stringResource(R.string.scan_now),
+                onClick = onScan
+            )
         }
     }
 }
@@ -820,8 +824,9 @@ fun HomeContent(
     onSmartPlaylistClick: (SmartPlaylist) -> Unit
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 16.dp)
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = 8.dp),
     ) {
         // Smart Playlists Horizontal
         if (smartPlaylists.isNotEmpty()) {
@@ -968,60 +973,49 @@ fun LibraryTopBar(
     onMenuClick: () -> Unit,
     isSearchActive: Boolean = false
 ) {
-    var text by remember { mutableStateOf(searchQuery) }
-    LaunchedEffect(searchQuery) { if (text != searchQuery) text = searchQuery }
-
-    TopAppBar(
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                androidx.compose.foundation.Image(
-                    painter = painterResource(R.drawable.ic_monkey_head),
-                    contentDescription = null,
-                    modifier = Modifier.size(32.dp).clip(RoundedCornerShape(50))
-                )
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    text = stringResource(R.string.app_name),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        },
-        actions = {
-            IconButton(onClick = {
-                text = if (text.isEmpty()) "" else ""
-                onSearchQueryChanged(text)
-            }) {
-                Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search))
-            }
-            IconButton(onClick = onMenuClick) {
-                Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings_title))
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.background
-        )
-    )
-    // Barra de búsqueda expandible debajo del TopAppBar
-    if (text.isNotEmpty() || isSearchActive) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = { text = it; onSearchQueryChanged(it) },
-            placeholder = { Text(stringResource(R.string.search)) },
-            leadingIcon = { Icon(Icons.Default.Search, null) },
-            trailingIcon = {
-                if (text.isNotEmpty()) IconButton(onClick = { text = ""; onSearchQueryChanged("") }) {
-                    Icon(Icons.Default.Close, null)
-                }
-            },
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-            shape = RoundedCornerShape(50),
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = PrimaryOrange,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                painter = painterResource(R.drawable.ic_monkey_head),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
             )
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Monkey Music",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    "Reactive audio jungle",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            IconButton(onClick = onMenuClick) {
+                Icon(Icons.Default.Settings, null)
+            }
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        MonkeySearchBar(
+            query = searchQuery,
+            onQueryChange = onSearchQueryChanged
         )
     }
 }
@@ -1056,13 +1050,16 @@ fun SongListItem(
     onMoreClick: () -> Unit
 ) {
     val bgColor = if (isSelected)
-        PrimaryOrange.copy(alpha = 0.08f)
-    else Color.Transparent
+        PrimaryOrange.copy(alpha = 0.14f)
+    else
+        MaterialTheme.colorScheme.surface.copy(alpha = 0.35f)
 
     ListItem(
         modifier = Modifier
-            .clickable(onClick = onClick)
-            .background(bgColor),
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(bgColor)
+            .clickable(onClick = onClick),
         headlineContent = {
             Text(
                 text = song.title,
@@ -1091,7 +1088,7 @@ fun SongListItem(
                         .crossfade(true)
                         .build(),
                     contentDescription = null,
-                    modifier = Modifier.size(52.dp).clip(RoundedCornerShape(6.dp)),
+                    modifier = Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)),
                     contentScale = ContentScale.Crop,
                     error = painterResource(R.drawable.ic_monkey_head)
                 )
@@ -1099,7 +1096,7 @@ fun SongListItem(
                     Box(
                         modifier = Modifier
                             .size(52.dp)
-                            .clip(RoundedCornerShape(6.dp))
+                            .clip(RoundedCornerShape(12.dp))
                             .background(Color.Black.copy(alpha = 0.45f)),
                         contentAlignment = Alignment.Center
                     ) {
@@ -1119,10 +1116,6 @@ fun SongListItem(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-    )
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 76.dp),
-        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
     )
 }
 

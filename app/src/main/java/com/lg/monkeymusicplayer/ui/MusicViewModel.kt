@@ -387,9 +387,9 @@ class MusicViewModel @Inject constructor(
         }
     }
 
-    fun removeSongFromPlaylist(playlistId: String, songId: Long) {
+    fun removeSongFromPlaylist(playlistId: String, song: Song) {
         viewModelScope.launch {
-            repository.removeSongFromPlaylist(playlistId.toLong(), songId)
+            repository.removeSongFromPlaylist(playlistId.toLong(), song.id)
         }
     }
 
@@ -545,7 +545,7 @@ class MusicViewModel @Inject constructor(
                 }
                 _lyrics.value = if (lrcContent != null) parseLrc(lrcContent) else emptyList()
             } catch (e: Exception) {
-                timber.log.Timber.w(e, "loadLyrics failed for '${song.title}'")
+                timber.log.Timber.w(e, "loadLyrics failed for \u0027${song.title}\u0027")
                 _lyrics.value = emptyList()
             } finally {
                 _isLoadingLyrics.value = false

@@ -128,7 +128,18 @@ class MusicViewModelTest {
 
     @Test
     fun testPlaySong() = runTest {
-        val song = Song(1, 1, "Title", "Artist", "Album", "Genre", "Folder", "Path", "Uri", false)
+        val song = Song(
+            id = 1L,
+            albumId = 1L,
+            title = "Title",
+            artist = "Artist",
+            album = "Album",
+            genre = "Genre",
+            folder = "Folder",
+            path = "Path",
+            albumArtUri = "Uri",
+            isFavorite = false
+        )
         val playlist = emptyList<Song>()
         viewModel.playSong(song, playlist)
         advanceUntilIdle()
@@ -143,7 +154,18 @@ class MusicViewModelTest {
 
     @Test
     fun testToggleFavorite() = runTest {
-        val song = Song(1, 1, "Title", "Artist", "Album", "Genre", "Folder", "Path", "Uri", false)
+        val song = Song(
+            id = 1L,
+            albumId = 1L,
+            title = "Title",
+            artist = "Artist",
+            album = "Album",
+            genre = "Genre",
+            folder = "Folder",
+            path = "Path",
+            albumArtUri = "Uri",
+            isFavorite = false
+        )
         whenever(repository.favorites).thenReturn(MutableStateFlow<List<Long>>(emptyList()))
         viewModel.toggleFavorite(song)
         advanceUntilIdle()

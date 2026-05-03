@@ -10,6 +10,8 @@ data class Song(
     val folder: String,
     val path: String,
     val albumArtUri: String,
+    val duration: Long = 0L,
+    val dateAdded: Long = 0L,
     val isFavorite: Boolean = false,
     val lyricsPath: String? = null,
     /** ReplayGain track gain en dB. Null si el archivo no tiene el tag. */

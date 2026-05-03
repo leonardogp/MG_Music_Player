@@ -1,5 +1,6 @@
 package com.lg.monkeymusicplayer.ui.components.core
 
+import com.lg.monkeymusicplayer.ui.theme.PrimaryOrange
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,15 +25,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.ui.graphics.vector.ImageVector
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.lg.monkeymusicplayer.data.model.Song
 import com.lg.monkeymusicplayer.ui.PlayerState
 import com.lg.monkeymusicplayer.R
-import androidx.compose.ui.unit.Dp
-import com.lg.monkeymusicplayer.ui.theme.MonkeyElevation
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Spacer
 
 @Composable
 fun MonkeyPlayerBottomBar(
@@ -46,36 +44,84 @@ fun MonkeyPlayerBottomBar(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .height(78.dp)
             .clickable(onClick = onClick),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        tonalElevation = 8.dp
-    ) {
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+        tonalElevation = 14.dp,
+        shadowElevation = 18.dp,
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
+        )
+    ){
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 8.dp)
-        ) {
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)
+        ){
             AsyncImage(
                 model = song.albumArtUri,
                 contentDescription = null,
-                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(4.dp)),
+                modifier = Modifier.size(58.dp).clip(RoundedCornerShape(16.dp)),
                 contentScale = ContentScale.Crop,
                 error = painterResource(R.drawable.ic_monkey_head)
             )
             // Text area
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = song.title, style = MaterialTheme.typography.titleSmall)
-                Text(text = song.artist, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-            }
-            IconButton(onClick = onPlayPause) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 14.dp)
+            ) {
+                Text(
+                    text = song.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1
+                )
+
+                Text(
+                    text = song.artist,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+
                 if (playerState.isPlaying) {
-                    Icon(imageVector = Icons.Filled.Pause, contentDescription = null)
-                } else {
-                    Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = null)
+                    Spacer(Modifier.height(4.dp))
+                    PlaybackVisualizer(isPlaying = playerState.isPlaying)
                 }
             }
-            IconButton(onClick = onSkipNext) {
-                Icon(imageVector = Icons.Filled.SkipNext, contentDescription = null)
+            Surface(
+                onClick = onPlayPause,
+                shape = RoundedCornerShape(18.dp),
+                color = PrimaryOrange,
+                tonalElevation = 8.dp,
+                modifier = Modifier.size(46.dp)
+            ) {
+                androidx.compose.foundation.layout.Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = if (playerState.isPlaying)
+                            Icons.Filled.Pause
+                        else
+                            Icons.Filled.PlayArrow,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+            IconButton(
+                onClick = onSkipNext,
+                modifier = Modifier.padding(start = 4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.SkipNext,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

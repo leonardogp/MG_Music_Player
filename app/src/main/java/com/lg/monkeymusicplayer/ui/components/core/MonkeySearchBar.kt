@@ -12,14 +12,16 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun MonkeySearchBar(
     query: String,
-    onQueryChange: (String) -> Unit
+    onQueryChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    placeholder: String = "Search your jungle..."
 ) {
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         placeholder = {
-            Text("Search your jungle...")
+            Text(placeholder)
         },
         leadingIcon = {
             Icon(Icons.Rounded.Search, null)

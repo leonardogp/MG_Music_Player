@@ -31,6 +31,7 @@ hiltWork = "1.2.0"
 cast = "21.5.0"
 mediarouter = "1.7.0"
 billing = "7.1.1"
+foundationLayout = "1.11.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -80,6 +81,7 @@ androidx-hilt-compiler = { group = "androidx.hilt", name = "hilt-compiler", vers
 play-services-cast-framework = { group = "com.google.android.gms", name = "play-services-cast-framework", version.ref = "cast" }
 androidx-mediarouter = { group = "androidx.mediarouter", name = "mediarouter", version.ref = "mediarouter" }
 google-billing = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "billing" }
+androidx-compose-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

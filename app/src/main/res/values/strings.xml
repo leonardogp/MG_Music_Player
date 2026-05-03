@@ -74,6 +74,12 @@
     <string name="no_genre">No genre</string>
     <string name="root">Root</string>
     <string name="system_default">System default</string>
+    <string name="search_placeholder">Search your jungle...</string>
+    <string name="settings">Settings</string>
+    <string name="smart_playlists_title">Smart Playlists</string>
+    <string name="recently_added">Recently Added</string>
+    <string name="no_songs_found">No songs found</string>
+    <string name="scan_music_desc">Scan your device to find and add your music files to the player.</string>
 
     <!-- Empty States -->
     <string name="empty_library_title">Your library is empty</string>

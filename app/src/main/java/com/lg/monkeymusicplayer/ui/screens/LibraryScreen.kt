@@ -1,8 +1,13 @@
 package com.lg.monkeymusicplayer.ui.screens
 
+import android.annotation.SuppressLint
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -65,7 +70,11 @@ import com.lg.monkeymusicplayer.ui.LibraryLoadState
 import android.net.Uri
 import com.lg.monkeymusicplayer.ui.components.core.MonkeyButton
 import com.lg.monkeymusicplayer.ui.components.core.MonkeySearchBar
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
 
+@SuppressLint("LocalContextGetResourceValueCall")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
@@ -171,7 +180,7 @@ fun LibraryScreen(
                 onDeletePlaylist = viewModel::deletePlaylist,
                 onAddSongToPlaylist = viewModel::addSongToPlaylist,
                 onAddSongsToPlaylist = viewModel::addSongsToPlaylist,
-                onRemoveSongFromPlaylist = viewModel::removeSongFromPlaylist,
+                onRemoveSongFromPlaylist = { playlistId, song -> viewModel.removeSongFromPlaylist(playlistId, song) },
                 onLoadPlaylistSongs = viewModel::loadPlaylistSongs,
                 onUpdateSongTags = { song, t, a, al, g -> viewModel.updateSongTags(song, t, a, al, g) },
                 onOpenEqualizer = { navController.navigate("equalizer") },
@@ -336,232 +345,6 @@ fun LibraryScreen(
                 onBack = { navController.popBackStack() }
             )
         }
-        composable("queues") {
-            QueuesScreen(
-                viewModel = viewModel,
-                onBack = { navController.popBackStack() }
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SettingsScreen(
-    uiState: LibraryUiState,
-    viewModel: MusicViewModel,
-    navController: NavController,
-    onBack: () -> Unit,
-    onScanMusic: () -> Unit,
-    onOpenEqualizer: () -> Unit,
-    onSetSleepTimer: (Int) -> Unit,
-    onChangeLanguage: (String) -> Unit
-) {
-    var showSleepTimerDialog by remember { mutableStateOf(false) }
-    var showLanguageDialog by remember { mutableStateOf(false) }
-
-    if (showSleepTimerDialog) {
-        SleepTimerDialog(
-            currentMinutes = uiState.playerState.sleepTimerMinutes,
-            onDismiss = { showSleepTimerDialog = false },
-            onConfirm = { minutes ->
-                onSetSleepTimer(minutes)
-                showSleepTimerDialog = false
-            }
-        )
-    }
-
-    if (showLanguageDialog) {
-        LanguageDialog(
-            onDismiss = { showLanguageDialog = false },
-            onLanguageSelected = { lang ->
-                onChangeLanguage(lang)
-                showLanguageDialog = false
-            }
-        )
-    }
-
-    Scaffold(
-        topBar = {
-            Surface(
-                tonalElevation = 8.dp,
-                shadowElevation = 12.dp,
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = null)
-                    }
-
-                    Spacer(Modifier.width(8.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.settings_title),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Text(
-                            text = "Monkey preferences",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    Icon(
-                        Icons.Default.Settings,
-                        contentDescription = null,
-                        tint = PrimaryOrange
-                    )
-                }
-            }
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-        ) {
-            // PRO upgrade CTA — solo visible si no tiene PRO
-            if (!viewModel.featureGate.isProUnlocked()) {
-                ListItem(
-                    modifier = Modifier.clickable { navController.navigate("paywall") },
-                    headlineContent = {
-                        Text(
-                            stringResource(R.string.pro_menu_item),
-                            color = PrimaryOrange,
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            Icons.Default.WorkspacePremium,
-                            contentDescription = null,
-                            tint = PrimaryOrange
-                        )
-                    }
-                )
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-            }
-            ListItem(
-                modifier = Modifier.clickable { onScanMusic() },
-                headlineContent = { Text(stringResource(R.string.scan_music)) },
-                leadingContent = {
-                    val scanning = uiState.loadState as? LibraryLoadState.Scanning
-                    if (scanning != null) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                    } else {
-                        Icon(Icons.Default.Refresh, contentDescription = null)
-                    }
-                },
-                supportingContent = {
-                    val scanning = uiState.loadState as? LibraryLoadState.Scanning
-                    when {
-                        scanning != null -> Column {
-                            LinearProgressIndicator(
-                                progress = { scanning.fraction },
-                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
-                            )
-                            if (!scanning.isIndeterminate) {
-                                Text(
-                                    stringResource(R.string.scanning_progress, scanning.progress, scanning.total),
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                        }
-                        uiState.loadState is LibraryLoadState.Error -> Text(
-                            (uiState.loadState as LibraryLoadState.Error).message,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        else -> {}
-                    }
-                }
-            )
-            ListItem(
-                modifier = Modifier.clickable { showSleepTimerDialog = true },
-                headlineContent = {
-                    val timerText = if (uiState.playerState.sleepTimerMinutes > 0) {
-                        stringResource(R.string.timer_active, TimeFormatter.formatDuration(uiState.playerState.sleepTimerRemainingMillis))
-                    } else {
-                        stringResource(R.string.sleep_timer)
-                    }
-                    Text(timerText)
-                },
-                leadingContent = { Icon(Icons.Default.Timer, contentDescription = null) }
-            )
-            ListItem(
-                modifier = Modifier.clickable { onOpenEqualizer() },
-                headlineContent = { Text(stringResource(R.string.equalizer)) },
-                leadingContent = { Icon(Icons.Default.Tune, contentDescription = null) }
-            )
-            ListItem(
-                modifier = Modifier.clickable { showLanguageDialog = true },
-                headlineContent = { Text(stringResource(R.string.language)) },
-                leadingContent = { Icon(Icons.Default.Language, contentDescription = null) }
-            )
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-            
-            ListItem(
-                modifier = Modifier.clickable { 
-                    if (viewModel.isFeatureUnlocked(Feature.STATS))
-                        navController.navigate("stats")
-                    else navController.navigate("paywall")
-                },
-                headlineContent = { Text(stringResource(R.string.stats_menu_item)) },
-                supportingContent = { Text(stringResource(R.string.stats_empty_body)) },
-                leadingContent = { Icon(Icons.Default.BarChart, contentDescription = null) },
-                trailingContent = {
-                    if (!viewModel.isFeatureUnlocked(Feature.STATS))
-                        Icon(Icons.Default.Lock, contentDescription = null, tint = PrimaryOrange)
-                }
-            )
-            ListItem(
-                modifier = Modifier.clickable { 
-                    if (viewModel.isFeatureUnlocked(Feature.BACKUP))
-                        navController.navigate("stats")
-                    else navController.navigate("paywall")
-                },
-                headlineContent = { Text(stringResource(R.string.backup_menu_item)) },
-                supportingContent = { Text(stringResource(R.string.backup_description)) },
-                leadingContent = { Icon(Icons.Default.CloudUpload, contentDescription = null) },
-                trailingContent = {
-                    if (!viewModel.isFeatureUnlocked(Feature.BACKUP))
-                        Icon(Icons.Default.Lock, contentDescription = null, tint = PrimaryOrange)
-                }
-            )
-            ListItem(
-                modifier = Modifier.clickable { 
-                    if (viewModel.isFeatureUnlocked(Feature.CLOUD_SYNC))
-                        navController.navigate("cloud_sync")
-                    else navController.navigate("paywall")
-                },
-                headlineContent = { Text(stringResource(R.string.cloud_sync_menu_item)) },
-                supportingContent = { Text(stringResource(R.string.cloud_sync_subtitle)) },
-                leadingContent = { Icon(Icons.Default.Cloud, contentDescription = null) },
-                trailingContent = {
-                    if (!viewModel.isFeatureUnlocked(Feature.CLOUD_SYNC))
-                        Icon(Icons.Default.Lock, contentDescription = null, tint = PrimaryOrange)
-                }
-            )
-            ListItem(
-                modifier = Modifier.clickable { navController.navigate("queues") },
-                headlineContent = { Text(stringResource(R.string.queues_menu_item)) },
-                leadingContent = { Icon(Icons.Default.QueueMusic, contentDescription = null) }
-            )
-            ListItem(
-                modifier = Modifier.clickable { navController.navigate("excluded_folders") },
-                headlineContent = { Text(stringResource(R.string.excluded_folders)) },
-                leadingContent = { Icon(Icons.Default.FolderOff, contentDescription = null) }
-            )
-        }
     }
 }
 
@@ -579,19 +362,16 @@ fun LibraryMainContent(
     onSkipNext: () -> Unit,
     onSkipPrevious: () -> Unit,
     onSeekTo: (Long) -> Unit,
-    onSearchOpen: () -> Unit = {},
     onSeekForward: () -> Unit,
     onSeekBack: () -> Unit,
     onToggleShuffle: () -> Unit,
     onCycleRepeatMode: () -> Unit,
     onToggleFavorite: (Song) -> Unit,
     onCreatePlaylist: (String) -> Unit,
-    onReorderPlaylistSongs: (String, List<Song>) -> Unit = { _, _ -> },
     onDeletePlaylist: (PlaylistEntity) -> Unit,
     onAddSongToPlaylist: (String, Song) -> Unit,
     onAddSongsToPlaylist: (String, List<Song>) -> Unit,
-    onRemoveSongFromPlaylist: (String, Long) -> Unit,
-    onRemovePlaylist: (PlaylistEntity) -> Unit = {},
+    onRemoveSongFromPlaylist: (String, Song) -> Unit,
     onLoadPlaylistSongs: (String) -> Unit,
     onUpdateSongTags: (Song, String, String, String, String) -> Unit,
     onOpenEqualizer: () -> Unit,
@@ -606,23 +386,18 @@ fun LibraryMainContent(
     onPlaylistClick: (PlaylistEntity) -> Unit,
     onSmartPlaylistClick: (SmartPlaylist) -> Unit,
     onSongMoreClick: (Song) -> Unit
-){
-    // Performance: Memoize derived UI data to reduce recompositions
-    val favoriteSongs = remember(uiState.songs) { uiState.songs.filter { it.isFavorite } }
-    val recentSongs = remember(uiState.history, uiState.songs) {
-        val songMap = uiState.songs.associateBy { it.id }
-        uiState.history.mapNotNull { songMap[it.songId] }.distinctBy { it.id }.take(20)
-    }
-
-    val songsForTab = remember(uiState.songs) { uiState.songs }
-    val playlistsForTab = remember(uiState.playlists) { uiState.playlists }
-    val genresForTab = remember(uiState.genres) { uiState.genres }
-    val artistsForTab = remember(uiState.artists) { uiState.artists }
-    val albumsForTab = remember(uiState.albums) { uiState.albums }
-    val foldersForTab = remember(uiState.folders) { uiState.folders }
+) {
+    val songsForTab = uiState.songs
+    val favoriteSongs = uiState.songs.filter { it.isFavorite }
+    val recentSongs = uiState.songs.sortedByDescending { it.dateAdded }.take(10)
+    val playlistsForTab = uiState.playlists
+    val genresForTab = uiState.genres
+    val artistsForTab = uiState.artists
+    val albumsForTab = uiState.albums
+    val foldersForTab = uiState.folders
 
     val tabs = listOf(
-        stringResource(R.string.tab_main),
+        stringResource(R.string.tab_for_you),
         stringResource(R.string.tab_songs),
         stringResource(R.string.tab_playlists),
         stringResource(R.string.tab_genres),
@@ -634,6 +409,17 @@ fun LibraryMainContent(
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val tabsListState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    var playerVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        playerVisible = true
+    }
+
+    var showPlayerAnimation by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        showPlayerAnimation = true
+    }
 
     // Sincronizar el scroll de las pestañas (LazyRow) con el cambio de página en el HorizontalPager
     LaunchedEffect(pagerState.currentPage) {
@@ -682,12 +468,23 @@ fun LibraryMainContent(
             }
         },
         bottomBar = {
-            MonkeyPlayerBottomBar(
-                playerState = uiState.playerState,
-                onPlayPause = onPlayPause,
-                onSkipNext = onSkipNext,
-                onClick = onPlayerClick
-            )
+            AnimatedVisibility(
+                visible = uiState.playerState.currentSong != null ||
+                        uiState.playerState.lastPlayedSong != null,
+                enter = slideInVertically(
+                    initialOffsetY = { it }
+                ) + fadeIn(),
+                exit = slideOutVertically(
+                    targetOffsetY = { it }
+                ) + fadeOut()
+            ) {
+                MonkeyPlayerBottomBar(
+                    playerState = uiState.playerState,
+                    onPlayPause = onPlayPause,
+                    onSkipNext = onSkipNext,
+                    onClick = onPlayerClick
+                )
+            }
         }
     ) { padding ->
         HorizontalPager(
@@ -780,35 +577,34 @@ fun LibraryMainContent(
 }
 
 @Composable
-fun EmptyLibraryState(onScan: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(32.dp)
+fun LibraryTopBar(
+    searchQuery: String,
+    onSearchQueryChanged: (String) -> Unit,
+    onMenuClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        MonkeySearchBar(
+            query = searchQuery,
+            onQueryChange = onSearchQueryChanged,
+            placeholder = stringResource(R.string.search_placeholder),
+            modifier = Modifier.weight(1f)
+        )
+        IconButton(
+            onClick = onMenuClick,
+            modifier = Modifier
+                .size(48.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
         ) {
             Icon(
-                Icons.Default.LibraryMusic,
-                contentDescription = null,
-                tint = PrimaryOrange,
-                modifier = Modifier.size(80.dp)
-            )
-            Spacer(Modifier.height(16.dp))
-            Text(
-                stringResource(R.string.empty_library_title),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                stringResource(R.string.empty_library_body),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(24.dp))
-            MonkeyButton(
-                text = stringResource(R.string.scan_now),
-                onClick = onScan
+                Icons.Default.Settings,
+                contentDescription = stringResource(R.string.settings),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -824,199 +620,165 @@ fun HomeContent(
     onSmartPlaylistClick: (SmartPlaylist) -> Unit
 ) {
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = 8.dp),
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
+        contentPadding = PaddingValues(bottom = 24.dp)
     ) {
-        // Smart Playlists Horizontal
-        if (smartPlaylists.isNotEmpty()) {
-            item {
-                SectionHeader(stringResource(R.string.tab_for_you))
+        // Smart Playlists (Daily Mix, etc.)
+        item {
+            Column {
+                Text(
+                    text = stringResource(R.string.smart_playlists_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
+                )
                 LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp)
                 ) {
                     items(smartPlaylists) { smart ->
-                        Box(modifier = Modifier.width(160.dp)) {
-                            SmartPlaylistCard(smart, onClick = { onSmartPlaylistClick(smart) })
-                        }
+                        SmartPlaylistCardSmall(smart, onClick = { onSmartPlaylistClick(smart) })
                     }
                 }
             }
         }
 
-        // Favorites Horizontal
+        // Favoritos
         if (favoriteSongs.isNotEmpty()) {
             item {
-                SectionHeader(stringResource(R.string.tab_favorites))
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(favoriteSongs) { song ->
-                        SongCard(song, onClick = { onSongClick(song) })
-                    }
-                }
+                HomeSection(
+                    title = stringResource(R.string.favorites),
+                    songs = favoriteSongs.take(5),
+                    onSongClick = onSongClick,
+                    onSongMoreClick = onSongMoreClick
+                )
             }
         }
 
-        // Recently Played
+        // Recientes
         if (recentSongs.isNotEmpty()) {
             item {
-                SectionHeader(stringResource(R.string.recent))
-            }
-            items(recentSongs) { song ->
-                SongListItem(
-                    song = song,
-                    isSelected = false,
-                    isPlaying = false,
-                    onClick = { onSongClick(song) },
-                    onMoreClick = { onSongMoreClick(song) }
+                HomeSection(
+                    title = stringResource(R.string.recently_added),
+                    songs = recentSongs,
+                    onSongClick = onSongClick,
+                    onSongMoreClick = onSongMoreClick
                 )
-            }
-        } else if (favoriteSongs.isEmpty() && smartPlaylists.isEmpty()) {
-            item {
-                Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.padding(32.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.AutoAwesome,
-                            contentDescription = null,
-                            tint = PrimaryOrange,
-                            modifier = Modifier.size(64.dp)
-                        )
-                        Spacer(Modifier.height(16.dp))
-                        Text(
-                            stringResource(R.string.smart_empty_title),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            stringResource(R.string.smart_empty_body),
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
             }
         }
     }
 }
 
 @Composable
-fun SectionHeader(title: String) {
-    Row(
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+fun SmartPlaylistCardSmall(smart: SmartPlaylist, onClick: () -> Unit) {
+    val title = when (smart.type) {
+        SmartPlaylistType.DAILY_MIX -> stringResource(R.string.smart_daily_mix_title)
+        SmartPlaylistType.REDISCOVER -> stringResource(R.string.smart_rediscover_title)
+        SmartPlaylistType.TOP_SONGS -> stringResource(R.string.smart_top_songs_title)
+    }
+    val icon = when (smart.type) {
+        SmartPlaylistType.DAILY_MIX -> Icons.Default.AutoAwesome
+        SmartPlaylistType.REDISCOVER -> Icons.Default.History
+        SmartPlaylistType.TOP_SONGS -> Icons.Default.Star
+    }
+    
+    val gradients = listOf(
+        listOf(Color(0xFFFF8C00), Color(0xFFFF5500)),
+        listOf(Color(0xFF7B2FBE), Color(0xFFFF8C00)),
+        listOf(Color(0xFF1DB954), Color(0xFF0D7A38))
+    )
+    val colors = when (smart.type) {
+        SmartPlaylistType.DAILY_MIX -> gradients[0]
+        SmartPlaylistType.REDISCOVER -> gradients[1]
+        SmartPlaylistType.TOP_SONGS -> gradients[2]
+    }
+
+    Card(
+        modifier = Modifier
+            .width(160.dp)
+            .height(100.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .width(3.dp).height(18.dp)
-                .background(PrimaryOrange, RoundedCornerShape(2.dp))
-        )
-        Spacer(Modifier.width(8.dp))
+        Box(modifier = Modifier.fillMaxSize().background(Brush.linearGradient(colors))) {
+            Icon(
+                icon, null, 
+                modifier = Modifier.align(Alignment.Center).size(48.dp).alpha(0.15f),
+                tint = Color.White
+            )
+            Text(
+                title,
+                modifier = Modifier.align(Alignment.BottomStart).padding(12.dp),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+        }
+    }
+}
+
+@Composable
+fun HomeSection(
+    title: String,
+    songs: List<Song>,
+    onSongClick: (Song) -> Unit,
+    onSongMoreClick: (Song) -> Unit
+) {
+    Column {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
         )
-    }
-}
-
-@Composable
-fun SongCard(song: Song, onClick: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .width(120.dp)
-            .clickable(onClick = onClick)
-    ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(song.albumArtUri)
-                .crossfade(true)
-                .build(),
-            contentDescription = null,
-            modifier = Modifier
-                .size(120.dp)
-                .clip(RoundedCornerShape(8.dp)),
-            contentScale = ContentScale.Crop,
-            error = painterResource(R.drawable.ic_monkey_head)
-        )
-        Text(
-            text = song.title,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 4.dp)
-        )
-        Text(
-            text = song.artist,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun LibraryTopBar(
-    searchQuery: String,
-    onSearchQueryChanged: (String) -> Unit,
-    onMenuClick: () -> Unit,
-    isSearchActive: Boolean = false
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.96f))
-            .padding(horizontal = 16.dp, vertical = 10.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Image(
-                painter = painterResource(R.drawable.ic_monkey_head),
-                contentDescription = null,
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
+        songs.forEach { song ->
+            SongItem(
+                song = song,
+                isSelected = false,
+                isPlaying = false,
+                onClick = { onSongClick(song) },
+                onMoreClick = { onSongMoreClick(song) }
             )
+        }
+    }
+}
 
-            Spacer(Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Monkey Music",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Text(
-                    "Reactive audio jungle",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            IconButton(onClick = onMenuClick) {
-                Icon(Icons.Default.Settings, null)
+@Composable
+fun EmptyLibraryState(onScan: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                Icons.Default.MusicOff,
+                contentDescription = null,
+                modifier = Modifier.size(80.dp),
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                stringResource(R.string.no_songs_found),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Medium
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.scan_music_desc),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 32.dp)
+            )
+            Spacer(Modifier.height(24.dp))
+            Button(
+                onClick = onScan,
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+            ) {
+                Icon(Icons.Default.Refresh, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.scan_now))
             }
         }
-
-        Spacer(Modifier.height(14.dp))
-
-        MonkeySearchBar(
-            query = searchQuery,
-            onQueryChange = onSearchQueryChanged
-        )
     }
 }
 
@@ -1029,8 +791,8 @@ fun SongList(
     onMoreClick: (Song) -> Unit
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
-        items(songs) { song ->
-            SongListItem(
+        items(songs, key = { it.id }) { song ->
+            SongItem(
                 song = song,
                 isSelected = song.id == currentSong?.id,
                 isPlaying = isPlaying && song.id == currentSong?.id,
@@ -1042,180 +804,68 @@ fun SongList(
 }
 
 @Composable
-fun SongListItem(
+fun SongItem(
     song: Song,
     isSelected: Boolean,
     isPlaying: Boolean,
     onClick: () -> Unit,
     onMoreClick: () -> Unit
 ) {
-    val bgColor = if (isSelected)
-        PrimaryOrange.copy(alpha = 0.14f)
-    else
-        MaterialTheme.colorScheme.surface.copy(alpha = 0.35f)
-
     ListItem(
-        modifier = Modifier
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(bgColor)
-            .clickable(onClick = onClick),
+        modifier = Modifier.clickable(onClick = onClick),
         headlineContent = {
             Text(
-                text = song.title,
+                song.title,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                color = if (isSelected) PrimaryOrange else MaterialTheme.colorScheme.onSurface
+                color = if (isSelected) PrimaryOrange else Color.Unspecified,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
             )
         },
         supportingContent = {
             Text(
-                text = buildString {
-                    append(song.artist)
-                    if (song.album.isNotBlank()) append(" • ${song.album}")
-                },
+                "${song.artist} • ${song.album}",
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                overflow = TextOverflow.Ellipsis
             )
         },
         leadingContent = {
-            Box {
+            Box(contentAlignment = Alignment.Center) {
                 AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(song.albumArtUri)
-                        .crossfade(true)
-                        .build(),
+                    model = song.albumArtUri,
                     contentDescription = null,
-                    modifier = Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)),
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Crop,
                     error = painterResource(R.drawable.ic_monkey_head)
                 )
-                if (isPlaying) {
+                if (isSelected && isPlaying) {
                     Box(
                         modifier = Modifier
-                            .size(52.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color.Black.copy(alpha = 0.45f)),
+                            .size(48.dp)
+                            .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            Icons.Default.VolumeUp,
-                            contentDescription = null,
-                            tint = PrimaryOrange,
-                            modifier = Modifier.size(20.dp)
-                        )
+                        // Aquí se podría poner una pequeña animación de barras de sonido
+                        Icon(Icons.Default.VolumeUp, null, tint = PrimaryOrange)
                     }
                 }
             }
         },
         trailingContent = {
-            IconButton(onClick = onMoreClick) {
-                Icon(Icons.Default.MoreVert, contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    TimeFormatter.formatDuration(song.duration),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                IconButton(onClick = onMoreClick) {
+                    Icon(Icons.Default.MoreVert, contentDescription = null)
+                }
             }
         }
     )
-}
-
-@Composable
-fun PlayerBottomBar(
-    playerState: PlayerState,
-    onPlayPause: () -> Unit,
-    onSkipNext: () -> Unit,
-    onClick: () -> Unit
-) {
-    // Mostrar siempre el mini player.
-    // Si hay canción activa o última reproducida → mostrar info.
-    // Si no hay ninguna → mostrar estado idle con texto indicativo.
-    val song = playerState.currentSong ?: playerState.lastPlayedSong
-
-    val progress = if (playerState.duration > 0L)
-        (playerState.currentPosition.toFloat() / playerState.duration.toFloat()).coerceIn(0f, 1f)
-    else 0f
-
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = song != null, onClick = onClick),
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 12.dp
-    ) {
-        Column {
-            // Barra de progreso naranja en la parte superior del mini player
-            if (song != null && playerState.duration > 0L) {
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier.fillMaxWidth().height(2.dp),
-                    color = PrimaryOrange,
-                    trackColor = PrimaryOrange.copy(alpha = 0.15f)
-                )
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-                    .padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (song == null) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(PrimaryOrange.copy(alpha = 0.12f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.MusicNote, null,
-                            tint = PrimaryOrange, modifier = Modifier.size(22.dp))
-                    }
-                    Text(
-                        text = stringResource(R.string.player_idle_subtitle),
-                        modifier = Modifier.weight(1f).padding(start = 12.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    return@Row
-                }
-                AsyncImage(
-                    model = song.albumArtUri,
-                    contentDescription = null,
-                    modifier = Modifier.size(44.dp).clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop,
-                    error = painterResource(R.drawable.ic_monkey_head)
-                )
-                Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                    Text(
-                        song.title,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        song.artist,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                IconButton(onClick = onPlayPause) {
-                    Icon(
-                        if (playerState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        tint = PrimaryOrange,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-                IconButton(onClick = onSkipNext) {
-                    Icon(Icons.Default.SkipNext, contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurface)
-                }
-            }
-        }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1247,6 +897,11 @@ fun FullPlayerScreen(
     )
     val pagerState = rememberPagerState(pageCount = { tabLabels.size })
     val scope = rememberCoroutineScope()
+    var playerVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        playerVisible = true
+    }
 
     var showEditDialog by remember { mutableStateOf(false) }
     if (showEditDialog) {
@@ -1261,12 +916,21 @@ fun FullPlayerScreen(
         )
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .systemBarsPadding()
+    AnimatedVisibility(
+        visible = playerVisible,
+        enter = slideInVertically(
+            initialOffsetY = { fullHeight -> fullHeight }
+        ) + fadeIn(),
+        exit = slideOutVertically(
+            targetOffsetY = { fullHeight -> fullHeight }
+        ) + fadeOut()
     ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .systemBarsPadding()
+            ) {
         // ── TopBar: flecha abajo | PLAYLIST / nombre | (vacío) ────────────
         Box(
             modifier = Modifier
@@ -1277,8 +941,8 @@ fun FullPlayerScreen(
                 Icon(
                     Icons.Default.KeyboardArrowDown,
                     contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(32.dp)
+                    tint = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier.size(30.dp)
                 )
             }
             Column(
@@ -1349,6 +1013,12 @@ fun FullPlayerScreen(
                 ) {
                     Spacer(Modifier.height(12.dp))
 
+                    val artworkScale by animateFloatAsState(
+                        targetValue = if (playerVisible) 1f else 0.85f,
+                        animationSpec = tween(500),
+                        label = ""
+                    )
+
                     // Artwork grande
                     AsyncImage(
                         model = song.albumArtUri,
@@ -1356,9 +1026,13 @@ fun FullPlayerScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(1f)
-                            .clip(RoundedCornerShape(12.dp)),
+                            .graphicsLayer {
+                                scaleX = artworkScale
+                                scaleY = artworkScale
+                            }
+                            .clip(RoundedCornerShape(22.dp)),
                         contentScale = ContentScale.Crop,
-                        error = painterResource(R.drawable.ic_monkey_head)
+                        error = painterResource(com.lg.monkeymusicplayer.R.drawable.ic_monkey_head)
                     )
 
                     Spacer(Modifier.height(20.dp))
@@ -1424,7 +1098,7 @@ fun FullPlayerScreen(
                             modifier = Modifier
                                 .size(72.dp)
                                 .clip(RoundedCornerShape(50))
-                                .background(Color.White)
+                                .background(PrimaryOrange)
                                 .clickable { onPlayPause() },
                             contentAlignment = Alignment.Center
                         ) {
@@ -1432,7 +1106,7 @@ fun FullPlayerScreen(
                                 if (playerState.isPlaying) Icons.Default.Pause
                                 else Icons.Default.PlayArrow,
                                 null,
-                                tint = Color.Black,
+                                tint = Color.White,
                                 modifier = Modifier.size(40.dp)
                             )
                         }
@@ -1499,7 +1173,7 @@ fun FullPlayerScreen(
                     when {
                         isLoadingLyrics -> CircularProgressIndicator(color = PrimaryOrange)
                         lyrics.isEmpty() -> Text(
-                            stringResource(R.string.lyrics_not_found),
+                            stringResource(com.lg.monkeymusicplayer.R.string.lyrics_not_found),
                             style = MaterialTheme.typography.bodyLarge,
                             color = Color.White.copy(alpha = 0.5f)
                         )
@@ -1541,7 +1215,7 @@ fun FullPlayerScreen(
                                             .size(44.dp)
                                             .clip(RoundedCornerShape(6.dp)),
                                         contentScale = ContentScale.Crop,
-                                        error = painterResource(R.drawable.ic_monkey_head)
+                                        error = painterResource(com.lg.monkeymusicplayer.R.drawable.ic_monkey_head)
                                     )
                                 }
                             },
@@ -1553,6 +1227,7 @@ fun FullPlayerScreen(
                 }
             }
         }
+    }
     }
 }
 
@@ -1590,7 +1265,7 @@ fun PlaylistGrid(
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(48.dp))
-                        Text(stringResource(R.string.new_playlist), style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(com.lg.monkeymusicplayer.R.string.new_playlist), style = MaterialTheme.typography.titleSmall)
                     }
                 }
             }
@@ -1601,7 +1276,7 @@ fun PlaylistGrid(
         }
 
         items(playlists) { playlist ->
-            PlaylistCard(playlist.name, stringResource(R.string.playlist), onPlaylistClick = { onPlaylistClick(playlist) })
+            PlaylistCard(playlist.name, stringResource(com.lg.monkeymusicplayer.R.string.playlist), onPlaylistClick = { onPlaylistClick(playlist) })
         }
     }
 }
@@ -1609,9 +1284,9 @@ fun PlaylistGrid(
 @Composable
 fun SmartPlaylistCard(smart: SmartPlaylist, onClick: () -> Unit) {
     val title = when (smart.type) {
-        SmartPlaylistType.DAILY_MIX -> stringResource(R.string.smart_daily_mix_title)
-        SmartPlaylistType.REDISCOVER -> stringResource(R.string.smart_rediscover_title)
-        SmartPlaylistType.TOP_SONGS -> stringResource(R.string.smart_top_songs_title)
+        SmartPlaylistType.DAILY_MIX -> stringResource(com.lg.monkeymusicplayer.R.string.smart_daily_mix_title)
+        SmartPlaylistType.REDISCOVER -> stringResource(com.lg.monkeymusicplayer.R.string.smart_rediscover_title)
+        SmartPlaylistType.TOP_SONGS -> stringResource(com.lg.monkeymusicplayer.R.string.smart_top_songs_title)
     }
     val icon = when (smart.type) {
         SmartPlaylistType.DAILY_MIX -> Icons.Default.AutoAwesome
@@ -1649,7 +1324,7 @@ fun SmartPlaylistCard(smart: SmartPlaylist, onClick: () -> Unit) {
             Column(modifier = Modifier.align(Alignment.BottomStart).padding(12.dp)) {
                 Text(title, style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
-                Text(stringResource(R.string.stats_artist_songs, smart.songs.size),
+                Text(stringResource(com.lg.monkeymusicplayer.R.string.stats_artist_songs, smart.songs.size),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.8f))
             }
@@ -1681,7 +1356,7 @@ fun GenreList(genres: Map<String, List<Song>>, onGenreClick: (String) -> Unit) {
             ListItem(
                 modifier = Modifier.clickable { onGenreClick(genre) },
                 headlineContent = { Text(genre) },
-                supportingContent = { Text(stringResource(R.string.stats_artist_songs, genres[genre]?.size ?: 0)) },
+                supportingContent = { Text(stringResource(com.lg.monkeymusicplayer.R.string.stats_artist_songs, genres[genre]?.size ?: 0)) },
                 leadingContent = {
                     Box(
                         modifier = Modifier.size(48.dp)
@@ -1704,7 +1379,7 @@ fun ArtistList(artists: Map<String, List<Song>>, onArtistClick: (String) -> Unit
             ListItem(
                 modifier = Modifier.clickable { onArtistClick(artist) },
                 headlineContent = { Text(artist) },
-                supportingContent = { Text(stringResource(R.string.stats_artist_songs, artists[artist]?.size ?: 0)) },
+                supportingContent = { Text(stringResource(com.lg.monkeymusicplayer.R.string.stats_artist_songs, artists[artist]?.size ?: 0)) },
                 leadingContent = {
                     Box(modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.secondaryContainer, CircleShape), contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.Person, contentDescription = null)
@@ -1731,7 +1406,7 @@ fun AlbumGrid(albums: Map<String, List<Song>>, onAlbumClick: (String) -> Unit) {
                         contentDescription = null,
                         modifier = Modifier.weight(1f).fillMaxWidth(),
                         contentScale = ContentScale.Crop,
-                        error = painterResource(R.drawable.ic_monkey_head)
+                        error = painterResource(com.lg.monkeymusicplayer.R.drawable.ic_monkey_head)
                     )
                     Text(
                         album,
@@ -1782,7 +1457,7 @@ fun SleepTimerDialog(currentMinutes: Int, onDismiss: () -> Unit, onConfirm: (Int
     var minutes by remember { mutableStateOf(if (currentMinutes > 0) currentMinutes.toString() else "30") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.sleep_timer)) },
+        title = { Text(stringResource(com.lg.monkeymusicplayer.R.string.sleep_timer)) },
         text = {
             Column {
                 OutlinedTextField(
@@ -1832,7 +1507,7 @@ fun LanguageDialog(onDismiss: () -> Unit, onLanguageSelected: (String) -> Unit) 
     )
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.language)) },
+        title = { Text(stringResource(com.lg.monkeymusicplayer.R.string.language)) },
         text = {
             LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 450.dp)) {
                 items(languages) { (code, name) ->
@@ -1844,7 +1519,7 @@ fun LanguageDialog(onDismiss: () -> Unit, onLanguageSelected: (String) -> Unit) 
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(com.lg.monkeymusicplayer.R.string.cancel)) }
         }
     )
 }
@@ -1864,34 +1539,34 @@ fun EditTagsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.edit_tags)) },
+        title = { Text(stringResource(com.lg.monkeymusicplayer.R.string.edit_tags)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text(stringResource(R.string.title)) },
+                    label = { Text(stringResource(com.lg.monkeymusicplayer.R.string.title)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = artist,
                     onValueChange = { artist = it },
-                    label = { Text(stringResource(R.string.artist)) },
+                    label = { Text(stringResource(com.lg.monkeymusicplayer.R.string.artist)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = album,
                     onValueChange = { album = it },
-                    label = { Text(stringResource(R.string.album)) },
+                    label = { Text(stringResource(com.lg.monkeymusicplayer.R.string.album)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = genre,
                     onValueChange = { genre = it },
-                    label = { Text(stringResource(R.string.genre)) },
+                    label = { Text(stringResource(com.lg.monkeymusicplayer.R.string.genre)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1905,12 +1580,12 @@ fun EditTagsDialog(
                 if (isSaving) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                 } else {
-                    Text(stringResource(R.string.save), color = PrimaryOrange)
+                    Text(stringResource(com.lg.monkeymusicplayer.R.string.save), color = PrimaryOrange)
                 }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(com.lg.monkeymusicplayer.R.string.cancel)) }
         }
     )
 }
@@ -1927,10 +1602,10 @@ fun ExcludedFoldersScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.excluded_folders)) },
+                title = { Text(stringResource(com.lg.monkeymusicplayer.R.string.excluded_folders)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(com.lg.monkeymusicplayer.R.string.back))
                     }
                 }
             )
@@ -1976,7 +1651,7 @@ fun SongListDetailScreen(
         Box(modifier = Modifier.padding(padding)) {
             if (songs.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.no_songs))
+                    Text(stringResource(com.lg.monkeymusicplayer.R.string.no_songs))
                 }
             } else {
                 SongList(
@@ -1996,24 +1671,24 @@ fun CreatePlaylistDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
     var name by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.new_playlist)) },
+        title = { Text(stringResource(com.lg.monkeymusicplayer.R.string.new_playlist)) },
         text = {
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text(stringResource(R.string.playlist_name)) },
+                label = { Text(stringResource(com.lg.monkeymusicplayer.R.string.playlist_name)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
         },
         confirmButton = {
             TextButton(onClick = { if (name.isNotBlank()) onConfirm(name) }) {
-                Text(stringResource(R.string.create))
+                Text(stringResource(com.lg.monkeymusicplayer.R.string.create))
             }
         },
         dismissButton = {
             TextButton(onClick = { onDismiss() }) {
-                Text(stringResource(R.string.cancel))
+                Text(stringResource(com.lg.monkeymusicplayer.R.string.cancel))
             }
         }
     )
@@ -2041,13 +1716,13 @@ fun PlaylistPickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.add_to_playlist)) },
+        title = { Text(stringResource(com.lg.monkeymusicplayer.R.string.add_to_playlist)) },
         text = {
             LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
                 item {
                     ListItem(
                         modifier = Modifier.clickable { showCreateDialog = true },
-                        headlineContent = { Text(stringResource(R.string.new_playlist), color = PrimaryOrange) },
+                        headlineContent = { Text(stringResource(com.lg.monkeymusicplayer.R.string.new_playlist), color = PrimaryOrange) },
                         leadingContent = { Icon(Icons.Default.Add, contentDescription = null, tint = PrimaryOrange) }
                     )
                 }
@@ -2061,7 +1736,7 @@ fun PlaylistPickerDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            TextButton(onClick = onDismiss) { Text(stringResource(com.lg.monkeymusicplayer.R.string.cancel)) }
         }
     )
 }
@@ -2095,7 +1770,7 @@ fun SongMenuSheet(
                         contentDescription = null,
                         modifier = Modifier.size(56.dp).clip(RoundedCornerShape(8.dp)),
                         contentScale = ContentScale.Crop,
-                        error = painterResource(R.drawable.ic_monkey_head)
+                        error = painterResource(com.lg.monkeymusicplayer.R.drawable.ic_monkey_head)
                     )
                 }
             )
@@ -2103,18 +1778,18 @@ fun SongMenuSheet(
             
             ListItem(
                 modifier = Modifier.clickable { onPlayNext(song) },
-                headlineContent = { Text(stringResource(R.string.add_to_queue)) },
+                headlineContent = { Text(stringResource(com.lg.monkeymusicplayer.R.string.add_to_queue)) },
                 leadingContent = { Icon(Icons.Default.QueueMusic, contentDescription = null) }
             )
             ListItem(
                 modifier = Modifier.clickable { onAddToPlaylist(song) },
-                headlineContent = { Text(stringResource(R.string.add_to_playlist)) },
+                headlineContent = { Text(stringResource(com.lg.monkeymusicplayer.R.string.add_to_playlist)) },
                 leadingContent = { Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null) }
             )
             ListItem(
                 modifier = Modifier.clickable { onToggleFavorite(song) },
                 headlineContent = { 
-                    Text(if (song.isFavorite) stringResource(R.string.remove_from_favorites) else stringResource(R.string.add_to_favorites)) 
+                    Text(if (song.isFavorite) stringResource(com.lg.monkeymusicplayer.R.string.remove_from_favorites) else stringResource(com.lg.monkeymusicplayer.R.string.add_to_favorites)) 
                 },
                 leadingContent = { 
                     Icon(if (song.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder, contentDescription = null) 
@@ -2122,7 +1797,7 @@ fun SongMenuSheet(
             )
             ListItem(
                 modifier = Modifier.clickable { onEditTags(song) },
-                headlineContent = { Text(stringResource(R.string.edit_tags)) },
+                headlineContent = { Text(stringResource(com.lg.monkeymusicplayer.R.string.edit_tags)) },
                 leadingContent = { Icon(Icons.Default.Edit, contentDescription = null) }
             )
         }

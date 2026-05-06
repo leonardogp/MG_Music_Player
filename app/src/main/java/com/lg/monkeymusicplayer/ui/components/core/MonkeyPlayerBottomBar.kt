@@ -86,10 +86,13 @@ fun MonkeyPlayerBottomBar(
                     maxLines = 1
                 )
 
-                if (playerState.isPlaying) {
-                    Spacer(Modifier.height(4.dp))
-                    PlaybackVisualizer(isPlaying = playerState.isPlaying)
-                }
+                Spacer(Modifier.height(4.dp))
+
+                PlaybackWaveform(
+                    isPlaying = playerState.isPlaying,
+                    accent = PrimaryOrange,
+                    modifier = Modifier.height(14.dp)
+                )
             }
             Surface(
                 onClick = onPlayPause,

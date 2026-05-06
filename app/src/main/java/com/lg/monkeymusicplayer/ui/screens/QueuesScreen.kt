@@ -3,7 +3,7 @@ package com.lg.monkeymusicplayer.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -114,7 +114,8 @@ fun QueuesScreen(
                 .background(MaterialTheme.colorScheme.background),
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
-            items(queues.values.toList(), key = { it.name }) { queue ->
+            val queueList = queues.values.toList()
+            itemsIndexed(queueList, key = { index, queue -> "${queue.name}_$index" }) { index, queue ->
                 val isActive = queue.name == activeQueueName
                 val isProtected = queue.name == QueueManager.QUEUE_MAIN ||
                         queue.name == QueueManager.QUEUE_SMART

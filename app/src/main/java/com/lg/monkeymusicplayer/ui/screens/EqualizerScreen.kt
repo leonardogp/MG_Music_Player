@@ -4,7 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -64,12 +64,9 @@ fun EqualizerScreen(
     val maxLevel = equalizerData?.getShort("max_level")?.toFloat()?.takeIf { it > 0f } ?: 1500f
     val centerFreqs = equalizerData?.getIntArray("center_freqs") ?: IntArray(numBands) { 0 }
 
-    // ── ÚNICO SOURCE OF TRUTH ─────────────────────────────────────────────────
-    // customLevels es la única variable que alimenta la curva Y los sliders.
-    // Se inicializa con ceros; se sincroniza con el hardware la primera vez.
-    // Después solo cambia cuando el usuario mueve un slider o aplica un preset.
     var customLevels by remember { mutableStateOf(List(numBands) { 0f }) }
     var hardwareSynced by remember { mutableStateOf(false) }
+    
     LaunchedEffect(equalizerData) {
         if (equalizerData != null && !hardwareSynced) {
             val levels = equalizerData!!.getShortArray("band_levels")
@@ -85,7 +82,6 @@ fun EqualizerScreen(
     var showSaveDialog by remember { mutableStateOf(false) }
     var presetToDelete by remember { mutableStateOf<EqPresetEntity?>(null) }
 
-    // Helper: aplica niveles al hardware y actualiza la UI
     fun applyLevels(levels: List<Float>) {
         val normalized = List(numBands) { i -> levels.getOrElse(i) { 0f } }
         customLevels = normalized
@@ -96,13 +92,13 @@ fun EqualizerScreen(
         }
     }
 
-    // Diálogos
     if (showSaveDialog) {
         SavePresetDialog(
             onDismiss = { showSaveDialog = false },
             onConfirm = { name -> viewModel.saveEqPreset(name, customLevels); showSaveDialog = false }
         )
     }
+    
     presetToDelete?.let { preset ->
         AlertDialog(
             onDismissRequest = { presetToDelete = null },
@@ -154,7 +150,6 @@ fun EqualizerScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            // Canción actual
             currentSong?.let { song ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -181,7 +176,6 @@ fun EqualizerScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // Built-in presets + toggle
             Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.Black.copy(0.4f))) {
                 Column(Modifier.padding(20.dp)) {
@@ -198,11 +192,10 @@ fun EqualizerScreen(
                         style = MaterialTheme.typography.labelMedium)
                     Spacer(Modifier.height(8.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(BUILT_IN_PRESETS) { preset ->
-                            val idx = BUILT_IN_PRESETS.indexOf(preset)
+                        itemsIndexed(BUILT_IN_PRESETS) { index, preset ->
                             FilterChip(
-                                selected = idx == selectedBuiltIn,
-                                onClick = { selectedBuiltIn = idx; applyLevels(preset.levels5) },
+                                selected = index == selectedBuiltIn,
+                                onClick = { selectedBuiltIn = index; applyLevels(preset.levels5) },
                                 label = { Text(preset.label, color = Color.White, fontWeight = FontWeight.Bold) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     containerColor = Color.Gray.copy(0.3f),
@@ -213,7 +206,6 @@ fun EqualizerScreen(
                 }
             }
 
-            // User presets
             if (userPresets.isNotEmpty()) {
                 Spacer(Modifier.height(12.dp))
                 Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
@@ -223,7 +215,7 @@ fun EqualizerScreen(
                             style = MaterialTheme.typography.labelMedium)
                         Spacer(Modifier.height(8.dp))
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(userPresets, key = { it.id }) { preset ->
+                            itemsIndexed(userPresets, key = { index, preset -> "${preset.id}_$index" }) { _, preset ->
                                 InputChip(
                                     selected = false,
                                     onClick = { selectedBuiltIn = -1; applyLevels(preset.toLevels()) },
@@ -246,7 +238,6 @@ fun EqualizerScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // Curva EQ — lee customLevels (source of truth único)
             Card(modifier = Modifier.fillMaxWidth().height(170.dp), shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.Black.copy(0.3f))) {
                 Canvas(modifier = Modifier.fillMaxSize().padding(8.dp)) {
@@ -256,7 +247,6 @@ fun EqualizerScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            // Sliders — leen y escriben en customLevels
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 customLevels.forEachIndexed { index, level ->
                     EqBandSlider(

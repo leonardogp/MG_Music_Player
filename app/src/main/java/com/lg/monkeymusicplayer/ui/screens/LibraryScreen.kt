@@ -47,7 +47,6 @@ import androidx.core.os.LocaleListCompat
 import androidx.navigation.NavController
 import androidx.navigation.compose.*
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.lg.monkeymusicplayer.R
 import com.lg.monkeymusicplayer.data.database.PlaylistEntity
 import com.lg.monkeymusicplayer.data.model.Song
@@ -65,14 +64,12 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import com.lg.monkeymusicplayer.ui.components.LyricsView
 import com.lg.monkeymusicplayer.data.model.SmartPlaylist
 import com.lg.monkeymusicplayer.data.model.SmartPlaylistType
-import com.lg.monkeymusicplayer.core.feature.Feature
-import com.lg.monkeymusicplayer.ui.LibraryLoadState
 import android.net.Uri
-import com.lg.monkeymusicplayer.ui.components.core.MonkeyButton
 import com.lg.monkeymusicplayer.ui.components.core.MonkeySearchBar
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.graphicsLayer
+import com.lg.monkeymusicplayer.ui.components.core.PlaybackWaveform
 
 @SuppressLint("LocalContextGetResourceValueCall")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -180,7 +177,7 @@ fun LibraryScreen(
                 onDeletePlaylist = viewModel::deletePlaylist,
                 onAddSongToPlaylist = viewModel::addSongToPlaylist,
                 onAddSongsToPlaylist = viewModel::addSongsToPlaylist,
-                onRemoveSongFromPlaylist = { playlistId, song -> viewModel.removeSongFromPlaylist(playlistId, song) },
+                onRemoveSongFromPlaylist = { playlistId, songId -> viewModel.removeSongFromPlaylist(playlistId, songId)},
                 onLoadPlaylistSongs = viewModel::loadPlaylistSongs,
                 onUpdateSongTags = { song, t, a, al, g -> viewModel.updateSongTags(song, t, a, al, g) },
                 onOpenEqualizer = { navController.navigate("equalizer") },
@@ -362,16 +359,19 @@ fun LibraryMainContent(
     onSkipNext: () -> Unit,
     onSkipPrevious: () -> Unit,
     onSeekTo: (Long) -> Unit,
+    onSearchOpen: () -> Unit = {},
     onSeekForward: () -> Unit,
     onSeekBack: () -> Unit,
     onToggleShuffle: () -> Unit,
     onCycleRepeatMode: () -> Unit,
     onToggleFavorite: (Song) -> Unit,
     onCreatePlaylist: (String) -> Unit,
+    onReorderPlaylistSongs: (String, List<Song>) -> Unit = { _, _ -> },
     onDeletePlaylist: (PlaylistEntity) -> Unit,
     onAddSongToPlaylist: (String, Song) -> Unit,
     onAddSongsToPlaylist: (String, List<Song>) -> Unit,
     onRemoveSongFromPlaylist: (String, Song) -> Unit,
+    onRemovePlaylist: (PlaylistEntity) -> Unit = {},
     onLoadPlaylistSongs: (String) -> Unit,
     onUpdateSongTags: (Song, String, String, String, String) -> Unit,
     onOpenEqualizer: () -> Unit,
@@ -387,17 +387,19 @@ fun LibraryMainContent(
     onSmartPlaylistClick: (SmartPlaylist) -> Unit,
     onSongMoreClick: (Song) -> Unit
 ) {
-    val songsForTab = uiState.songs
-    val favoriteSongs = uiState.songs.filter { it.isFavorite }
-    val recentSongs = uiState.songs.sortedByDescending { it.dateAdded }.take(10)
-    val playlistsForTab = uiState.playlists
-    val genresForTab = uiState.genres
-    val artistsForTab = uiState.artists
-    val albumsForTab = uiState.albums
-    val foldersForTab = uiState.folders
+    val favoriteSongs = remember(uiState.songs) {
+        uiState.songs.filter { it.isFavorite }
+    }
+
+    val recentSongs = remember(uiState.history, uiState.songs) {
+        val songMap = uiState.songs.associateBy { it.id }
+        uiState.history.mapNotNull { songMap[it.songId] }
+            .distinctBy { it.id }
+            .take(20)
+    }
 
     val tabs = listOf(
-        stringResource(R.string.tab_for_you),
+        stringResource(R.string.tab_main),
         stringResource(R.string.tab_songs),
         stringResource(R.string.tab_playlists),
         stringResource(R.string.tab_genres),
@@ -405,61 +407,89 @@ fun LibraryMainContent(
         stringResource(R.string.tab_albums),
         stringResource(R.string.tab_folders)
     )
-    
+
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val tabsListState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    var playerVisible by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        playerVisible = true
-    }
-
-    var showPlayerAnimation by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        showPlayerAnimation = true
-    }
-
-    // Sincronizar el scroll de las pestañas (LazyRow) con el cambio de página en el HorizontalPager
     LaunchedEffect(pagerState.currentPage) {
         tabsListState.animateScrollToItem(pagerState.currentPage)
     }
 
     Scaffold(
         topBar = {
-            Column {
-                LibraryTopBar(
-                    searchQuery = uiState.searchQuery,
-                    onSearchQueryChanged = onSearchQueryChanged,
-                    onMenuClick = onMenuClick
-                )
-                // Chips tipo pastilla con scroll automático sincronizado
-                LazyRow(
-                    state = tabsListState,
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Surface(
+                tonalElevation = 8.dp,
+                shadowElevation = 12.dp,
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp, bottom = 8.dp)
                 ) {
-                    itemsIndexed(tabs) { index, title ->
-                        val selected = pagerState.currentPage == index
-                        Surface(
-                            onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                            shape = RoundedCornerShape(22.dp),
-                            color = if (selected) PrimaryOrange else MaterialTheme.colorScheme.surfaceVariant,
-                            tonalElevation = if (selected) 8.dp else 2.dp,
-                            shadowElevation = if (selected) 12.dp else 0.dp,
-                            modifier = Modifier.height(40.dp)
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier.padding(horizontal = 16.dp)
+                    Column(
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    ) {
+                        Text(
+                            text = "Monkey Music",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Text(
+                            text = "Reactive audio jungle",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Spacer(Modifier.height(16.dp))
+                    }
+
+                    MonkeySearchBar(
+                        query = uiState.searchQuery,
+                        onQueryChange = onSearchQueryChanged
+                    )
+
+                    Spacer(Modifier.height(14.dp))
+
+                    LazyRow(
+                        state = tabsListState,
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        itemsIndexed(tabs) { index, title ->
+                            val selected = pagerState.currentPage == index
+
+                            Surface(
+                                onClick = {
+                                    scope.launch {
+                                        pagerState.animateScrollToPage(index)
+                                    }
+                                },
+                                shape = RoundedCornerShape(22.dp),
+                                color = if (selected)
+                                    PrimaryOrange
+                                else
+                                    MaterialTheme.colorScheme.surfaceVariant,
+                                tonalElevation = if (selected) 8.dp else 2.dp,
+                                shadowElevation = if (selected) 12.dp else 0.dp
                             ) {
                                 Text(
                                     text = title,
+                                    modifier = Modifier.padding(
+                                        horizontal = 18.dp,
+                                        vertical = 10.dp
+                                    ),
                                     style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (selected) Color.White
-                                            else MaterialTheme.colorScheme.onSurfaceVariant
+                                    fontWeight = if (selected)
+                                        FontWeight.Bold
+                                    else
+                                        FontWeight.Medium,
+                                    color = if (selected)
+                                        Color.White
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -467,110 +497,56 @@ fun LibraryMainContent(
                 }
             }
         },
+
         bottomBar = {
-            AnimatedVisibility(
-                visible = uiState.playerState.currentSong != null ||
-                        uiState.playerState.lastPlayedSong != null,
-                enter = slideInVertically(
-                    initialOffsetY = { it }
-                ) + fadeIn(),
-                exit = slideOutVertically(
-                    targetOffsetY = { it }
-                ) + fadeOut()
-            ) {
-                MonkeyPlayerBottomBar(
-                    playerState = uiState.playerState,
-                    onPlayPause = onPlayPause,
-                    onSkipNext = onSkipNext,
-                    onClick = onPlayerClick
-                )
-            }
+            MonkeyPlayerBottomBar(
+                playerState = uiState.playerState,
+                onPlayPause = onPlayPause,
+                onSkipNext = onSkipNext,
+                onClick = onPlayerClick
+            )
         }
     ) { padding ->
+
         HorizontalPager(
             state = pagerState,
             modifier = Modifier
-                .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 12.dp),
+                .fillMaxSize()
+                .padding(horizontal = 8.dp),
             beyondViewportPageCount = 1
         ) { page ->
+
             when (page) {
-                0 -> if (viewModel.isFeatureUnlocked(Feature.SMART_PLAYLISTS)) {
-                    Box(
-                        modifier = Modifier.padding(top = 12.dp)
-                    ) {
-                        HomeContent(
-                            favoriteSongs = favoriteSongs,
-                            recentSongs = recentSongs,
-                            smartPlaylists = uiState.smartPlaylists,
-                            onSongClick = { onPlay(it, uiState.songs) },
-                            onSongMoreClick = onSongMoreClick,
-                            onSmartPlaylistClick = { onSmartPlaylistClick(it) }
-                        )
-                    }
-                } else {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(32.dp)
-                        ) {
-                            Icon(Icons.Default.AutoAwesome, null,
-                                tint = PrimaryOrange, modifier = Modifier.size(64.dp))
-                            Spacer(Modifier.height(16.dp))
-                            Text(stringResource(R.string.tab_for_you),
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center)
-                            Spacer(Modifier.height(8.dp))
-                            Text(stringResource(R.string.pro_upgrade_subtitle),
-                                style = MaterialTheme.typography.bodyMedium,
-                                textAlign = TextAlign.Center,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(Modifier.height(24.dp))
-                            MonkeyButton(
-                                text = stringResource(R.string.pro_upgrade_cta),
-                                onClick = { navController.navigate("paywall") }
-                            )
-                        }
-                    }
-                }
-                1 -> {
-                    if (songsForTab.isEmpty() && uiState.loadState is LibraryLoadState.Idle) {
-                        EmptyLibraryState(onScan = onScanMusic)
-                    } else {
-                        SongList(
-                            songs = songsForTab,
-                            currentSong = uiState.playerState.currentSong,
-                            isPlaying = uiState.playerState.isPlaying,
-                            onSongClick = { onPlay(it, songsForTab) },
-                            onMoreClick = onSongMoreClick
-                        )
-                    }
-                }
+                0 -> HomeContent(
+                    favoriteSongs = favoriteSongs,
+                    recentSongs = recentSongs,
+                    smartPlaylists = uiState.smartPlaylists,
+                    onSongClick = { onPlay(it, uiState.songs) },
+                    onSongMoreClick = onSongMoreClick,
+                    onSmartPlaylistClick = onSmartPlaylistClick
+                )
+
+                1 -> SongList(
+                    songs = uiState.songs,
+                    currentSong = uiState.playerState.currentSong,
+                    isPlaying = uiState.playerState.isPlaying,
+                    onSongClick = { onPlay(it, uiState.songs) },
+                    onMoreClick = onSongMoreClick
+                )
+
                 2 -> PlaylistGrid(
-                    playlists = playlistsForTab,
+                    playlists = uiState.playlists,
                     smartPlaylists = uiState.smartPlaylists,
                     onCreatePlaylist = onCreatePlaylist,
                     onPlaylistClick = onPlaylistClick,
                     onSmartPlaylistClick = onSmartPlaylistClick
                 )
-                3 -> GenreList(
-                    genres = genresForTab,
-                    onGenreClick = onGenreClick
-                )
-                4 -> ArtistList(
-                    artists = artistsForTab,
-                    onArtistClick = onArtistClick
-                )
-                5 -> AlbumGrid(
-                    albums = albumsForTab,
-                    onAlbumClick = onAlbumClick
-                )
-                6 -> FolderList(
-                    folders = foldersForTab,
-                    onFolderClick = onFolderClick
-                )
+
+                3 -> GenreList(uiState.genres, onGenreClick)
+                4 -> ArtistList(uiState.artists, onArtistClick)
+                5 -> AlbumGrid(uiState.albums, onAlbumClick)
+                6 -> FolderList(uiState.folders, onFolderClick)
             }
         }
     }
@@ -811,8 +787,17 @@ fun SongItem(
     onClick: () -> Unit,
     onMoreClick: () -> Unit
 ) {
+    val bgColor = if (isSelected)
+        PrimaryOrange.copy(alpha = 0.14f)
+    else
+        MaterialTheme.colorScheme.surface.copy(alpha = 0.35f)
+
     ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = Modifier
+            .clip(RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .background(bgColor)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         headlineContent = {
             Text(
                 song.title,
@@ -1082,7 +1067,14 @@ fun FullPlayerScreen(
                         onSeekTo = onSeekTo
                     )
 
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(18.dp))
+
+                    PlaybackWaveform(
+                        isPlaying = playerState.isPlaying,
+                        accent = PrimaryOrange
+                    )
+
+                    Spacer(Modifier.height(18.dp))
 
                     // Fila principal: prev | play | next
                     Row(

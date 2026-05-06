@@ -446,12 +446,11 @@ fun LibraryMainContent(
                         Spacer(Modifier.height(16.dp))
                     }
 
-                    MonkeySearchBar(
-                        query = uiState.searchQuery,
-                        onQueryChange = onSearchQueryChanged
+                    LibraryTopBar(
+                        searchQuery = uiState.searchQuery,
+                        onSearchQueryChanged = onSearchQueryChanged,
+                        onMenuClick = onMenuClick
                     )
-
-                    Spacer(Modifier.height(14.dp))
 
                     LazyRow(
                         state = tabsListState,

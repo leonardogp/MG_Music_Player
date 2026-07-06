@@ -15,6 +15,8 @@ import androidx.navigation.NavController
 import com.lg.monkeymusicplayer.R
 import com.lg.monkeymusicplayer.ui.LibraryUiState
 import com.lg.monkeymusicplayer.ui.MusicViewModel
+import com.lg.monkeymusicplayer.ui.components.dialogs.LanguageDialog
+import com.lg.monkeymusicplayer.ui.components.dialogs.SleepTimerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

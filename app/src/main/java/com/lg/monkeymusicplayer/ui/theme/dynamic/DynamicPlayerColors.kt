@@ -6,6 +6,14 @@ data class DynamicPlayerColors(
 
     val dominant: Color,
 
+    val vibrant: Color,
+
+    val muted: Color,
+
+    val dark: Color,
+
+    val light: Color,
+
     val accent: Color,
 
     val background: Color,

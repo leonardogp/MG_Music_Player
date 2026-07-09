@@ -1,27 +1,35 @@
 package com.lg.monkeymusicplayer.ui.theme.dynamic
 
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
 
 val LocalDynamicPlayerColors =
     staticCompositionLocalOf {
 
         DynamicPlayerColors(
 
-            dominant = androidx.compose.ui.graphics.Color(0xFFFF9800),
+            dominant = Color(0xFFFF9800),
 
-            accent = androidx.compose.ui.graphics.Color(0xFFFF9800),
+            vibrant = Color(0xFFFFB74D),
 
-            background = androidx.compose.ui.graphics.Color.Black,
+            muted = Color(0xFF8D6E63),
 
-            backgroundDark = androidx.compose.ui.graphics.Color.Black,
+            dark = Color(0xFF212121),
 
-            textPrimary = androidx.compose.ui.graphics.Color.White,
+            light = Color(0xFFFFF3E0),
 
-            textSecondary = androidx.compose.ui.graphics.Color.LightGray,
+            accent = Color(0xFFFF9800),
 
-            waveform = androidx.compose.ui.graphics.Color(0xFFFF9800),
+            background = Color.Black,
 
-            controls = androidx.compose.ui.graphics.Color.White
+            backgroundDark = Color.Black,
 
+            textPrimary = Color.White,
+
+            textSecondary = Color.LightGray,
+
+            waveform = Color(0xFFFF9800),
+
+            controls = Color.White
         )
     }

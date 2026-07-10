@@ -21,9 +21,11 @@ class BitmapAnalyzer {
                 return@forEach
 
             val key =
-                ((r / 16) shl 8) +
-                        ((g / 16) shl 4) +
-                        (b / 16)
+                quantizeColor(
+                    r,
+                    g,
+                    b
+                )
 
             histogram[key] =
                 (histogram[key] ?: 0) + 1
@@ -60,6 +62,20 @@ class BitmapAnalyzer {
         )
     }
 
+    private fun colorDistance(
+        c1: Color,
+        c2: Color
+    ): Float {
+
+        val dr = c1.red - c2.red
+        val dg = c1.green - c2.green
+        val db = c1.blue - c2.blue
+
+        return dr * dr +
+                dg * dg +
+                db * db
+    }
+
     private fun findDominantColors(
         histogram: HashMap<Int, Int>
     ): DominantColors {
@@ -71,12 +87,26 @@ class BitmapAnalyzer {
         val primaryKey =
             sorted.firstOrNull()?.key ?: 0
 
+        val primaryColor =
+            histogramKeyToColor(primaryKey)
+
         val secondaryKey =
-            sorted.getOrNull(1)?.key ?: primaryKey
+
+            sorted.firstOrNull {
+
+                val candidate =
+                    histogramKeyToColor(it.key)
+
+                colorDistance(
+                    primaryColor,
+                    candidate
+                ) > 0.08f
+
+            }?.key ?: primaryKey
 
         return DominantColors(
 
-            primary = histogramKeyToColor(primaryKey),
+            primary = primaryColor,
 
             secondary = histogramKeyToColor(secondaryKey)
 
@@ -153,5 +183,16 @@ class BitmapAnalyzer {
             alpha = alpha
 
         )
+    }
+
+    private fun quantizeColor(
+        r: Int,
+        g: Int,
+        b: Int
+    ): Int {
+
+        return ((r / 16) shl 8) +
+                ((g / 16) shl 4) +
+                (b / 16)
     }
 }

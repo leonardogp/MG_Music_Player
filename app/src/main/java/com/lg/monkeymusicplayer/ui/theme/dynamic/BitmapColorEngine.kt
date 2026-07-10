@@ -18,6 +18,11 @@ class BitmapColorEngine : DynamicColorEngine {
             true
         )
 
+        val cacheKey = smallBitmap.hashCode()
+        ColorPaletteCache.get(cacheKey)?.let { palette ->
+            return ColorPaletteMapper.map(palette)
+        }
+
         val pixels = IntArray(48 * 48)
 
         smallBitmap.getPixels(
@@ -30,7 +35,13 @@ class BitmapColorEngine : DynamicColorEngine {
             48
         )
 
-        val palette = analyzer.analyze(pixels)
+        val palette =
+            analyzer.analyze(pixels)
+
+        ColorPaletteCache.put(
+            cacheKey,
+            palette
+        )
 
         return ColorPaletteMapper.map(palette)
     }

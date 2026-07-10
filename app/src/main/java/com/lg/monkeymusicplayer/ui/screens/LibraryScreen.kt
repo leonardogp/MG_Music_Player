@@ -78,6 +78,7 @@ import com.lg.monkeymusicplayer.ui.components.library.PlaylistGrid
 import com.lg.monkeymusicplayer.ui.components.library.SongList
 import com.lg.monkeymusicplayer.ui.screens.library.ExcludedFoldersScreen
 import com.lg.monkeymusicplayer.ui.screens.library.SongListDetailScreen
+import com.lg.monkeymusicplayer.ui.theme.dynamic.LocalDynamicPlayerColors
 
 @SuppressLint("LocalContextGetResourceValueCall")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -623,6 +624,7 @@ fun FullPlayerScreen(
     val pagerState = rememberPagerState(pageCount = { tabLabels.size })
     val scope = rememberCoroutineScope()
     var playerVisible by remember { mutableStateOf(false) }
+    val dynamicColors = LocalDynamicPlayerColors.current
 
     LaunchedEffect(Unit) {
         playerVisible = true
@@ -653,7 +655,14 @@ fun FullPlayerScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                dynamicColors.background,
+                                dynamicColors.backgroundDark
+                            )
+                        )
+                    )
                     .systemBarsPadding()
             ) {
         // ── TopBar: flecha abajo | PLAYLIST / nombre | (vacío) ────────────
@@ -666,7 +675,7 @@ fun FullPlayerScreen(
                 Icon(
                     Icons.Default.KeyboardArrowDown,
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.85f),
+                    tint = dynamicColors.controls.copy(alpha = 0.85f),
                     modifier = Modifier.size(30.dp)
                 )
             }
@@ -677,14 +686,14 @@ fun FullPlayerScreen(
                 Text(
                     text = stringResource(R.string.tab_playlist).uppercase(),
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = dynamicColors.controls.copy(alpha = 0.6f),
                     letterSpacing = 2.sp
                 )
                 Text(
                     text = song.album.ifBlank { song.artist },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = dynamicColors.textPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -694,12 +703,12 @@ fun FullPlayerScreen(
         // ── Tabs: Playlist / Letras / Cola ─────────────────────────────────
         TabRow(
             selectedTabIndex = pagerState.currentPage,
-            containerColor = Color.Black,
-            contentColor = Color.White,
+            containerColor = dynamicColors.backgroundDark,
+            contentColor = dynamicColors.textPrimary,
             indicator = { tabPositions ->
                 TabRowDefaults.SecondaryIndicator(
                     modifier = Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
-                    color = PrimaryOrange,
+                    color = dynamicColors.accent,
                     height = 2.dp
                 )
             },
@@ -712,8 +721,8 @@ fun FullPlayerScreen(
                     text = {
                         Text(
                             label,
-                            color = if (pagerState.currentPage == index) Color.White
-                                    else Color.White.copy(alpha = 0.45f),
+                            color = if (pagerState.currentPage == index) dynamicColors.textPrimary
+                                    else dynamicColors.controls.copy(alpha = 0.45f),
                             style = MaterialTheme.typography.titleSmall
                         )
                     }
@@ -732,7 +741,14 @@ fun FullPlayerScreen(
                 0 -> Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    dynamicColors.background,
+                                    dynamicColors.backgroundDark
+                                )
+                            )
+                        )
                         .padding(horizontal = 20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -772,29 +788,29 @@ fun FullPlayerScreen(
                                 song.title,
                                 style = MaterialTheme.typography.displaySmall,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                color = dynamicColors.textPrimary,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
                                 song.artist,
                                 style = MaterialTheme.typography.titleMedium,
-                                color = PrimaryOrange,
+                                color = dynamicColors.accent,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
                         IconButton(onClick = { showEditDialog = true }) {
                             Icon(Icons.Default.Edit, null,
-                                tint = Color.White.copy(alpha = 0.7f))
+                                tint = dynamicColors.controls.copy(alpha = 0.7f))
                         }
                         IconButton(onClick = onToggleFavorite) {
                             Icon(
                                 if (song.isFavorite) Icons.Default.Favorite
                                 else Icons.Default.FavoriteBorder,
                                 null,
-                                tint = if (song.isFavorite) PrimaryOrange
-                                       else Color.White.copy(alpha = 0.7f)
+                                tint = if (song.isFavorite) dynamicColors.accent
+                                       else dynamicColors.controls.copy(alpha = 0.7f)
                             )
                         }
                     }
@@ -811,7 +827,7 @@ fun FullPlayerScreen(
 
                     PlaybackWaveform(
                         isPlaying = playerState.isPlaying,
-                        accent = PrimaryOrange
+                        accent = dynamicColors.accent
                     )
 
                     Spacer(Modifier.height(18.dp))
@@ -824,13 +840,13 @@ fun FullPlayerScreen(
                     ) {
                         IconButton(onClick = onSkipPrevious, modifier = Modifier.size(52.dp)) {
                             Icon(Icons.Default.SkipPrevious, null,
-                                tint = Color.White, modifier = Modifier.size(36.dp))
+                                tint = dynamicColors.controls, modifier = Modifier.size(36.dp))
                         }
                         Box(
                             modifier = Modifier
                                 .size(72.dp)
                                 .clip(RoundedCornerShape(50))
-                                .background(PrimaryOrange)
+                                .background(dynamicColors.accent)
                                 .clickable { onPlayPause() },
                             contentAlignment = Alignment.Center
                         ) {
@@ -838,13 +854,13 @@ fun FullPlayerScreen(
                                 if (playerState.isPlaying) Icons.Default.Pause
                                 else Icons.Default.PlayArrow,
                                 null,
-                                tint = Color.White,
+                                tint = dynamicColors.controls,
                                 modifier = Modifier.size(40.dp)
                             )
                         }
                         IconButton(onClick = onSkipNext, modifier = Modifier.size(52.dp)) {
                             Icon(Icons.Default.SkipNext, null,
-                                tint = Color.White, modifier = Modifier.size(36.dp))
+                                tint = dynamicColors.controls, modifier = Modifier.size(36.dp))
                         }
                     }
 
@@ -859,24 +875,24 @@ fun FullPlayerScreen(
                         IconButton(onClick = onToggleShuffle) {
                             Icon(
                                 Icons.Default.Shuffle, null,
-                                tint = if (playerState.isShuffleMode) PrimaryOrange
-                                       else Color.White.copy(alpha = 0.6f),
+                                tint = if (playerState.isShuffleMode) dynamicColors.accent
+                                       else dynamicColors.controls.copy(alpha = 0.6f),
                                 modifier = Modifier.size(24.dp)
                             )
                         }
                         IconButton(onClick = onSeekBack) {
                             Icon(Icons.Default.Replay10, null,
-                                tint = Color.White.copy(alpha = 0.7f),
+                                tint = dynamicColors.controls.copy(alpha = 0.7f),
                                 modifier = Modifier.size(28.dp))
                         }
                         IconButton(onClick = { onAddToPlaylist(song) }) {
                             Icon(Icons.Default.PlaylistAdd, null,
-                                tint = Color.White.copy(alpha = 0.7f),
+                                tint = dynamicColors.controls.copy(alpha = 0.7f),
                                 modifier = Modifier.size(28.dp))
                         }
                         IconButton(onClick = onSeekForward) {
                             Icon(Icons.Default.Forward10, null,
-                                tint = Color.White.copy(alpha = 0.7f),
+                                tint = dynamicColors.controls.copy(alpha = 0.7f),
                                 modifier = Modifier.size(28.dp))
                         }
                         IconButton(onClick = onCycleRepeatMode) {
@@ -887,8 +903,8 @@ fun FullPlayerScreen(
                                 },
                                 null,
                                 tint = if (playerState.repeatMode != androidx.media3.common.Player.REPEAT_MODE_OFF)
-                                           PrimaryOrange
-                                       else Color.White.copy(alpha = 0.6f),
+                                           dynamicColors.accent
+                                       else dynamicColors.controls.copy(alpha = 0.6f),
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -899,20 +915,27 @@ fun FullPlayerScreen(
                 1 -> Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black),
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    dynamicColors.background,
+                                    dynamicColors.backgroundDark
+                                )
+                            )
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     when {
-                        isLoadingLyrics -> CircularProgressIndicator(color = PrimaryOrange)
+                        isLoadingLyrics -> CircularProgressIndicator(color = dynamicColors.accent)
                         lyrics.isEmpty() -> Text(
                             stringResource(com.lg.monkeymusicplayer.R.string.lyrics_not_found),
                             style = MaterialTheme.typography.bodyLarge,
-                            color = Color.White.copy(alpha = 0.5f)
+                            color = dynamicColors.controls.copy(alpha = 0.5f)
                         )
                         else -> LyricsView(
                             lyrics = lyrics,
                             currentPosition = playerState.currentPosition,
-                            accentColor = playerState.accentColor,
+                            accentColor = dynamicColors.accent,
                             onLyricClick = onSeekTo
                         )
                     }
@@ -922,7 +945,14 @@ fun FullPlayerScreen(
                 2 -> LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    dynamicColors.background,
+                                    dynamicColors.backgroundDark
+                                )
+                            )
+                        )
                 ) {
                     items(queue, key = { it.id }) { queueSong ->
                         ListItem(
@@ -930,15 +960,15 @@ fun FullPlayerScreen(
                                 Text(
                                     queueSong.title,
                                     fontWeight = if (queueSong.id == song.id) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (queueSong.id == song.id) PrimaryOrange else Color.White
+                                    color = if (queueSong.id == song.id) dynamicColors.accent else dynamicColors.textPrimary
                                 )
                             },
                             supportingContent = {
-                                Text(queueSong.artist, color = Color.White.copy(alpha = 0.55f))
+                                Text(queueSong.artist, color = dynamicColors.textSecondary)
                             },
                             leadingContent = {
                                 if (queueSong.id == song.id) {
-                                    Icon(Icons.Default.VolumeUp, null, tint = PrimaryOrange)
+                                    Icon(Icons.Default.VolumeUp, null, tint = dynamicColors.accent)
                                 } else {
                                     AsyncImage(
                                         model = queueSong.albumArtUri,
@@ -951,10 +981,10 @@ fun FullPlayerScreen(
                                     )
                                 }
                             },
-                            colors = ListItemDefaults.colors(containerColor = Color.Black),
+                            colors = ListItemDefaults.colors(containerColor = dynamicColors.backgroundDark),
                             modifier = Modifier.clickable { onPlayFromQueue(queueSong) }
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.07f))
+                        HorizontalDivider(color = dynamicColors.controls.copy(alpha = 0.20f))
                     }
                 }
             }
